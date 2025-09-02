@@ -1,8 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { auth } from "./services/firebase";
-import { LoginForm } from "./components/LoginForm";
-import { Enforcement } from "./pages/Enforcement";
+import Enforcement from "./pages/Enforcement";
+import SignIn from "./sign-in-side/SignInSide";
 
 function App() {
   const [user, setUser] = useState<any>(null);
@@ -21,7 +21,7 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={user ? <Navigate to="/enforcement" /> : <LoginForm />} />
+        <Route path="/login" element={user ? <Navigate to="/enforcement" /> : <SignIn />} />
         <Route path="/enforcement" element={user ? <Enforcement /> : <Navigate to="/login" />} />
         <Route path="*" element={<Navigate to={user ? "/enforcement" : "/login"} />} />
       </Routes>
