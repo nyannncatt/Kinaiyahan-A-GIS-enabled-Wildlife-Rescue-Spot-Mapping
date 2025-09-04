@@ -1,8 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { auth, db } from "./services/firebase";
-import { doc, getDoc } from "firebase/firestore";
 import Enforcement from "./pages/Enforcement";
+import { doc, getDoc } from "firebase/firestore";
 import Cenro from "./pages/Cenro";
 import SignIn from "./sign-in-side/SignInSide";
 
@@ -13,22 +13,18 @@ function App() {
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
+      setUser(currentUser);
+
       if (currentUser) {
-        setUser(currentUser);
-
-        // 🔑 Get user role from Firestore
-        const docRef = doc(db, "users", currentUser.uid);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          setRole(docSnap.data().role);
-        } else {
-          setRole(null);
+        // fetch role from Firestore
+        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+        if (userDoc.exists()) {
+          setRole(userDoc.data().role);
         }
       } else {
-        setUser(null);
         setRole(null);
       }
+
       setLoading(false);
     });
 
@@ -37,10 +33,11 @@ function App() {
 
   if (loading) return <div>Loading...</div>;
 
-  return (
+
+    return (
     <Router>
       <Routes>
-        {/* Login Route */}
+        {/* Login route */}
         <Route
           path="/login"
           element={
@@ -50,7 +47,7 @@ function App() {
               ) : role === "cenro" ? (
                 <Navigate to="/cenro" />
               ) : (
-                <Navigate to="/" />
+                <div>loading...</div>
               )
             ) : (
               <SignIn />
@@ -58,17 +55,27 @@ function App() {
           }
         />
 
-        {/* Role-based protected routes */}
+        {/* Enforcement page */}
         <Route
           path="/enforcement"
-          element={user && role === "enforcement" ? <Enforcement /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/cenro"
-          element={user && role === "cenro" ? <Cenro /> : <Navigate to="/login" />}
+          element={
+            user && role === "enforcement" ? (
+              <Enforcement />
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
         />
 
-        {/* Catch-all */}
+        {/* Cenro page */}
+        <Route
+          path="/cenro"
+          element={
+            user && role === "cenro" ? <Cenro /> : <Navigate to="/login" />
+          }
+        />
+
+        {/* Fallback */}
         <Route
           path="*"
           element={
@@ -78,7 +85,7 @@ function App() {
               ) : role === "cenro" ? (
                 <Navigate to="/cenro" />
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             ) : (
               <Navigate to="/login" />
@@ -89,5 +96,6 @@ function App() {
     </Router>
   );
 }
+
 
 export default App;
