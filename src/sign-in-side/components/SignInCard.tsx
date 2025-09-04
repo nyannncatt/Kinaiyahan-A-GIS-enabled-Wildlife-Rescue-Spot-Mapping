@@ -1,8 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../../services/firebase";
-import { Box, Button, Card, TextField, Typography, Checkbox, FormControlLabel } from "@mui/material";
+import { auth, db } from "../../services/firebase"; 
+import { doc, getDoc } from "firebase/firestore";
+import {
+  Box,
+  Button,
+  Card,
+  TextField,
+  Typography,
+  Checkbox,
+  FormControlLabel,
+} from "@mui/material";
 import ForgotPassword from "./ForgotPassword";
 import { GoogleIcon, FacebookIcon, SitemarkIcon } from "./CustomIcons";
 
@@ -27,8 +36,30 @@ export default function SignInCard() {
     }
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigate("/enforcement"); // Redirect after successful login
+      // 1. Log in
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // 2. Fetch user role from Firestore
+      const docRef = doc(db, "users", user.uid);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const role = docSnap.data().role;
+
+        // 3. Redirect based on role
+        if (role === "enforcement") {
+          navigate("/enforcement");
+        } else if (role === "cenro") {
+          navigate("/cenro");
+        } else if (role === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/"); // fallback
+        }
+      } else {
+        setLoginError("No role assigned. Please contact admin.");
+      }
     } catch (error: any) {
       setLoginError(error.message || "Invalid credentials");
     }
@@ -42,9 +73,10 @@ export default function SignInCard() {
         <SitemarkIcon />
       </Box>
 
-      <Typography variant="h4" sx={{ textAlign: "center" }}>Sign In</Typography>
+      <Typography variant="h4" sx={{ textAlign: "center" }}>
+        Sign In
+      </Typography>
 
-      {/* Inputs without a <form> */}
       <TextField
         label="Email"
         type="email"
@@ -75,10 +107,10 @@ export default function SignInCard() {
       </Button>
 
       <Typography sx={{ textAlign: "center" }}>
-        Don't have an account?{" "}
-        <span>
-          <Button variant="text" onClick={() => navigate("/signup")}>Sign Up</Button>
-        </span>
+        Don&apos;t have an account?{" "}
+        <Button variant="text" onClick={() => navigate("/signup")}>
+          Sign Up
+        </Button>
       </Typography>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 2 }}>
