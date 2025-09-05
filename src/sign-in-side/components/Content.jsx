@@ -1,59 +1,62 @@
-import * as React from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
-import ConstructionRoundedIcon from '@mui/icons-material/ConstructionRounded';
-import SettingsSuggestRoundedIcon from '@mui/icons-material/SettingsSuggestRounded';
-import ThumbUpAltRoundedIcon from '@mui/icons-material/ThumbUpAltRounded';
-import { SitemarkIcon } from './CustomIcons';
+import PetsRoundedIcon from '@mui/icons-material/PetsRounded';
+import MapRoundedIcon from '@mui/icons-material/MapRounded';
+import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
+import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
 
 const items = [
   {
-    icon: <SettingsSuggestRoundedIcon sx={{ color: 'text.secondary' }} />,
-    title: 'Being a jackass',
+    icon: <PetsRoundedIcon sx={{ color: 'text.secondary' }} />,
+    title: 'Wildlife Rescue Management',
     description:
-      'Our jackass description.',
+      'Empowers CENRO to efficiently track, document, and monitor rescued animals using GIS technology.',
   },
   {
-    icon: <ConstructionRoundedIcon sx={{ color: 'text.secondary' }} />,
-    title: 'jackass',
+    icon: <MapRoundedIcon sx={{ color: 'text.secondary' }} />,
+    title: 'Geospatial Mapping',
     description:
-      'jackass descr.',
+      'Integrates GIS for precise location tracking and visualization of rescue operations.',
   },
   {
-    icon: <ThumbUpAltRoundedIcon sx={{ color: 'text.secondary' }} />,
-    title: 'jackass',
+    icon: <AssignmentRoundedIcon sx={{ color: 'text.secondary' }} />,
+    title: 'Comprehensive Rescue Records',
     description:
-      'jackass desc.',
+      'Stores detailed data for each rescue, supporting analysis and informed decision-making.',
   },
   {
-    icon: <AutoFixHighRoundedIcon sx={{ color: 'text.secondary' }} />,
-    title: 'Innovative jackass',
+    icon: <SupportAgentRoundedIcon sx={{ color: 'text.secondary' }} />,
+    title: 'Citizen Rescue Requests',
     description:
-      'being a bizaya.',
+      'Offers an intuitive form for the public to report wildlife emergencies and request assistance.',
   },
 ];
 
 export default function Content() {
   return (
     <Stack
-      sx={{ flexDirection: 'column', alignSelf: 'center', gap: 4, maxWidth: 450 }}
+      sx={{
+        flexDirection: 'column',
+        alignSelf: 'center',
+        gap: 4,
+        maxWidth: 450,
+      }}
     >
-      <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
-       
-      </Box>
+      <Box sx={{ display: { xs: 'none', md: 'flex' } }} />
       {items.map((item, index) => (
-        <Stack key={index} direction="row" sx={{ gap: 2 }}>
-          {item.icon}
-          <div>
-            <Typography gutterBottom sx={{ fontWeight: 'medium' }}>
+        <Stack key={index} direction="column" sx={{ gap: 1 }}>
+      
+          <Stack direction="row" alignItems="center" sx={{ gap: 1 }}>
+            {item.icon}
+            <Typography sx={{ fontWeight: 'medium' }}>
               {item.title}
             </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {item.description}
-            </Typography>
-          </div>
+          </Stack>
+         
+          <Typography variant="body2" sx={{ color: 'text.secondary', pl: 4 }}>
+            {item.description}
+          </Typography>
         </Stack>
       ))}
     </Stack>

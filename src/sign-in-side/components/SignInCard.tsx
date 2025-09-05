@@ -13,7 +13,7 @@ import {
   FormControlLabel,
 } from "@mui/material";
 import ForgotPassword from "./ForgotPassword";
-import { GoogleIcon, FacebookIcon, SitemarkIcon } from "./CustomIcons";
+
 
 export default function SignInCard() {
   const [email, setEmail] = useState("");
@@ -70,7 +70,7 @@ export default function SignInCard() {
   return (
     <Card sx={{ p: 4, minWidth: 350, display: "flex", flexDirection: "column", gap: 2 }}>
       <Box sx={{ display: { xs: "flex", md: "none" } }}>
-        <SitemarkIcon />
+   
       </Box>
 
       <Typography variant="h4" sx={{ textAlign: "center" }}>
@@ -118,7 +118,7 @@ export default function SignInCard() {
           fullWidth
           variant="outlined"
           onClick={() => alert("Sign in with Google")}
-          startIcon={<GoogleIcon />}
+     
         >
           Sign in with Google
         </Button>
@@ -126,7 +126,7 @@ export default function SignInCard() {
           fullWidth
           variant="outlined"
           onClick={() => alert("Sign in with Facebook")}
-          startIcon={<FacebookIcon />}
+         
         >
           Sign in with Facebook
         </Button>
