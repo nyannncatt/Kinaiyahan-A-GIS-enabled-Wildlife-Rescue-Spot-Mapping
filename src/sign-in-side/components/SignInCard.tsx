@@ -14,7 +14,6 @@ import {
 } from "@mui/material";
 import ForgotPassword from "./ForgotPassword";
 
-
 export default function SignInCard() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,18 +35,15 @@ export default function SignInCard() {
     }
 
     try {
-      // 1. Log in
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Fetch user role from Firestore
       const docRef = doc(db, "users", user.uid);
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
         const role = docSnap.data().role;
 
-        // 3. Redirect based on role
         if (role === "enforcement") {
           navigate("/enforcement");
         } else if (role === "cenro") {
@@ -55,7 +51,7 @@ export default function SignInCard() {
         } else if (role === "admin") {
           navigate("/admin");
         } else {
-          navigate("/"); // fallback
+          navigate("/");
         }
       } else {
         setLoginError("No role assigned. Please contact admin.");
@@ -68,11 +64,15 @@ export default function SignInCard() {
   const handleClose = () => setOpen(false);
 
   return (
-    <Card sx={{ p: 4, minWidth: 350, display: "flex", flexDirection: "column", gap: 2 }}>
-      <Box sx={{ display: { xs: "flex", md: "none" } }}>
-   
-      </Box>
-
+    <Card
+      sx={{
+        p: 4,
+        minWidth: 350,
+        display: "flex",
+        flexDirection: "column",
+        gap: 2, // ⬅️ this gives consistent spacing instead of <br />
+      }}
+    >
       <Typography variant="h4" sx={{ textAlign: "center" }}>
         Sign In
       </Typography>
@@ -100,6 +100,7 @@ export default function SignInCard() {
       )}
 
       <FormControlLabel control={<Checkbox />} label="Remember me" />
+
       <ForgotPassword open={open} handleClose={handleClose} />
 
       <Button type="button" fullWidth variant="contained" onClick={handleLogin}>
@@ -118,7 +119,6 @@ export default function SignInCard() {
           fullWidth
           variant="outlined"
           onClick={() => alert("Sign in with Google")}
-     
         >
           Sign in with Google
         </Button>
@@ -126,7 +126,6 @@ export default function SignInCard() {
           fullWidth
           variant="outlined"
           onClick={() => alert("Sign in with Facebook")}
-         
         >
           Sign in with Facebook
         </Button>
