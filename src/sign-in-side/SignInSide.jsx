@@ -1,10 +1,9 @@
 import * as React from 'react';
-import { Box, CssBaseline } from '@mui/material';
+import { Box, CssBaseline, Stack } from '@mui/material';
 import AppTheme from '../shared-theme/AppTheme';
 import ColorModeSelect from '../shared-theme/ColorModeSelect';
 import SignInCard from './components/SignInCard';
 import Content from './components/Content';
-import Stack from '@mui/material/Stack';
 
 export default function SignInSide(props) {
   return (
@@ -14,68 +13,41 @@ export default function SignInSide(props) {
       {/* Fixed top-right color mode toggle */}
       <ColorModeSelect sx={{ position: 'fixed', top: '1rem', right: '1rem' }} />
 
-      {/* Outer Box fills viewport and centers inner Stack */}
+      {/* Wrapper with gradient background covering full screen */}
       <Box
-        sx={{
-          width: '100vw',
-          height: '100vh',
+        sx={(theme) => ({
+          minHeight: '100vh',
+          width: '100vw', // ✅ ensures full width
           display: 'flex',
-          justifyContent: 'center',  // horizontal center
-          alignItems: 'center',      // vertical center
+          alignItems: 'center',
+          justifyContent: 'center',
           px: 2,
-        }}
+          background: 'radial-gradient(ellipse at 95% 50%, hsl(210, 100%, 97%), hsl(0, 0%, 100%))',
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: '100% 100%', // ✅ stretches gradient to cover all
+          backgroundAttachment: 'fixed',
+          ...(theme.applyStyles('dark', {
+            background:
+              'radial-gradient(at 95% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))',
+            backgroundSize: '100% 100%',
+          })),
+        })}
       >
-        {/* Original nested Stack untouched */}
+        {/* Content area */}
         <Stack
-          direction="column"
-          component="main"
-          sx={[
-            {
-              justifyContent: 'center',
-              height: 'calc((1 - var(--template-frame-height, 0)) * 100%)',
-              marginTop: 'max(40px - var(--template-frame-height, 0px), 0px)',
-              minHeight: '100%',
-            },
-            (theme) => ({
-              '&::before': {
-                content: '""',
-                display: 'block',
-                position: 'absolute',
-                zIndex: -1,
-                inset: 0,
-                backgroundImage:
-                  'radial-gradient(ellipse at 50% 50%, hsl(210, 100%, 97%), hsl(0, 0%, 100%))',
-                backgroundRepeat: 'no-repeat',
-                ...theme.applyStyles('dark', {
-                  backgroundImage:
-                    'radial-gradient(at 50% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))',
-                }),
-              },
-            }),
-          ]}
+          direction={{ xs: 'column-reverse', md: 'row' }}
+          spacing={{ xs: 6, sm: 12 }}
+          sx={{
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: { xs: 2, sm: 4 },
+            width: '100%',
+            maxWidth: 1200,
+            m: 'auto',
+          }}
         >
-          <Stack
-            direction={{ xs: 'column-reverse', md: 'row' }}
-            sx={{
-              justifyContent: 'center',
-              gap: { xs: 6, sm: 12 },
-              p: 2,
-              mx: 'auto',
-            }}
-          >
-            <Stack
-              direction={{ xs: 'column-reverse', md: 'row' }}
-              sx={{
-                justifyContent: 'center',
-                gap: { xs: 6, sm: 12 },
-                p: { xs: 2, sm: 4 },
-                m: 'auto',
-              }}
-            >
-              <Content />
-              <SignInCard />
-            </Stack>
-          </Stack>
+          <Content />
+          <SignInCard />
         </Stack>
       </Box>
     </AppTheme>

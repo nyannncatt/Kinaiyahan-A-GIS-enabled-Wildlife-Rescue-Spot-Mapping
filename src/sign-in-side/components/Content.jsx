@@ -1,6 +1,8 @@
+import * as React from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+
 import PetsRoundedIcon from '@mui/icons-material/PetsRounded';
 import MapRoundedIcon from '@mui/icons-material/MapRounded';
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
@@ -15,7 +17,7 @@ const items = [
   },
   {
     icon: <MapRoundedIcon sx={{ color: 'text.secondary' }} />,
-    title: 'Geospatial Mapping',
+    title: 'GIS Mapping',
     description:
       'Integrates GIS for precise location tracking and visualization of rescue operations.',
   },
@@ -46,7 +48,7 @@ export default function Content() {
       <Box sx={{ display: { xs: 'none', md: 'flex' } }} />
       {items.map((item, index) => (
         <Stack key={index} direction="column" sx={{ gap: 1 }}>
-      
+       
           <Stack direction="row" alignItems="center" sx={{ gap: 1 }}>
             {item.icon}
             <Typography sx={{ fontWeight: 'medium' }}>
