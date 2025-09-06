@@ -2,13 +2,19 @@ import * as React from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-
 import PetsRoundedIcon from '@mui/icons-material/PetsRounded';
 import MapRoundedIcon from '@mui/icons-material/MapRounded';
-import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
+import ArrowCircleRightRoundedIcon from '@mui/icons-material/ArrowCircleRightRounded';
+
 
 const items = [
+  {
+    icon: <ArrowCircleRightRoundedIcon sx={{ color: 'text.secondary' }} />,
+    title: 'Unified Login, Role-Based Access',
+    description:
+       'Sign in once, and you’ll be directed to the correct site based on your role.',
+  },
   {
     icon: <PetsRoundedIcon sx={{ color: 'text.secondary' }} />,
     title: 'Wildlife Rescue Management',
@@ -20,12 +26,6 @@ const items = [
     title: 'GIS Mapping',
     description:
       'Integrates GIS for precise location tracking and visualization of rescue operations.',
-  },
-  {
-    icon: <AssignmentRoundedIcon sx={{ color: 'text.secondary' }} />,
-    title: 'Comprehensive Rescue Records',
-    description:
-      'Stores detailed data for each rescue, supporting analysis and informed decision-making.',
   },
   {
     icon: <SupportAgentRoundedIcon sx={{ color: 'text.secondary' }} />,
