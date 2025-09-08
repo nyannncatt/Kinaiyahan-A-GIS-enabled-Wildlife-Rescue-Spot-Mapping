@@ -213,7 +213,7 @@ export default function SignInCard() {
             onClick={() => alert('Sign in with Google')}
             startIcon={<GoogleColoredIcon />}
           >
-            Sign in with Google
+            Report a Species – Sign in with Google
           </Button>
         </Box>
       </Card>
