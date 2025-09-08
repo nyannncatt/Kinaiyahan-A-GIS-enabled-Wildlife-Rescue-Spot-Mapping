@@ -14,11 +14,12 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { styled } from '@mui/material/styles';
 import ForgotPassword from './ForgotPassword';
-import { FormControl, InputAdornment, Alert, SvgIcon } from "@mui/material";
+import { FormControl, InputAdornment, Alert } from "@mui/material";
 import Divider from "@mui/material/Divider";
-import FacebookIcon from '@mui/icons-material/Facebook';
+import SvgIcon from "@mui/material/SvgIcon";
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import FacebookIcon from '@mui/icons-material/Facebook';
 
 // Custom colored Google Icon
 function GoogleColoredIcon(props) {
@@ -60,7 +61,6 @@ export default function SignInCard() {
   const [loginError, setLoginError] = useState("");
   const [open, setOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
   const navigate = useNavigate();
 
   const handleClickOpen = () => setOpen(true);
@@ -68,7 +68,6 @@ export default function SignInCard() {
 
   const validateInputs = () => {
     let valid = true;
-
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
       setEmailError(true);
       setEmailErrorMessage("Please enter a valid email.");
@@ -77,7 +76,6 @@ export default function SignInCard() {
       setEmailError(false);
       setEmailErrorMessage("");
     }
-
     if (!password || password.length < 6) {
       setPasswordError(true);
       setPasswordErrorMessage("Password must be at least 6 characters.");
@@ -86,7 +84,6 @@ export default function SignInCard() {
       setPasswordError(false);
       setPasswordErrorMessage("");
     }
-
     return valid;
   };
 
@@ -103,7 +100,6 @@ export default function SignInCard() {
       const userDoc = await getDoc(doc(db, "users", user.uid));
       if (userDoc.exists()) {
         const role = userDoc.data().role;
-
         if (role === "enforcement") {
           navigate("/enforcement");
         } else {
@@ -118,122 +114,112 @@ export default function SignInCard() {
   };
 
   return (
-    <Card variant="outlined">
-      <Typography
-        component="h1"
-        variant="h4"
-        sx={{ width: '100%', fontSize: 'clamp(2rem, 10vw, 2.15rem)' }}
-      >
-        Sign in
-      </Typography>
-
-      {loginError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {loginError}
-        </Alert>
-      )}
-
-      <Box
-        component="form"
-        noValidate
-        onSubmit={handleLogin}
-        sx={{ display: 'flex', flexDirection: 'column', width: '100%', gap: 2 }}
-      >
-        <FormControl>
-          <FormLabel htmlFor="email">Email</FormLabel>
-          <TextField
-            error={emailError}
-            helperText={emailErrorMessage}
-            id="email"
-            type="email"
-            name="email"
-            placeholder="your@email.com"
-            autoComplete="email"
-            autoFocus
-            required
-            fullWidth
-            variant="outlined"
-            color={emailError ? 'error' : 'primary'}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </FormControl>
-
-        <FormControl>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <FormLabel htmlFor="password">Password</FormLabel>
-            <Typography
-              component="span"
-              sx={{
-                cursor: "pointer",
-                color: "text.primary",
-                fontSize: "0.875rem",
-                "&:hover": { color: "primary.main" },
-              }}
-              onClick={handleClickOpen}
-            >
-              Forgot your password?
-            </Typography>
-          </Box>
-          <TextField
-            error={passwordError}
-            helperText={passwordErrorMessage}
-            name="password"
-            placeholder="••••••"
-            type={showPassword ? 'text' : 'password'}
-            id="password"
-            autoComplete="current-password"
-            required
-            fullWidth
-            variant="outlined"
-            color={passwordError ? 'error' : 'primary'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <Box
-                    onClick={() => setShowPassword(!showPassword)}
-                    sx={{
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                    }}
-                  >
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                  </Box>
-                </InputAdornment>
-              )
-            }}
-          />
-        </FormControl>
-
-        <FormControlLabel
-          control={<Checkbox value="remember" color="primary" />}
-          label="Remember me"
-          sx={{ ml: -1.12 }}
-        />
-
-        <ForgotPassword open={open} handleClose={handleClose} />
-
-        <Button type="submit" fullWidth variant="contained">
+    <>
+      <Card variant="outlined">
+        <Typography component="h1" variant="h4" sx={{ width: '100%', fontSize: 'clamp(2rem, 10vw, 2.15rem)' }}>
           Sign in
-        </Button>
-      </Box>
+        </Typography>
 
-      <Divider>or</Divider>
+        {loginError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {loginError}
+          </Alert>
+        )}
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Button
-          fullWidth
-          variant="outlined"
-          onClick={() => alert('Sign in with Google')}
-          startIcon={<GoogleColoredIcon />}
+        <Box
+          component="form"
+          noValidate
+          onSubmit={handleLogin}
+          sx={{ display: 'flex', flexDirection: 'column', width: '100%', gap: 2 }}
         >
-          Sign in with Google
-        </Button>
-        
-      </Box>
-    </Card>
+          <FormControl>
+            <FormLabel htmlFor="email">Email</FormLabel>
+            <TextField
+              error={emailError}
+              helperText={emailErrorMessage}
+              id="email"
+              type="email"
+              name="email"
+              placeholder="your@email.com"
+              autoComplete="email"
+              autoFocus
+              required
+              fullWidth
+              variant="outlined"
+              color={emailError ? 'error' : 'primary'}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </FormControl>
+
+          <FormControl>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <FormLabel htmlFor="password">Password</FormLabel>
+              <Typography
+                component="span"
+                sx={{
+                  cursor: "pointer",
+                  color: "text.primary",
+                  fontSize: "0.875rem",
+                  "&:hover": { color: "primary.main" },
+                }}
+                onClick={handleClickOpen}
+              >
+                Forgot your password?
+              </Typography>
+            </Box>
+            <TextField
+              error={passwordError}
+              helperText={passwordErrorMessage}
+              name="password"
+              placeholder="••••••"
+              type={showPassword ? 'text' : 'password'}
+              id="password"
+              autoComplete="current-password"
+              required
+              fullWidth
+              variant="outlined"
+              color={passwordError ? 'error' : 'primary'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Box
+                      onClick={() => setShowPassword(!showPassword)}
+                      sx={{ cursor: "pointer", display: "flex", alignItems: "center" }}
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </Box>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </FormControl>
+
+          <FormControlLabel control={<Checkbox value="remember" color="primary" />} label="Remember me" sx={{ ml: -1.12 }} />
+
+          <Button type="submit" fullWidth variant="contained">
+            Sign in
+          </Button>
+        </Box>
+
+        <Divider>or</Divider>
+
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => alert('Sign in with Google')}
+            startIcon={<GoogleColoredIcon />}
+          >
+            Sign in with Google
+          </Button>
+        </Box>
+      </Card>
+
+      {/* 👇 Outside of the form now */}
+      <ForgotPassword open={open} handleClose={handleClose} />
+    </>
   );
 }
