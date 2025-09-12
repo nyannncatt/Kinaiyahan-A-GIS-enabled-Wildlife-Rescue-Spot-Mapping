@@ -1,10 +1,10 @@
 import { Box, Typography, CssBaseline, Button } from "@mui/material";
 import AppTheme from "../shared-theme/AppTheme";
 import { signOut } from "firebase/auth";
-import { auth } from "../services/firebase"; // make sure this path is correct
+import { auth } from "../services/firebase"; // make sure path is correct
 import { useNavigate } from "react-router-dom";
 
-export default function Enforcement() {
+export default function Cenro() {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -34,10 +34,10 @@ export default function Enforcement() {
       >
         <Box>
           <Typography variant="h2" component="h1" gutterBottom>
-            Enforcement Dashboard - Test
+            Cenro Dashboard - Test
           </Typography>
           <Typography variant="body1" gutterBottom>
-            Welcome to the enforcement dashboard. Add your components here.
+            Welcome to the Cenro dashboard. Add your components here.
           </Typography>
           <Button variant="contained" color="primary" onClick={handleLogout}>
             Log Out
