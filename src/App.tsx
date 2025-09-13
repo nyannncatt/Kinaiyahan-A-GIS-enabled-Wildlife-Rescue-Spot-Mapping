@@ -1,47 +1,85 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { auth, db } from "./services/firebase";
+import { supabase } from "./services/supabase";
 import Enforcement from "./pages/Enforcement";
-import { doc, getDoc } from "firebase/firestore";
 import Cenro from "./pages/Cenro";
 import SignIn from "./sign-in-side/SignInSide";
+import ResetPassword from "./pages/ResetPassword";
 
 function App() {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRecovery, setIsRecovery] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
-      setUser(currentUser);
+    // ✅ Detect if we’re in recovery mode (from email link)
+    if (window.location.hash.includes("type=recovery")) {
+      setIsRecovery(true);
+    }
 
-      if (currentUser) {
-        // fetch role from Firestore
-        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-        if (userDoc.exists()) {
-          setRole(userDoc.data().role);
-        }
+    // Fetch session on load
+    const getSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        const { data, error } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", session.user.id)
+          .single();
+
+        if (!error && data) setRole(data.role);
       } else {
         setRole(null);
       }
 
       setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    getSession();
+
+    // Subscribe to auth changes
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          const { data, error } = await supabase
+            .from("users")
+            .select("role")
+            .eq("id", session.user.id)
+            .single();
+
+          if (!error && data) setRole(data.role);
+        } else {
+          setRole(null);
+        }
+      }
+    );
+
+    return () => {
+      subscription.subscription.unsubscribe();
+    };
   }, []);
 
   if (loading) return <div>Loading...</div>;
 
-
-    return (
+  return (
     <Router>
       <Routes>
+        {/* Always allow ResetPassword without redirects */}
+        <Route path="/reset-password" element={<ResetPassword />} />
+
         {/* Login route */}
         <Route
           path="/login"
           element={
-            user ? (
+            user && !isRecovery ? ( // ✅ skip redirect if recovery session
               role === "enforcement" ? (
                 <Navigate to="/enforcement" />
               ) : role === "cenro" ? (
@@ -59,7 +97,7 @@ function App() {
         <Route
           path="/enforcement"
           element={
-            user && role === "enforcement" ? (
+            user && role === "enforcement" && !isRecovery ? (
               <Enforcement />
             ) : (
               <Navigate to="/login" />
@@ -71,7 +109,11 @@ function App() {
         <Route
           path="/cenro"
           element={
-            user && role === "cenro" ? <Cenro /> : <Navigate to="/login" />
+            user && role === "cenro" && !isRecovery ? (
+              <Cenro />
+            ) : (
+              <Navigate to="/login" />
+            )
           }
         />
 
@@ -79,7 +121,9 @@ function App() {
         <Route
           path="*"
           element={
-            user ? (
+            isRecovery ? (
+              <Navigate to="/reset-password" />
+            ) : user ? (
               role === "enforcement" ? (
                 <Navigate to="/enforcement" />
               ) : role === "cenro" ? (
@@ -96,6 +140,5 @@ function App() {
     </Router>
   );
 }
-
 
 export default App;
