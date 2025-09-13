@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate} from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "./services/supabase";
 import Enforcement from "./pages/Enforcement";
