@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "../../services/firebase"; 
-import { doc, getDoc } from "firebase/firestore";
+import { supabase } from "../../services/supabase"; // ✅ Supabase client
 import {
   Box,
   Button,
@@ -35,29 +33,50 @@ export default function SignInCard() {
     }
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      const docRef = doc(db, "users", user.uid);
-      const docSnap = await getDoc(docRef);
+      if (error) throw error;
 
-      if (docSnap.exists()) {
-        const role = docSnap.data().role;
+      const user = data.user;
 
-        if (role === "enforcement") {
-          navigate("/enforcement");
-        } else if (role === "cenro") {
-          navigate("/cenro");
-        } else if (role === "admin") {
-          navigate("/admin");
-        } else {
-          navigate("/");
-        }
+      if (!user) {
+        setLoginError("No user found.");
+        return;
+      }
+
+      // ✅ Fetch role from Supabase "users" table
+      const { data: userData, error: roleError } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (roleError) {
+        setLoginError("Error fetching user role.");
+        return;
+      }
+
+      if (userData?.role === "enforcement") {
+        navigate("/enforcement");
+      } else if (userData?.role === "cenro") {
+        navigate("/cenro");
+      } else if (userData?.role === "admin") {
+        navigate("/admin");
       } else {
         setLoginError("No role assigned. Please contact admin.");
       }
-    } catch (error: any) {
-      setLoginError(error.message || "Invalid credentials");
+    } catch (error: unknown) {
+      // ✅ Safe error handling
+      let message = "Invalid credentials";
+      if (error instanceof Error) {
+        message = error.message;
+      } else if (typeof error === "string") {
+        message = error;
+      }
+      setLoginError(message);
     }
   };
 
@@ -70,7 +89,7 @@ export default function SignInCard() {
         minWidth: 350,
         display: "flex",
         flexDirection: "column",
-        gap: 2, // ⬅️ this gives consistent spacing instead of <br />
+        gap: 2,
       }}
     >
       <Typography variant="h4" sx={{ textAlign: "center" }}>
