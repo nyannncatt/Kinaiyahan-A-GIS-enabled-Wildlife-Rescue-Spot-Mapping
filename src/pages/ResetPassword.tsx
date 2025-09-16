@@ -9,24 +9,17 @@ export default function ResetPassword() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isReady, setIsReady] = useState(false);
-  const [checking, setChecking] = useState(true); // ✅ new state for loader
 
   useEffect(() => {
-    const checkRecovery = async () => {
-      if (window.location.hash.includes("type=recovery")) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          setIsReady(true);
-        } else {
-          setError("Invalid or expired reset link.");
-        }
-      } else {
-        setError("Invalid or expired reset link.");
-      }
-      setChecking(false);
-    };
-
-    checkRecovery();
+    // Supabase recovery tokens are in the URL hash
+    if (window.location.hash.includes("type=recovery")) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) setIsReady(true);
+        else setError("Invalid or expired reset link.");
+      });
+    } else {
+      setError("Invalid or expired reset link.");
+    }
   }, []);
 
   const handleResetPassword = async () => {
@@ -47,6 +40,7 @@ export default function ResetPassword() {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
+      // Logout after resetting password
       await supabase.auth.signOut();
 
       setSuccess("✅ Password updated. Redirecting to login...");
@@ -68,16 +62,11 @@ export default function ResetPassword() {
       }}
     >
       <Card sx={{ p: 4, minWidth: 350, display: "flex", flexDirection: "column", gap: 2 }}>
-        <Typography variant="h5" textAlign="center">
-          Reset Password
-        </Typography>
+        <Typography variant="h5" textAlign="center">Reset Password</Typography>
+        {error && <Alert severity="error">{error}</Alert>}
+        {success && <Alert severity="success">{success}</Alert>}
 
-        {checking && <Typography>Loading recovery session...</Typography>}
-
-        {!checking && error && <Alert severity="error">{error}</Alert>}
-        {!checking && success && <Alert severity="success">{success}</Alert>}
-
-        {!checking && !success && isReady && (
+        {!success && isReady && (
           <>
             <TextField
               label="New Password"
@@ -86,7 +75,6 @@ export default function ResetPassword() {
               onChange={(e) => setNewPassword(e.target.value)}
               fullWidth
             />
-
             <TextField
               label="Confirm Password"
               type="password"
@@ -94,7 +82,6 @@ export default function ResetPassword() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               fullWidth
             />
-
             <Button
               variant="contained"
               fullWidth
