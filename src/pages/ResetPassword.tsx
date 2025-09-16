@@ -11,25 +11,26 @@ export default function ResetPassword() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    const hash = window.location.hash;
-    const searchParams = new URLSearchParams(hash.replace("#", "?"));
+    // ✅ Parse Supabase recovery token from URL hash
+    if (window.location.hash.includes("type=recovery")) {
+      const hashParams = new URLSearchParams(window.location.hash.replace("#", "?"));
+      const access_token = hashParams.get("access_token");
+      const refresh_token = hashParams.get("refresh_token");
 
-    const accessToken = searchParams.get("access_token");
-    const type = searchParams.get("type");
+      if (!access_token || !refresh_token) {
+        setError("Invalid or expired reset link.");
+        return;
+      }
 
-    if (type === "recovery" && accessToken) {
-      // Set the session from the recovery token
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: searchParams.get("refresh_token") || "",
-      })
-      .then(({ error }) => {
-        if (error) {
-          setError("Invalid or expired reset link.");
-        } else {
+      // ✅ Set the session with the token (do not sign out yet!)
+      supabase.auth.setSession({ access_token, refresh_token })
+        .then(({ error }) => {
+          if (error) {
+            setError(error.message || "Invalid or expired reset link.");
+            return;
+          }
           setIsReady(true);
-        }
-      });
+        });
     } else {
       setError("Invalid or expired reset link.");
     }
@@ -50,10 +51,11 @@ export default function ResetPassword() {
     }
 
     try {
+      // ✅ Update password first
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
-      // Sign out to force fresh login
+      // ✅ Only after successful update, sign out
       await supabase.auth.signOut();
 
       setSuccess("✅ Password updated. Redirecting to login...");
@@ -66,18 +68,9 @@ export default function ResetPassword() {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
+    <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <Card sx={{ p: 4, minWidth: 350, display: "flex", flexDirection: "column", gap: 2 }}>
-        <Typography variant="h5" textAlign="center">
-          Reset Password
-        </Typography>
+        <Typography variant="h5" textAlign="center">Reset Password</Typography>
 
         {error && <Alert severity="error">{error}</Alert>}
         {success && <Alert severity="success">{success}</Alert>}
@@ -91,7 +84,6 @@ export default function ResetPassword() {
               onChange={(e) => setNewPassword(e.target.value)}
               fullWidth
             />
-
             <TextField
               label="Confirm Password"
               type="password"
@@ -99,13 +91,7 @@ export default function ResetPassword() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               fullWidth
             />
-
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={handleResetPassword}
-              disabled={!!success}
-            >
+            <Button variant="contained" fullWidth onClick={handleResetPassword}>
               Update Password
             </Button>
           </>
