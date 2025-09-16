@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "./services/supabase";
 import Enforcement from "./pages/Enforcement";
@@ -16,6 +16,15 @@ function App() {
     // ✅ Detect if we’re in recovery mode (from email link)
     if (window.location.hash.includes("type=recovery")) {
       setIsRecovery(true);
+
+      // ✅ Force React Router to recognize /reset-password
+      if (window.location.pathname !== "/reset-password") {
+        window.history.replaceState(
+          {},
+          "",
+          "/reset-password" + window.location.hash
+        );
+      }
     }
 
     // Fetch session on load
