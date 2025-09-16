@@ -1,4 +1,3 @@
-// src/pages/ResetPassword.tsx
 import { useState, useEffect } from "react";
 import { supabase } from "../services/supabase";
 import { Box, Button, Card, TextField, Typography, Alert } from "@mui/material";
@@ -11,7 +10,7 @@ export default function ResetPassword() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Supabase recovery tokens are in the URL hash
+    // Supabase recovery token is in URL hash
     if (window.location.hash.includes("type=recovery")) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) setIsReady(true);
@@ -40,7 +39,7 @@ export default function ResetPassword() {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
-      // Logout after resetting password
+      // Logout to force re-login
       await supabase.auth.signOut();
 
       setSuccess("✅ Password updated. Redirecting to login...");
@@ -53,16 +52,12 @@ export default function ResetPassword() {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
+    <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <Card sx={{ p: 4, minWidth: 350, display: "flex", flexDirection: "column", gap: 2 }}>
-        <Typography variant="h5" textAlign="center">Reset Password</Typography>
+        <Typography variant="h5" textAlign="center">
+          Reset Password
+        </Typography>
+
         {error && <Alert severity="error">{error}</Alert>}
         {success && <Alert severity="success">{success}</Alert>}
 
