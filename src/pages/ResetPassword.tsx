@@ -1,3 +1,4 @@
+// src/pages/ResetPassword.tsx
 import { useState, useEffect } from "react";
 import { supabase } from "../services/supabase";
 import {
@@ -16,22 +17,38 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState("");
   const [isReady, setIsReady] = useState(false);
 
-  // 🔑 Check for Supabase recovery link
   useEffect(() => {
-    const checkRecovery = async () => {
-      if (window.location.hash.includes("type=recovery")) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          setIsReady(true); // ✅ show reset form
-        } else {
-          setError("Invalid or expired reset link.");
-        }
-      } else {
-        setError("Invalid or expired reset link.");
-      }
-    };
+    const hash = window.location.hash;
 
-    checkRecovery();
+    if (hash.includes("type=recovery")) {
+      // Try to establish a session from the recovery link
+      supabase.auth.getSession().then(async ({ data: { session } }) => {
+        if (session) {
+          setIsReady(true);
+        } else {
+          // If no session, try to exchange token manually (fallback)
+          const params = new URLSearchParams(hash.substring(1));
+          const access_token = params.get("access_token");
+          const refresh_token = params.get("refresh_token");
+
+          if (access_token && refresh_token) {
+            const { data, error } = await supabase.auth.setSession({
+              access_token,
+              refresh_token,
+            });
+            if (error) {
+              setError("Invalid or expired reset link.");
+            } else if (data.session) {
+              setIsReady(true);
+            }
+          } else {
+            setError("Invalid or expired reset link.");
+          }
+        }
+      });
+    } else {
+      setError("Invalid or expired reset link.");
+    }
   }, []);
 
   const handleResetPassword = async () => {
@@ -55,11 +72,12 @@ export default function ResetPassword() {
 
       if (error) throw error;
 
-      // ✅ End recovery session so user logs in fresh
+      // ✅ Force logout so user isn’t auto-signed in with old session
       await supabase.auth.signOut();
 
       setSuccess("✅ Password updated. Redirecting to login...");
 
+      // Redirect back to login after 3 seconds
       setTimeout(() => {
         window.location.href = "/login";
       }, 3000);

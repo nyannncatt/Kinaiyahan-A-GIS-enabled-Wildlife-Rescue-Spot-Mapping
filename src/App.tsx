@@ -13,18 +13,12 @@ function App() {
   const [isRecovery, setIsRecovery] = useState(false);
 
   useEffect(() => {
-    // ✅ Detect if we’re in recovery mode (from email link)
+    // ✅ Detect recovery links in URL hash
     if (window.location.hash.includes("type=recovery")) {
       setIsRecovery(true);
-
-      // ✅ Force React Router to recognize /reset-password
-      if (window.location.pathname !== "/reset-password") {
-        window.history.replaceState(
-          {},
-          "",
-          "/reset-password" + window.location.hash
-        );
-      }
+      // Redirect hash to /reset-password while keeping tokens
+      const newUrl = window.location.origin + "/reset-password" + window.location.hash;
+      window.history.replaceState(null, "", newUrl);
     }
 
     // Fetch session on load
@@ -88,7 +82,7 @@ function App() {
         <Route
           path="/login"
           element={
-            user && !isRecovery ? ( // ✅ skip redirect if recovery session
+            user && !isRecovery ? (
               role === "enforcement" ? (
                 <Navigate to="/enforcement" />
               ) : role === "cenro" ? (
