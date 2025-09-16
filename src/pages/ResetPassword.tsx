@@ -1,14 +1,7 @@
 // src/pages/ResetPassword.tsx
 import { useState, useEffect } from "react";
 import { supabase } from "../services/supabase";
-import {
-  Box,
-  Button,
-  Card,
-  TextField,
-  Typography,
-  Alert,
-} from "@mui/material";
+import { Box, Button, Card, TextField, Typography, Alert } from "@mui/material";
 
 export default function ResetPassword() {
   const [newPassword, setNewPassword] = useState("");
@@ -18,32 +11,14 @@ export default function ResetPassword() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    const hash = window.location.hash;
-
-    if (hash.includes("type=recovery")) {
-      // Try to establish a session from the recovery link
-      supabase.auth.getSession().then(async ({ data: { session } }) => {
+    // Supabase puts access_token in the hash after recovery
+    if (window.location.hash.includes("type=recovery")) {
+      // Ensure session exists or create it
+      supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) {
           setIsReady(true);
         } else {
-          // If no session, try to exchange token manually (fallback)
-          const params = new URLSearchParams(hash.substring(1));
-          const access_token = params.get("access_token");
-          const refresh_token = params.get("refresh_token");
-
-          if (access_token && refresh_token) {
-            const { data, error } = await supabase.auth.setSession({
-              access_token,
-              refresh_token,
-            });
-            if (error) {
-              setError("Invalid or expired reset link.");
-            } else if (data.session) {
-              setIsReady(true);
-            }
-          } else {
-            setError("Invalid or expired reset link.");
-          }
+          setError("Invalid or expired reset link.");
         }
       });
     } else {
@@ -66,18 +41,13 @@ export default function ResetPassword() {
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
-      // ✅ Force logout so user isn’t auto-signed in with old session
+      // sign out after success
       await supabase.auth.signOut();
 
       setSuccess("✅ Password updated. Redirecting to login...");
-
-      // Redirect back to login after 3 seconds
       setTimeout(() => {
         window.location.href = "/login";
       }, 3000);
@@ -95,15 +65,7 @@ export default function ResetPassword() {
         justifyContent: "center",
       }}
     >
-      <Card
-        sx={{
-          p: 4,
-          minWidth: 350,
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-        }}
-      >
+      <Card sx={{ p: 4, minWidth: 350, display: "flex", flexDirection: "column", gap: 2 }}>
         <Typography variant="h5" textAlign="center">
           Reset Password
         </Typography>

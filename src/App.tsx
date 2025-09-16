@@ -17,7 +17,8 @@ function App() {
     if (window.location.hash.includes("type=recovery")) {
       setIsRecovery(true);
       // Redirect hash to /reset-password while keeping tokens
-      const newUrl = window.location.origin + "/reset-password" + window.location.hash;
+      const newUrl =
+        window.location.origin + "/reset-password" + window.location.hash;
       window.history.replaceState(null, "", newUrl);
     }
 
@@ -124,9 +125,7 @@ function App() {
         <Route
           path="*"
           element={
-            isRecovery ? (
-              <Navigate to="/reset-password" />
-            ) : user ? (
+            user ? (
               role === "enforcement" ? (
                 <Navigate to="/enforcement" />
               ) : role === "cenro" ? (
