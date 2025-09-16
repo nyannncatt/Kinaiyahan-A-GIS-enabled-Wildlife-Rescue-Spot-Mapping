@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../services/supabase";
-
 import {
   Box,
   Button,
@@ -17,20 +16,22 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState("");
   const [isReady, setIsReady] = useState(false);
 
+  // 🔑 Check for Supabase recovery link
   useEffect(() => {
-    // Supabase puts access_token in the URL hash after recovery
-    if (window.location.hash.includes("type=recovery")) {
-      // Check if we got a session automatically
-      supabase.auth.getSession().then(({ data: { session } }) => {
+    const checkRecovery = async () => {
+      if (window.location.hash.includes("type=recovery")) {
+        const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          setIsReady(true);
+          setIsReady(true); // ✅ show reset form
         } else {
           setError("Invalid or expired reset link.");
         }
-      });
-    } else {
-      setError("Invalid or expired reset link.");
-    }
+      } else {
+        setError("Invalid or expired reset link.");
+      }
+    };
+
+    checkRecovery();
   }, []);
 
   const handleResetPassword = async () => {
@@ -54,12 +55,11 @@ export default function ResetPassword() {
 
       if (error) throw error;
 
-      // ✅ Force logout so user isn’t auto-signed in
+      // ✅ End recovery session so user logs in fresh
       await supabase.auth.signOut();
 
       setSuccess("✅ Password updated. Redirecting to login...");
 
-      // Redirect back to login after 3 seconds
       setTimeout(() => {
         window.location.href = "/login";
       }, 3000);
