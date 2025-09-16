@@ -11,25 +11,28 @@ export default function ResetPassword() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Parse tokens from hash
-    const hash = window.location.hash.substring(1);
-    const params = new URLSearchParams(hash);
-    const access_token = params.get("access_token");
-    const refresh_token = params.get("refresh_token");
-    const type = params.get("type");
+    const hash = window.location.hash;
+    const searchParams = new URLSearchParams(hash.replace("#", "?"));
 
-    if (type !== "recovery" || !access_token || !refresh_token) {
-      setError("Invalid or expired reset link.");
-      return;
-    }
+    const accessToken = searchParams.get("access_token");
+    const type = searchParams.get("type");
 
-    // Set Supabase session to allow updateUser
-    supabase.auth
-      .setSession({ access_token, refresh_token })
+    if (type === "recovery" && accessToken) {
+      // Set the session from the recovery token
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: searchParams.get("refresh_token") || "",
+      })
       .then(({ error }) => {
-        if (error) setError("Invalid or expired reset link.");
-        else setIsReady(true);
+        if (error) {
+          setError("Invalid or expired reset link.");
+        } else {
+          setIsReady(true);
+        }
       });
+    } else {
+      setError("Invalid or expired reset link.");
+    }
   }, []);
 
   const handleResetPassword = async () => {
@@ -50,7 +53,7 @@ export default function ResetPassword() {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
-      // Logout after password change
+      // Sign out to force fresh login
       await supabase.auth.signOut();
 
       setSuccess("✅ Password updated. Redirecting to login...");
@@ -88,6 +91,7 @@ export default function ResetPassword() {
               onChange={(e) => setNewPassword(e.target.value)}
               fullWidth
             />
+
             <TextField
               label="Confirm Password"
               type="password"
@@ -95,6 +99,7 @@ export default function ResetPassword() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               fullWidth
             />
+
             <Button
               variant="contained"
               fullWidth
