@@ -46,23 +46,24 @@ const handleSubmit = async (event) => {
   setError(null);
   setSuccess(false);
 
-  try {
-    // ✅ Dynamically use current origin + /reset-password
-    const redirectUrl = `${window.location.origin}/reset-password`;
+ // Inside handleSubmit in ForgotPassword.jsx (only change the redirectTo)
+try {
+  const redirectUrl = `${window.location.origin}/reset-password`;
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl,
-    });
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: redirectUrl, // ✅ dynamic redirect for production & preview
+  });
 
-    if (error) throw error;
-    setSuccess(true);
-    setCountdown(5);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    setError(message || "Something went wrong.");
-  } finally {
-    setLoading(false);
-  }
+  if (error) throw error;
+  setSuccess(true);
+  setCountdown(5);
+} catch (err) {
+  const message = err instanceof Error ? err.message : String(err);
+  setError(message || "Something went wrong.");
+} finally {
+  setLoading(false);
+}
+
 };
 
   return (
