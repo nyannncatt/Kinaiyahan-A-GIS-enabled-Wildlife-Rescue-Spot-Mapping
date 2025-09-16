@@ -1,3 +1,4 @@
+// src/pages/ResetPassword.tsx
 import { useState, useEffect } from "react";
 import { supabase } from "../services/supabase";
 import { Box, Button, Card, TextField, Typography, Alert } from "@mui/material";
@@ -10,27 +11,26 @@ export default function ResetPassword() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-  if (window.location.hash.includes("type=recovery")) {
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get("access_token");
-    const refreshToken = hashParams.get("refresh_token");
+    // Parse tokens from hash
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const access_token = params.get("access_token");
+    const refresh_token = params.get("refresh_token");
+    const type = params.get("type");
 
-    if (accessToken && refreshToken) {
-      // ✅ TypeScript-safe: both tokens are strings
-      supabase.auth
-        .setSession({ access_token: accessToken, refresh_token: refreshToken })
-        .then(({ error }) => {
-          if (!error) setIsReady(true);
-          else setError("Invalid or expired reset link.");
-        });
-    } else {
+    if (type !== "recovery" || !access_token || !refresh_token) {
       setError("Invalid or expired reset link.");
+      return;
     }
-  } else {
-    setError("Invalid or expired reset link.");
-  }
-}, []);
 
+    // Set Supabase session to allow updateUser
+    supabase.auth
+      .setSession({ access_token, refresh_token })
+      .then(({ error }) => {
+        if (error) setError("Invalid or expired reset link.");
+        else setIsReady(true);
+      });
+  }, []);
 
   const handleResetPassword = async () => {
     setError("");
@@ -50,7 +50,7 @@ export default function ResetPassword() {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
-      // Sign out to remove session after password change
+      // Logout after password change
       await supabase.auth.signOut();
 
       setSuccess("✅ Password updated. Redirecting to login...");
@@ -63,9 +63,19 @@ export default function ResetPassword() {
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       <Card sx={{ p: 4, minWidth: 350, display: "flex", flexDirection: "column", gap: 2 }}>
-        <Typography variant="h5" textAlign="center">Reset Password</Typography>
+        <Typography variant="h5" textAlign="center">
+          Reset Password
+        </Typography>
+
         {error && <Alert severity="error">{error}</Alert>}
         {success && <Alert severity="success">{success}</Alert>}
 
@@ -85,7 +95,12 @@ export default function ResetPassword() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               fullWidth
             />
-            <Button variant="contained" fullWidth onClick={handleResetPassword} disabled={!!success}>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={handleResetPassword}
+              disabled={!!success}
+            >
               Update Password
             </Button>
           </>
