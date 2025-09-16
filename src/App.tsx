@@ -13,21 +13,14 @@ function App() {
   const [isRecovery, setIsRecovery] = useState(false);
 
   useEffect(() => {
-    // ✅ Detect recovery links in URL hash
+    // Detect recovery links in URL hash
     if (window.location.hash.includes("type=recovery")) {
       setIsRecovery(true);
-
-      // ✅ Force React Router to show /reset-password instead of blank screen
-      const newUrl =
-        window.location.origin + "/reset-password" + window.location.hash;
-      window.history.replaceState(null, "", newUrl);
+      // Do NOT replace the URL; keep hash for Supabase token
     }
 
-    // Fetch session on load
     const getSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
 
       setUser(session?.user ?? null);
 
@@ -48,7 +41,6 @@ function App() {
 
     getSession();
 
-    // Subscribe to auth changes
     const { data: subscription } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setUser(session?.user ?? null);
