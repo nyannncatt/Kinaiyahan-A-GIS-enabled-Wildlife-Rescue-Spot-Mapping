@@ -10,16 +10,27 @@ export default function ResetPassword() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Supabase recovery token is in URL hash
-    if (window.location.hash.includes("type=recovery")) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) setIsReady(true);
-        else setError("Invalid or expired reset link.");
-      });
+  if (window.location.hash.includes("type=recovery")) {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
+
+    if (accessToken && refreshToken) {
+      // ✅ TypeScript-safe: both tokens are strings
+      supabase.auth
+        .setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ error }) => {
+          if (!error) setIsReady(true);
+          else setError("Invalid or expired reset link.");
+        });
     } else {
       setError("Invalid or expired reset link.");
     }
-  }, []);
+  } else {
+    setError("Invalid or expired reset link.");
+  }
+}, []);
+
 
   const handleResetPassword = async () => {
     setError("");
@@ -39,7 +50,7 @@ export default function ResetPassword() {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
-      // Logout to force re-login
+      // Sign out to remove session after password change
       await supabase.auth.signOut();
 
       setSuccess("✅ Password updated. Redirecting to login...");
@@ -54,10 +65,7 @@ export default function ResetPassword() {
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <Card sx={{ p: 4, minWidth: 350, display: "flex", flexDirection: "column", gap: 2 }}>
-        <Typography variant="h5" textAlign="center">
-          Reset Password
-        </Typography>
-
+        <Typography variant="h5" textAlign="center">Reset Password</Typography>
         {error && <Alert severity="error">{error}</Alert>}
         {success && <Alert severity="success">{success}</Alert>}
 
@@ -77,12 +85,7 @@ export default function ResetPassword() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               fullWidth
             />
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={handleResetPassword}
-              disabled={!!success}
-            >
+            <Button variant="contained" fullWidth onClick={handleResetPassword} disabled={!!success}>
               Update Password
             </Button>
           </>
