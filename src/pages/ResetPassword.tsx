@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../services/supabase";
+
 import {
   Box,
   Button,
@@ -14,11 +15,20 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     // Supabase puts access_token in the URL hash after recovery
-    const hash = window.location.hash;
-    if (!hash.includes("type=recovery")) {
+    if (window.location.hash.includes("type=recovery")) {
+      // Check if we got a session automatically
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          setIsReady(true);
+        } else {
+          setError("Invalid or expired reset link.");
+        }
+      });
+    } else {
       setError("Invalid or expired reset link.");
     }
   }, []);
@@ -44,7 +54,7 @@ export default function ResetPassword() {
 
       if (error) throw error;
 
-      // ✅ Force logout so user is not auto-signed in across tabs
+      // ✅ Force logout so user isn’t auto-signed in
       await supabase.auth.signOut();
 
       setSuccess("✅ Password updated. Redirecting to login...");
@@ -83,7 +93,7 @@ export default function ResetPassword() {
         {error && <Alert severity="error">{error}</Alert>}
         {success && <Alert severity="success">{success}</Alert>}
 
-        {!success && (
+        {!success && isReady && (
           <>
             <TextField
               label="New Password"
