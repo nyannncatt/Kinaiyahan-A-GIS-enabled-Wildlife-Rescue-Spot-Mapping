@@ -9,21 +9,24 @@ export default function ResetPassword() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isReady, setIsReady] = useState(false);
+  const [checking, setChecking] = useState(true); // ✅ new state for loader
 
   useEffect(() => {
-    // Supabase puts access_token in the hash after recovery
-    if (window.location.hash.includes("type=recovery")) {
-      // Ensure session exists or create it
-      supabase.auth.getSession().then(({ data: { session } }) => {
+    const checkRecovery = async () => {
+      if (window.location.hash.includes("type=recovery")) {
+        const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           setIsReady(true);
         } else {
           setError("Invalid or expired reset link.");
         }
-      });
-    } else {
-      setError("Invalid or expired reset link.");
-    }
+      } else {
+        setError("Invalid or expired reset link.");
+      }
+      setChecking(false);
+    };
+
+    checkRecovery();
   }, []);
 
   const handleResetPassword = async () => {
@@ -44,7 +47,6 @@ export default function ResetPassword() {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
-      // sign out after success
       await supabase.auth.signOut();
 
       setSuccess("✅ Password updated. Redirecting to login...");
@@ -70,10 +72,12 @@ export default function ResetPassword() {
           Reset Password
         </Typography>
 
-        {error && <Alert severity="error">{error}</Alert>}
-        {success && <Alert severity="success">{success}</Alert>}
+        {checking && <Typography>Loading recovery session...</Typography>}
 
-        {!success && isReady && (
+        {!checking && error && <Alert severity="error">{error}</Alert>}
+        {!checking && success && <Alert severity="success">{success}</Alert>}
+
+        {!checking && !success && isReady && (
           <>
             <TextField
               label="New Password"
