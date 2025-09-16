@@ -39,28 +39,31 @@ function ForgotPassword({ open, handleClose }) {
     return () => clearTimeout(timer);
   }, [success, countdown, navigate, handleClose]);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(false);
+  // inside handleSubmit
+const handleSubmit = async (event) => {
+  event.preventDefault();
+  setLoading(true);
+  setError(null);
+  setSuccess(false);
 
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-       redirectTo: `${import.meta.env.VITE_APP_URL}/reset-password`
-      });
+  try {
+    // ✅ Dynamically use current origin + /reset-password
+    const redirectUrl = `${window.location.origin}/reset-password`;
 
-      if (error) throw error;
-      setSuccess(true);
-      setCountdown(5);
-    } catch (err) {
-      // Safe error handling for unknown shapes
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message || "Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
+
+    if (error) throw error;
+    setSuccess(true);
+    setCountdown(5);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    setError(message || "Something went wrong.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <Dialog
