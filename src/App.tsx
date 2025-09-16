@@ -16,7 +16,8 @@ function App() {
     // ✅ Detect recovery links in URL hash
     if (window.location.hash.includes("type=recovery")) {
       setIsRecovery(true);
-      // Redirect hash to /reset-password while keeping tokens
+
+      // ✅ Force React Router to show /reset-password instead of blank screen
       const newUrl =
         window.location.origin + "/reset-password" + window.location.hash;
       window.history.replaceState(null, "", newUrl);
@@ -125,7 +126,9 @@ function App() {
         <Route
           path="*"
           element={
-            user ? (
+            isRecovery ? (
+              <Navigate to="/reset-password" />
+            ) : user ? (
               role === "enforcement" ? (
                 <Navigate to="/enforcement" />
               ) : role === "cenro" ? (
