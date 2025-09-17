@@ -197,7 +197,7 @@ export default function SignInCard() {
                 }}
                 onClick={handleClickOpen}
               >
-                Forgot your password?
+                
               </Typography>
             </Box>
             <TextField
