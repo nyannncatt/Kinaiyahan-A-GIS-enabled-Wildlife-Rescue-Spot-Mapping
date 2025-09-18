@@ -1,28 +1,37 @@
-// src/pages/ReportSighting.jsx
-import { useState } from "react";
+// src/pages/ReportSighting.tsx
+import React, { useState } from "react";
 import { supabase } from "../services/supabase";
 import {
-  Box,
   Button,
-  TextField,
-  Typography,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  OutlinedInput,
   Alert,
-  Card,
+  Typography,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import { useTheme } from "@mui/material/styles";
 
 export default function ReportSighting() {
   const [species, setSpecies] = useState("");
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
-  const [success, setSuccess] = useState("");
-  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const navigate = useNavigate();
+  const theme = useTheme(); // ✅ get current theme (light/dark, colors, etc.)
+
+  // 🔑 Submit sighting
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
     setSubmitting(true);
+    setError(null);
+    setSuccess(false);
 
     if (!species.trim() || !location.trim()) {
       setError("Species and location are required.");
@@ -46,7 +55,7 @@ export default function ReportSighting() {
 
       if (insertError) throw insertError;
 
-      setSuccess("✅ Sighting reported successfully!");
+      setSuccess(true);
       setSpecies("");
       setLocation("");
       setNotes("");
@@ -57,68 +66,84 @@ export default function ReportSighting() {
     }
   };
 
+  // 🔒 Logout handler
+ const handleLogout = async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    console.error("Logout error:", error.message);
+    return;
+  }
+  navigate("/login", { replace: true }); // replace avoids back navigation
+};
+
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        p: 2,
+    <Dialog
+      open={true}
+      fullWidth
+      maxWidth="sm"
+      slotProps={{
+        paper: {
+          component: "form",
+          onSubmit: handleSubmit,
+          sx: {
+            backgroundImage: "none",
+            backgroundColor: theme.palette.background.paper, // ✅ adapts to theme
+            color: theme.palette.text.primary, // ✅ text adapts
+          },
+        },
       }}
     >
-      <Card
-        sx={{
-          p: 4,
-          width: "100%",
-          maxWidth: 500,
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-        }}
-      >
-        <Typography variant="h5" textAlign="center">
-          Report Wildlife Sighting
-        </Typography>
+      <DialogTitle>Report Wildlife Sighting</DialogTitle>
+      <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <DialogContentText>
+          Please fill in the details below to report your wildlife sighting.
+        </DialogContentText>
 
         {error && <Alert severity="error">{error}</Alert>}
-        {success && <Alert severity="success">{success}</Alert>}
+        {success && (
+          <Alert severity="success">✅ Sighting reported successfully!</Alert>
+        )}
 
-        <Box
-          component="form"
-          onSubmit={handleSubmit}
-          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-        >
-          <TextField
-            label="Species"
-            value={species}
-            onChange={(e) => setSpecies(e.target.value)}
-            required
-            fullWidth
-          />
+        <OutlinedInput
+          required
+          placeholder="Species"
+          value={species}
+          onChange={(e) => setSpecies(e.target.value)}
+          fullWidth
+        />
 
-          <TextField
-            label="Location"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            required
-            fullWidth
-          />
+        <OutlinedInput
+          required
+          placeholder="Location"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          fullWidth
+        />
 
-          <TextField
-            label="Notes (optional)"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            multiline
-            rows={3}
-            fullWidth
-          />
+        <OutlinedInput
+          placeholder="Notes (optional)"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          multiline
+          rows={3}
+          fullWidth
+        />
 
-          <Button type="submit" variant="contained" fullWidth disabled={submitting}>
-            {submitting ? "Submitting..." : "Submit"}
-          </Button>
-        </Box>
-      </Card>
-    </Box>
+        {success && (
+          <Typography variant="body2" sx={{ mt: 1, textAlign: "center" }}>
+            You may continue submitting more sightings.
+          </Typography>
+        )}
+      </DialogContent>
+
+      <DialogActions sx={{ pb: 3, px: 3, display: "flex", gap: 2 }}>
+        <Button variant="outlined" color="error" onClick={handleLogout}>
+          Logout
+        </Button>
+        <Button type="submit" variant="contained" disabled={submitting}>
+          {submitting ? "Submitting..." : "Submit"}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
