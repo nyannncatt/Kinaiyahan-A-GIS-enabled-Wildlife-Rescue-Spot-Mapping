@@ -5,6 +5,8 @@ import Enforcement from "./pages/Enforcement";
 import Cenro from "./pages/Cenro";
 import ReportSighting from "./pages/ReportSighting";
 import SignIn from "./sign-in-side/SignInSide";
+import { CircularProgress, Box } from "@mui/material";
+
 
 
 function App() {
@@ -13,7 +15,21 @@ function App() {
   // Detect if the user is coming from a password recovery flow
   const isRecovery = window.location.hash.includes("type=recovery");
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "100vh",
+      }}
+    >
+      <CircularProgress />
+    </Box>
+  );
+}
+
 
   return (
     <Routes>

@@ -22,6 +22,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
 
  // inside AuthContext.tsx
+const delayedNavigate = (path: string) => {
+  setLoading(true); // show loader during delay
+  setTimeout(() => {
+    navigate(path);
+    setLoading(false); // stop loader after redirect
+  }, 5000); // 2000ms = 
+};
 const ensureUserExists = async (sessionUser: User) => {
   try {
     const { data, error } = await supabase
@@ -52,6 +59,7 @@ const ensureUserExists = async (sessionUser: User) => {
 };
 
 
+
   useEffect(() => {
     const initAuth = async () => {
       setLoading(true);
@@ -63,9 +71,10 @@ const ensureUserExists = async (sessionUser: User) => {
         setUser(session.user);
 
         // Navigate based on role
-        if (role === "enforcement") navigate("/enforcement");
-        else if (role === "cenro") navigate("/cenro");
-        else navigate("/report-sighting");
+        if (role === "enforcement") delayedNavigate("/enforcement");
+else if (role === "cenro") delayedNavigate("/cenro");
+else delayedNavigate("/report-sighting");
+
       } else {
         setSession(null);
         setUser(null);
