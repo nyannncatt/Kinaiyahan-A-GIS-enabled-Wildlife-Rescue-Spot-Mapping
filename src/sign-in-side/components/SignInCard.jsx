@@ -124,30 +124,50 @@ export default function SignInCard() {
             />
           </FormControl>
 
-          <FormControl>
-            <FormLabel htmlFor="password">Password</FormLabel>
+           <FormControl>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <FormLabel htmlFor="password">Password</FormLabel>
+              <Typography
+                component="span"
+                sx={{
+                  cursor: "pointer",
+                  color: "text.primary",
+                  fontSize: "0.875rem",
+                  "&:hover": { color: "primary.main" },
+                }}
+                onClick={handleClickOpen}
+              >
+                  {/*Forgot your password?NEED REPAIR NEXT TIME*/}
+              </Typography>
+            </Box>
             <TextField
               error={passwordError}
               helperText={passwordErrorMessage}
-              type={showPassword ? "text" : "password"}
+              name="password"
               placeholder="••••••"
+              type={showPassword ? 'text' : 'password'}
+              id="password"
               autoComplete="current-password"
               required
               fullWidth
               variant="outlined"
+              color={passwordError ? 'error' : 'primary'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <Box onClick={() => setShowPassword(!showPassword)} sx={{ cursor: "pointer" }}>
+                    <Box
+                      onClick={() => setShowPassword(!showPassword)}
+                      sx={{ cursor: "pointer", display: "flex", alignItems: "center" }}
+                    >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </Box>
                   </InputAdornment>
                 ),
               }}
             />
-          </FormControl>
+              </FormControl>
 
           <FormControlLabel control={<Checkbox value="remember" color="primary" />} label="Remember me" />
 
@@ -157,7 +177,7 @@ export default function SignInCard() {
         <Divider>or</Divider>
 
         <Button fullWidth variant="outlined" startIcon={<GoogleColoredIcon />} onClick={handleGoogleSignIn}>
-          Sign in with Google
+          Report a Species – Sign in with Google
         </Button>
       </Card>
 
