@@ -1,7 +1,6 @@
+// src/sign-in-side/SignInCard.jsx
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "../../services/supabase"; // ✅ Supabase client
-
+import { supabase } from "../../services/supabase";
 
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -12,36 +11,10 @@ import FormLabel from "@mui/material/FormLabel";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { styled } from "@mui/material/styles";
-import ForgotPassword from "./ForgotPassword";
-import { FormControl, InputAdornment, Alert } from "@mui/material";
-import Divider from "@mui/material/Divider";
-import SvgIcon from "@mui/material/SvgIcon";
+import { FormControl, InputAdornment, Alert, Divider, SvgIcon } from "@mui/material";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-
-// Custom colored Google Icon
-function GoogleColoredIcon(props) {
-  return (
-    <SvgIcon {...props} viewBox="0 0 533.5 544.3">
-      <path
-        fill="#4285F4"
-        d="M533.5 278.4c0-17.4-1.6-34.1-4.7-50.2H272v95h147.9c-6.4 34.4-25.7 63.5-54.8 83.2v68h88.4c51.7-47.6 80-117.8 80-196z"
-      />
-      <path
-        fill="#34A853"
-        d="M272 544.3c73.7 0 135.6-24.5 180.8-66.6l-88.4-68c-24.5 16.4-55.9 26-92.4 26-71 0-131.2-47.9-152.8-112.1h-90.2v70.5c45 89 137.9 150.2 243 150.2z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M119.2 323.6c-10.6-31.6-10.6-65.6 0-97.2v-70.5h-90.2c-39.2 77.8-39.2 167.6 0 245.4l90.2-70.5z"
-      />
-      <path
-        fill="#EA4335"
-        d="M272 107.7c39.9-.6 77.8 14.8 106.9 42.9l80-80C407.6 24.5 345.7 0 272 0 166.9 0 74 61.2 29 150.2l90.2 70.5C140.8 155.6 201 107.7 272 107.7z"
-      />
-    </SvgIcon>
-  );
-}
+import ForgotPassword from "./ForgotPassword";
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
@@ -52,10 +25,19 @@ const Card = styled(MuiCard)(({ theme }) => ({
   gap: theme.spacing(2),
   boxShadow:
     "hsla(220, 30%, 5%, 0.05) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.05) 0px 15px 35px -5px",
-  [theme.breakpoints.up("sm")]: {
-    width: "450px",
-  },
+  [theme.breakpoints.up("sm")]: { width: "450px" },
 }));
+
+function GoogleColoredIcon(props) {
+  return (
+    <SvgIcon {...props} viewBox="0 0 533.5 544.3">
+      <path fill="#4285F4" d="M533.5 278.4c0-17.4-1.6-34.1-4.7-50.2H272v95h147.9c-6.4 34.4-25.7 63.5-54.8 83.2v68h88.4c51.7-47.6 80-117.8 80-196z" />
+      <path fill="#34A853" d="M272 544.3c73.7 0 135.6-24.5 180.8-66.6l-88.4-68c-24.5 16.4-55.9 26-92.4 26-71 0-131.2-47.9-152.8-112.1h-90.2v70.5c45 89 137.9 150.2 243 150.2z" />
+      <path fill="#FBBC05" d="M119.2 323.6c-10.6-31.6-10.6-65.6 0-97.2v-70.5h-90.2c-39.2 77.8-39.2 167.6 0 245.4l90.2-70.5z" />
+      <path fill="#EA4335" d="M272 107.7c39.9-.6 77.8 14.8 106.9 42.9l80-80C407.6 24.5 345.7 0 272 0 166.9 0 74 61.2 29 150.2l90.2 70.5C140.8 155.6 201 107.7 272 107.7z" />
+    </SvgIcon>
+  );
+}
 
 export default function SignInCard() {
   const [email, setEmail] = useState("");
@@ -67,7 +49,6 @@ export default function SignInCard() {
   const [loginError, setLoginError] = useState("");
   const [open, setOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate();
 
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -78,18 +59,14 @@ export default function SignInCard() {
       setEmailError(true);
       setEmailErrorMessage("Please enter a valid email.");
       valid = false;
-    } else {
-      setEmailError(false);
-      setEmailErrorMessage("");
-    }
+    } else setEmailError(false);
+
     if (!password || password.length < 6) {
       setPasswordError(true);
       setPasswordErrorMessage("Password must be at least 6 characters.");
       valid = false;
-    } else {
-      setPasswordError(false);
-      setPasswordErrorMessage("");
-    }
+    } else setPasswordError(false);
+
     return valid;
   };
 
@@ -99,71 +76,37 @@ export default function SignInCard() {
     if (!validateInputs()) return;
 
     try {
-      // ✅ Supabase sign in
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      // No navigation here → AuthContext handles redirect automatically
+    } catch (err) {
+      setLoginError(err?.message || "Invalid email or password");
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+                    redirectTo: "http://localhost:5173/report-sighting", // must match Supabase + Google
+
       });
       if (error) throw error;
-
-      const user = data.user;
-      if (!user) {
-        setLoginError("No user found.");
-        return;
-      }
-
-      // ✅ Fetch role from "users" table
-      const { data: userData, error: roleError } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (roleError) {
-        setLoginError("Error fetching user role.");
-        return;
-      }
-
-      if (userData?.role === "enforcement") {
-        navigate("/enforcement");
-      } else if (userData?.role === "cenro") {
-        navigate("/cenro");
-      } else if (userData?.role === "admin") {
-        navigate("/admin");
-      } else {
-        setLoginError("No role assigned. Please contact admin.");
-      }
-    } catch (error) {
-      let message = "Invalid email or password";
-      if (error instanceof Error) message = error.message;
-      else if (typeof error === "string") message = error;
-      setLoginError(message);
+    } catch (err) {
+      alert(err?.message || "Google sign-in failed");
     }
   };
 
   return (
     <>
       <Card variant="outlined">
-        <Typography
-          component="h1"
-          variant="h4"
-          sx={{ width: "100%", fontSize: "clamp(2rem, 10vw, 2.15rem)" }}
-        >
+        <Typography component="h1" variant="h4" sx={{ width: "100%", fontSize: "clamp(2rem, 10vw, 2.15rem)" }}>
           Sign in
         </Typography>
 
-        {loginError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {loginError}
-          </Alert>
-        )}
+        {loginError && <Alert severity="error" sx={{ mb: 2 }}>{loginError}</Alert>}
 
-        <Box
-          component="form"
-          noValidate
-          onSubmit={handleLogin}
-          sx={{ display: "flex", flexDirection: "column", width: "100%", gap: 2 }}
-        >
+        <Box component="form" noValidate onSubmit={handleLogin} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <FormControl>
             <FormLabel htmlFor="email">Email</FormLabel>
             <TextField
@@ -171,56 +114,33 @@ export default function SignInCard() {
               helperText={emailErrorMessage}
               id="email"
               type="email"
-              name="email"
               placeholder="your@email.com"
               autoComplete="email"
-              autoFocus
               required
               fullWidth
               variant="outlined"
-              color={emailError ? "error" : "primary"}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </FormControl>
 
           <FormControl>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <FormLabel htmlFor="password">Password</FormLabel>
-              <Typography
-                component="span"
-                sx={{
-                  cursor: "pointer",
-                  color: "text.primary",
-                  fontSize: "0.875rem",
-                  "&:hover": { color: "primary.main" },
-                }}
-                onClick={handleClickOpen}
-              >
-                
-              </Typography>
-            </Box>
+            <FormLabel htmlFor="password">Password</FormLabel>
             <TextField
               error={passwordError}
               helperText={passwordErrorMessage}
-              name="password"
-              placeholder="••••••"
               type={showPassword ? "text" : "password"}
-              id="password"
+              placeholder="••••••"
               autoComplete="current-password"
               required
               fullWidth
               variant="outlined"
-              color={passwordError ? "error" : "primary"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <Box
-                      onClick={() => setShowPassword(!showPassword)}
-                      sx={{ cursor: "pointer", display: "flex", alignItems: "center" }}
-                    >
+                    <Box onClick={() => setShowPassword(!showPassword)} sx={{ cursor: "pointer" }}>
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </Box>
                   </InputAdornment>
@@ -229,29 +149,16 @@ export default function SignInCard() {
             />
           </FormControl>
 
-          <FormControlLabel
-            control={<Checkbox value="remember" color="primary" />}
-            label="Remember me"
-            sx={{ ml: -1.12 }}
-          />
+          <FormControlLabel control={<Checkbox value="remember" color="primary" />} label="Remember me" />
 
-          <Button type="submit" fullWidth variant="contained">
-            Sign in
-          </Button>
+          <Button type="submit" fullWidth variant="contained">Sign in</Button>
         </Box>
 
         <Divider>or</Divider>
 
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Button
-            fullWidth
-            variant="outlined"
-            onClick={() => alert("Sign in with Google")}
-            startIcon={<GoogleColoredIcon />}
-          >
-            Report a Species – Sign in with Google
-          </Button>
-        </Box>
+        <Button fullWidth variant="outlined" startIcon={<GoogleColoredIcon />} onClick={handleGoogleSignIn}>
+          Sign in with Google
+        </Button>
       </Card>
 
       <ForgotPassword open={open} handleClose={handleClose} />

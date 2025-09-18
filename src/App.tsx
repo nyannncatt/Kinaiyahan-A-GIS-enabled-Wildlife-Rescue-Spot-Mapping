@@ -1,141 +1,98 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { supabase } from "./services/supabase";
+// src/App.tsx
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
 import Enforcement from "./pages/Enforcement";
 import Cenro from "./pages/Cenro";
+import ReportSighting from "./pages/ReportSighting";
 import SignIn from "./sign-in-side/SignInSide";
-import ResetPassword from "./pages/ResetPassword";
+
 
 function App() {
-  const [user, setUser] = useState<any>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isRecovery, setIsRecovery] = useState(false);
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    // Detect recovery links in URL hash
-    if (window.location.hash.includes("type=recovery")) {
-      setIsRecovery(true);
-      // Do NOT replace the URL; keep hash for Supabase token
-    }
-
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        const { data, error } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", session.user.id)
-          .single();
-
-        if (!error && data) setRole(data.role);
-      } else {
-        setRole(null);
-      }
-
-      setLoading(false);
-    };
-
-    getSession();
-
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          const { data, error } = await supabase
-            .from("users")
-            .select("role")
-            .eq("id", session.user.id)
-            .single();
-
-          if (!error && data) setRole(data.role);
-        } else {
-          setRole(null);
-        }
-      }
-    );
-
-    return () => {
-      subscription.subscription.unsubscribe();
-    };
-  }, []);
+  // Detect if the user is coming from a password recovery flow
+  const isRecovery = window.location.hash.includes("type=recovery");
 
   if (loading) return <div>Loading...</div>;
 
   return (
-    <Router>
-      <Routes>
-        {/* Always allow ResetPassword without redirects */}
-        <Route path="/reset-password" element={<ResetPassword />} />
+    <Routes>
+     <Route path="/login" element={<SignIn />} />
+  <Route path="/report-sighting" element={<ReportSighting />} />
+  <Route path="/enforcement" element={<Enforcement />} />
+  <Route path="/cenro" element={<Cenro />} />
+  <Route path="*" element={<Navigate to="/login" />} />
 
-        {/* Login route */}
-        <Route
-          path="/login"
-          element={
-            user && !isRecovery ? (
-              role === "enforcement" ? (
-                <Navigate to="/enforcement" />
-              ) : role === "cenro" ? (
-                <Navigate to="/cenro" />
-              ) : (
-                <div>loading...</div>
-              )
-            ) : (
-              <SignIn />
-            )
-          }
-        />
+      {/* Login route */}
+      <Route
+        path="/login"
+        element={
+          user && !isRecovery ? (
+            userHasRole(user)
+          ) : (
+            <SignIn />
+          )
+        }
+      />
 
-        {/* Enforcement page */}
-        <Route
-          path="/enforcement"
-          element={
-            user && role === "enforcement" && !isRecovery ? (
-              <Enforcement />
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+      {/* Enforcement route */}
+      <Route
+        path="/enforcement"
+        element={
+          user?.role === "enforcement" && !isRecovery ? (
+            <Enforcement />
+          ) : (
+            <Navigate to="/login" />
+          )
+        }
+      />
 
-        {/* Cenro page */}
-        <Route
-          path="/cenro"
-          element={
-            user && role === "cenro" && !isRecovery ? (
-              <Cenro />
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+      {/* Cenro route */}
+      <Route
+        path="/cenro"
+        element={
+          user?.role === "cenro" && !isRecovery ? (
+            <Cenro />
+          ) : (
+            <Navigate to="/login" />
+          )
+        }
+      />
 
-        {/* Fallback */}
-        <Route
-          path="*"
-          element={
-            isRecovery ? (
-              <Navigate to="/reset-password" />
-            ) : user ? (
-              role === "enforcement" ? (
-                <Navigate to="/enforcement" />
-              ) : role === "cenro" ? (
-                <Navigate to="/cenro" />
-              ) : (
-                <Navigate to="/login" />
-              )
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
-      </Routes>
-    </Router>
+      {/* Reporter / Sighting route */}
+      <Route
+        path="/report-sighting"
+        element={
+          user?.role === "reporter" && !isRecovery ? (
+            <ReportSighting />
+          ) : (
+            <Navigate to="/login" />
+          )
+        }
+      />
+
+      {/* Fallback */}
+      <Route
+        path="*"
+        element={
+          isRecovery ? (
+            <Navigate to="/reset-password" />
+          ) : user ? (
+            userHasRole(user)
+          ) : (
+            <Navigate to="/login" />
+          )
+        }
+      />
+    </Routes>
   );
+}
+
+// Helper function for role-based navigation
+function userHasRole(user: any) {
+  if (user.role === "enforcement") return <Navigate to="/enforcement" />;
+  if (user.role === "cenro") return <Navigate to="/cenro" />;
+  return <Navigate to="/report-sighting" />; // Default to reporter page
 }
 
 export default App;
