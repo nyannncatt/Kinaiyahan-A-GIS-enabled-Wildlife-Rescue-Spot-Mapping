@@ -1,4 +1,4 @@
- import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../services/supabase";
 import { useNavigate } from "react-router-dom";
@@ -21,44 +21,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
- // inside AuthContext.tsx
-const delayedNavigate = (path: string) => {
-  setLoading(true); // show loader during delay
-  setTimeout(() => {
-    navigate(path);
-    setLoading(false); // stop loader after redirect
-  }, 5000); // 2000ms = 
-};
-const ensureUserExists = async (sessionUser: User) => {
-  try {
-    const { data, error } = await supabase
-      .from("users")
-      .select("id, role")
-      .eq("id", sessionUser.id)
-      .single();
+  // 👇 delay navigation
+  const delayedNavigate = (path: string) => {
+    setLoading(true);
+    setTimeout(() => {
+      navigate(path);
+      setLoading(false);
+    }, 1500); // 1.5s delay
+  };
 
-    if (error && error.code !== "PGRST116") throw error;
+  // Ensure user exists in `users` table
+  const ensureUserExists = async (sessionUser: User) => {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, role")
+        .eq("id", sessionUser.id)
+        .single();
 
-    if (!data) {
-      // 👇 insert into your custom users table
-      const { error: insertError } = await supabase.from("users").insert([
-        {
-          id: sessionUser.id,  // must match auth.users.id
-          role: "reporter",
-        },
-      ]);
-      if (insertError) throw insertError;
-      return "reporter";
+      if (error && error.code !== "PGRST116") throw error;
+
+      if (!data) {
+        const { error: insertError } = await supabase.from("users").insert([
+          {
+            id: sessionUser.id,
+            role: "reporter",
+          },
+        ]);
+        if (insertError) throw insertError;
+        return "reporter";
+      }
+
+      return data.role;
+    } catch (err: any) {
+      console.error("ensureUserExists error:", err.message);
+      return null;
     }
-
-    return data.role;
-  } catch (err: any) {
-    console.error("ensureUserExists error:", err.message);
-    return null;
-  }
-};
-
-
+  };
 
   useEffect(() => {
     const initAuth = async () => {
@@ -66,15 +65,8 @@ const ensureUserExists = async (sessionUser: User) => {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.user) {
-        const role = await ensureUserExists(session.user);
         setSession(session);
         setUser(session.user);
-
-        // Navigate based on role
-        if (role === "enforcement") delayedNavigate("/enforcement");
-else if (role === "cenro") delayedNavigate("/cenro");
-else delayedNavigate("/report-sighting");
-
       } else {
         setSession(null);
         setUser(null);
@@ -85,26 +77,33 @@ else delayedNavigate("/report-sighting");
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      if (newSession?.user) {
-        ensureUserExists(newSession.user).then((role) => {
-          if (role === "enforcement") navigate("/enforcement");
-          else if (role === "cenro") navigate("/cenro");
-          else navigate("/report-sighting");
-        });
-        setSession(newSession);
-        setUser(newSession.user);
-      } else {
-        setSession(null);
-        setUser(null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, newSession) => {
+        if (newSession?.user) {
+          const role = await ensureUserExists(newSession.user);
+          setSession(newSession);
+          setUser(newSession.user);
+
+          if (role === "enforcement") delayedNavigate("/enforcement");
+          else if (role === "cenro") delayedNavigate("/cenro");
+          else delayedNavigate("/report-sighting");
+        } else {
+          setSession(null);
+          setUser(null);
+          navigate("/login");
+        }
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
 
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  return <AuthContext.Provider value={{ user, session, loading }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, session, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

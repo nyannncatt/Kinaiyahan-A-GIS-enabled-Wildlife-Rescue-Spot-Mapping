@@ -7,108 +7,59 @@ import ReportSighting from "./pages/ReportSighting";
 import SignIn from "./sign-in-side/SignInSide";
 import { CircularProgress, Box } from "@mui/material";
 
-
-
 function App() {
   const { user, loading } = useAuth();
 
-  // Detect if the user is coming from a password recovery flow
   const isRecovery = window.location.hash.includes("type=recovery");
 
   if (loading) {
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        minHeight: "100vh",
-      }}
-    >
-      <CircularProgress />
-    </Box>
-  );
-}
-
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Routes>
-     <Route path="/login" element={<SignIn />} />
-  <Route path="/report-sighting" element={<ReportSighting />} />
-  <Route path="/enforcement" element={<Enforcement />} />
-  <Route path="/cenro" element={<Cenro />} />
-  <Route path="*" element={<Navigate to="/login" />} />
+      {/* Public routes */}
+      <Route path="/login" element={<SignIn />} />
 
-      {/* Login route */}
-      <Route
-        path="/login"
-        element={
-          user && !isRecovery ? (
-            userHasRole(user)
-          ) : (
-            <SignIn />
-          )
-        }
-      />
-
-      {/* Enforcement route */}
+      {/* Protected routes */}
       <Route
         path="/enforcement"
         element={
-          user?.role === "enforcement" && !isRecovery ? (
-            <Enforcement />
-          ) : (
-            <Navigate to="/login" />
-          )
+          user && !isRecovery ? <Enforcement /> : <Navigate to="/login" />
         }
       />
-
-      {/* Cenro route */}
       <Route
         path="/cenro"
-        element={
-          user?.role === "cenro" && !isRecovery ? (
-            <Cenro />
-          ) : (
-            <Navigate to="/login" />
-          )
-        }
+        element={user && !isRecovery ? <Cenro /> : <Navigate to="/login" />}
       />
-
-      {/* Reporter / Sighting route */}
       <Route
         path="/report-sighting"
         element={
-          user?.role === "reporter" && !isRecovery ? (
-            <ReportSighting />
-          ) : (
-            <Navigate to="/login" />
-          )
+          user && !isRecovery ? <ReportSighting /> : <Navigate to="/login" />
         }
+      />
+
+      {/* Recovery route example (adjust as needed) */}
+      <Route
+        path="/reset-password"
+        element={isRecovery ? <SignIn /> : <Navigate to="/login" />}
       />
 
       {/* Fallback */}
-      <Route
-        path="*"
-        element={
-          isRecovery ? (
-            <Navigate to="/reset-password" />
-          ) : user ? (
-            userHasRole(user)
-          ) : (
-            <Navigate to="/login" />
-          )
-        }
-      />
+      <Route path="*" element={<Navigate to="/login" />} />
     </Routes>
   );
-}
-
-// Helper function for role-based navigation
-function userHasRole(user: any) {
-  if (user.role === "enforcement") return <Navigate to="/enforcement" />;
-  if (user.role === "cenro") return <Navigate to="/cenro" />;
-  return <Navigate to="/report-sighting" />; // Default to reporter page
 }
 
 export default App;
