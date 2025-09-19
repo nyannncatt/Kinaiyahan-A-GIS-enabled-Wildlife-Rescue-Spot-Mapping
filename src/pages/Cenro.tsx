@@ -22,7 +22,7 @@ export default function Cenro() {
   };
 
   return (
-    <AppTheme>
+    <AppTheme disableBackground>
       <CssBaseline />
       <Box
         sx={{
