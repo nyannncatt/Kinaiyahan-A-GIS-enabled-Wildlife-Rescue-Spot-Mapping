@@ -21,33 +21,34 @@ export default function Enforcement() {
   };
 
   return (
-    <AppTheme>
-      <CssBaseline />
-      <Box
-        sx={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100vw",
-          height: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          textAlign: "center",
-        }}
-      >
-        <Box>
-          <Typography variant="h2" component="h1" gutterBottom>
-            Enforcement Dashboard - Test
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            Welcome to the enforcement dashboard. Add your components here.
-          </Typography>
-          <Button variant="contained" color="primary" onClick={handleLogout}>
-            Log Out
-          </Button>
-        </Box>
-      </Box>
-    </AppTheme>
+   <AppTheme disableBackground>
+  <CssBaseline />
+  <Box
+    sx={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100vw",
+      height: "100vh",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      textAlign: "center",
+    }}
+  >
+    <Box>
+      <Typography variant="h2" component="h1" gutterBottom>
+        Enforcement Dashboard - Test
+      </Typography>
+      <Typography variant="body1" gutterBottom>
+        Welcome to the enforcement dashboard. Add your components here.
+      </Typography>
+      <Button variant="contained" color="primary" onClick={handleLogout}>
+        Log Out
+      </Button>
+    </Box>
+  </Box>
+</AppTheme>
+
   );
 }
