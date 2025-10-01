@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -7,13 +8,12 @@ import MapRoundedIcon from '@mui/icons-material/MapRounded';
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
 import ArrowCircleRightRoundedIcon from '@mui/icons-material/ArrowCircleRightRounded';
 
-
 const items = [
   {
     icon: <ArrowCircleRightRoundedIcon sx={{ color: 'text.secondary' }} />,
     title: 'Unified Login, Role-Based Access',
     description:
-       'Sign in once, and you’ll be directed to the correct site based on your role.',
+      'Sign in once, and you’ll be directed to the correct site based on your role.',
   },
   {
     icon: <PetsRoundedIcon sx={{ color: 'text.secondary' }} />,
@@ -36,6 +36,36 @@ const items = [
 ];
 
 export default function Content() {
+  const [visibleCount, setVisibleCount] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(-1);
+
+  // Fade-in sequentially
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setVisibleCount((prev) => {
+        if (prev >= items.length) {
+          clearInterval(interval);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 200); // fade in every 0.5s
+    return () => clearInterval(interval);
+  }, []);
+
+  // Highlight/pulse effect
+ useEffect(() => {
+  const timeout = setTimeout(() => {
+    const interval = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % items.length);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, 1500); // <-- delay in ms before highlighting starts
+
+  return () => clearTimeout(timeout);
+}, []);
+
+
   return (
     <Stack
       sx={{
@@ -45,18 +75,36 @@ export default function Content() {
         maxWidth: 450,
       }}
     >
-      <Box sx={{ display: { xs: 'none', md: 'flex' } }} />
       {items.map((item, index) => (
-        <Stack key={index} direction="column" sx={{ gap: 1 }}>
-       
+        <Stack
+          key={index}
+          direction="column"
+          sx={{
+            gap: 1,
+            opacity: index < visibleCount ? 1 : 0,
+            transition: 'opacity 0.6s ease-in',
+          }}
+        >
           <Stack direction="row" alignItems="center" sx={{ gap: 1 }}>
             {item.icon}
-            <Typography sx={{ fontWeight: 'medium' }}>
+            <Typography
+              sx={{
+                fontWeight: 'medium',
+                transition: 'all 0.5s ease',
+                color: index === activeIndex ? 'primary.main' : 'text.primary',
+              }}
+            >
               {item.title}
             </Typography>
           </Stack>
-         
-          <Typography variant="body2" sx={{ color: 'text.secondary', pl: 4 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: index === activeIndex ? 'primary.main' : 'text.secondary',
+              pl: 4,
+              transition: 'all 0.5s ease',
+            }}
+          >
             {item.description}
           </Typography>
         </Stack>

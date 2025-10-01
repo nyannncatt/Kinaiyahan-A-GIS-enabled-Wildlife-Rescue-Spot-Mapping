@@ -1,101 +1,65 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { auth, db } from "./services/firebase";
+// src/App.tsx
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
 import Enforcement from "./pages/Enforcement";
-import { doc, getDoc } from "firebase/firestore";
 import Cenro from "./pages/Cenro";
+import ReportSighting from "./pages/ReportSighting";
 import SignIn from "./sign-in-side/SignInSide";
+import { CircularProgress, Box } from "@mui/material";
 
 function App() {
-  const [user, setUser] = useState<any>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
-      setUser(currentUser);
+  const isRecovery = window.location.hash.includes("type=recovery");
 
-      if (currentUser) {
-        // fetch role from Firestore
-        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-        if (userDoc.exists()) {
-          setRole(userDoc.data().role);
-        }
-      } else {
-        setRole(null);
-      }
-
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  if (loading) return <div>Loading...</div>;
-
-
+  if (loading) {
     return (
-    <Router>
-      <Routes>
-        {/* Login route */}
-        <Route
-          path="/login"
-          element={
-            user ? (
-              role === "enforcement" ? (
-                <Navigate to="/enforcement" />
-              ) : role === "cenro" ? (
-                <Navigate to="/cenro" />
-              ) : (
-                <div>loading...</div>
-              )
-            ) : (
-              <SignIn />
-            )
-          }
-        />
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
 
-        {/* Enforcement page */}
-        <Route
-          path="/enforcement"
-          element={
-            user && role === "enforcement" ? (
-              <Enforcement />
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={<SignIn />} />
 
-        {/* Cenro page */}
-        <Route
-          path="/cenro"
-          element={
-            user && role === "cenro" ? <Cenro /> : <Navigate to="/login" />
-          }
-        />
+      {/* Protected routes */}
+      <Route
+        path="/enforcement"
+        element={
+          user && !isRecovery ? <Enforcement /> : <Navigate to="/login" />
+        }
+      />
+      <Route
+        path="/cenro"
+        element={user && !isRecovery ? <Cenro /> : <Navigate to="/login" />}
+      />
+      <Route
+        path="/report-sighting"
+        element={
+          user && !isRecovery ? <ReportSighting /> : <Navigate to="/login" />
+        }
+      />
 
-        {/* Fallback */}
-        <Route
-          path="*"
-          element={
-            user ? (
-              role === "enforcement" ? (
-                <Navigate to="/enforcement" />
-              ) : role === "cenro" ? (
-                <Navigate to="/cenro" />
-              ) : (
-                <Navigate to="/login" />
-              )
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
-      </Routes>
-    </Router>
+      {/* Recovery route example (adjust as needed) */}
+      <Route
+        path="/reset-password"
+        element={isRecovery ? <SignIn /> : <Navigate to="/login" />}
+      />
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/login" />} />
+    </Routes>
   );
 }
-
 
 export default App;

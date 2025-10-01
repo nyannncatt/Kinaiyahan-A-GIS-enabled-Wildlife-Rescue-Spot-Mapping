@@ -1,7 +1,6 @@
 // src/components/ForgotPassword.tsx
 import * as React from "react";
-import { auth } from "../../services/firebase"; // make sure firebase.ts exports auth
-import { sendPasswordResetEmail } from "firebase/auth";
+import { supabase } from "../../services/supabase"; // <-- replace firebase with supabase
 
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
@@ -30,7 +29,11 @@ export default function ForgotPassword({ open, handleClose }: ForgotPasswordProp
     setSuccess(false);
 
     try {
-      await sendPasswordResetEmail(auth, email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`, // <-- Supabase requires a redirect URL
+      });
+
+      if (error) throw error;
       setSuccess(true);
     } catch (err: any) {
       setError(err.message);

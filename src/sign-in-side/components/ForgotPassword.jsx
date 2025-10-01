@@ -1,39 +1,70 @@
 // src/components/ForgotPassword.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import { auth } from "../../services/firebase"; // import firebase config
-import { sendPasswordResetEmail } from "firebase/auth";
-
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogTitle from "@mui/material/DialogTitle";
-import OutlinedInput from "@mui/material/OutlinedInput";
-import Alert from "@mui/material/Alert";
+import { supabase } from "../../services/supabase";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  OutlinedInput,
+  Alert,
+  Typography,
+} from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 function ForgotPassword({ open, handleClose }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [countdown, setCountdown] = useState(5);
+  const navigate = useNavigate();
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(false);
-
-    try {
-      await sendPasswordResetEmail(auth, email);
-      setSuccess(true);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    let timer;
+    if (success && countdown > 0) {
+      timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    } else if (success && countdown === 0) {
+      // Close the dialog and navigate back to login
+      try {
+        handleClose();
+      } catch (e) {
+        // ignore if handleClose not available
+      }
+      navigate("/login");
     }
-  };
+    return () => clearTimeout(timer);
+  }, [success, countdown, navigate, handleClose]);
+
+  // inside handleSubmit
+const handleSubmit = async (event) => {
+  event.preventDefault();
+  setLoading(true);
+  setError(null);
+  setSuccess(false);
+
+ // Inside handleSubmit in ForgotPassword.jsx (only change the redirectTo)
+try {
+  const redirectUrl = `${window.location.origin}/reset-password`;
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: redirectUrl, // ✅ dynamic redirect for production & preview
+  });
+
+  if (error) throw error;
+  setSuccess(true);
+  setCountdown(5);
+} catch (err) {
+  const message = err instanceof Error ? err.message : String(err);
+  setError(message || "Something went wrong.");
+} finally {
+  setLoading(false);
+}
+
+};
 
   return (
     <Dialog
@@ -54,26 +85,54 @@ function ForgotPassword({ open, handleClose }) {
         </DialogContentText>
 
         {error && <Alert severity="error">{error}</Alert>}
-        {success && <Alert severity="success">✅ Password reset email sent! Check your inbox (and spam folder).</Alert>}
+        {success && (
+          <Alert severity="success">✅ Password reset email sent! Check your inbox.</Alert>
+        )}
 
-        <OutlinedInput
-          autoFocus
-          required
-          id="email"
-          type="email"
-          placeholder="Email address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          fullWidth
-        />
+        {success && (
+          <Typography variant="body2" sx={{ mt: 1, textAlign: "center" }}>
+            Redirecting to login in {countdown} second{countdown !== 1 ? "s" : ""}...
+          </Typography>
+        )}
+
+        {!success && (
+          <OutlinedInput
+            autoFocus
+            required
+            id="email"
+            type="email"
+            placeholder="Email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            fullWidth
+          />
+        )}
       </DialogContent>
+
       <DialogActions sx={{ pb: 3, px: 3 }}>
-        <Button onClick={handleClose} disabled={loading}>
-          Cancel
-        </Button>
-        <Button type="submit" variant="contained" disabled={loading}>
-          {loading ? "Sending..." : "Continue"}
-        </Button>
+        {!success ? (
+          <>
+            <Button onClick={handleClose} disabled={loading}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained" disabled={loading}>
+              {loading ? "Sending..." : "Continue"}
+            </Button>
+          </>
+        ) : (
+          // Optional: allow immediate return to login if user doesn't want to wait
+          <Button
+            variant="contained"
+            onClick={() => {
+              try {
+                handleClose();
+              } catch {}
+              navigate("/login");
+            }}
+          >
+            Go to login now
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );
