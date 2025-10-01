@@ -1,15 +1,15 @@
-// src/App.tsx
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import Enforcement from "./pages/Enforcement";
 import Cenro from "./pages/Cenro";
 import ReportSighting from "./pages/ReportSighting";
 import SignIn from "./sign-in-side/SignInSide";
 import { CircularProgress, Box } from "@mui/material";
+import React, { ReactElement } from "react";
 
 function App() {
   const { user, loading } = useAuth();
-
+  const location = useLocation();
   const isRecovery = window.location.hash.includes("type=recovery");
 
   if (loading) {
@@ -27,37 +27,50 @@ function App() {
     );
   }
 
+  // Prevent redirect loop: remember original location
+  const RequireAuth = ({ children }: { children: ReactElement }) => {
+    if (!user && !isRecovery) {
+      return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+    return children;
+  };
+
   return (
     <Routes>
-      {/* Public routes */}
       <Route path="/login" element={<SignIn />} />
 
-      {/* Protected routes */}
       <Route
         path="/enforcement"
         element={
-          user && !isRecovery ? <Enforcement /> : <Navigate to="/login" />
+          <RequireAuth>
+            <Enforcement />
+          </RequireAuth>
         }
       />
       <Route
         path="/cenro"
-        element={user && !isRecovery ? <Cenro /> : <Navigate to="/login" />}
+        element={
+          <RequireAuth>
+            <Cenro />
+          </RequireAuth>
+        }
       />
       <Route
         path="/report-sighting"
         element={
-          user && !isRecovery ? <ReportSighting /> : <Navigate to="/login" />
+          <RequireAuth>
+            <ReportSighting />
+          </RequireAuth>
         }
       />
 
-      {/* Recovery route example (adjust as needed) */}
       <Route
         path="/reset-password"
         element={isRecovery ? <SignIn /> : <Navigate to="/login" />}
       />
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/login" />} />
+      {/* fallback */}
+      <Route path="*" element={<Navigate to={user ? "/enforcement" : "/login"} />} />
     </Routes>
   );
 }
