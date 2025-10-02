@@ -1,5 +1,5 @@
 import { MapContainer, TileLayer, useMap, GeoJSON, Marker, Popup, useMapEvents } from "react-leaflet";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Box, Tooltip, IconButton, Button, TextField, MenuItem } from "@mui/material";
 import AddLocationAltOutlinedIcon from "@mui/icons-material/AddLocationAltOutlined";
 import L from "leaflet";
@@ -209,6 +209,10 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
   } | null>(null);
   const [speciesOptions, setSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
   const [speciesLoading, setSpeciesLoading] = useState(false);
+  const [editDrafts, setEditDrafts] = useState<Record<number, { speciesName: string; status: string }>>({});
+  const [editingMarkerId, setEditingMarkerId] = useState<number | null>(null);
+  const editInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const markerRefs = useRef<Record<number, any>>({});
 
   // Restore state from sessionStorage on mount
   useEffect(() => {
@@ -475,28 +479,148 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
         )}
         {/* Clustered markers with popups */}
         <MarkerClusterGroup chunkedLoading>
-          {userMarkers.map((m) => (
-            <Marker key={m.id} position={m.pos as [number, number]}>
+          {userMarkers.map((m) => {
+            const isEditing = editingMarkerId === m.id;
+            const draft = editDrafts[m.id] || { speciesName: m.speciesName, status: m.status };
+            return (
+            <Marker
+              key={m.id}
+              position={m.pos as [number, number]}
+              ref={(el) => { markerRefs.current[m.id] = el as any; }}
+            >
               <Popup>
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 220 }}>
-                  <strong>{m.title}</strong>
-                  {m.speciesName ? <div>Species: {m.speciesName}</div> : null}
-                  {m.status ? <div>Status: {m.status}</div> : null}
-                  {m.timestampIso ? (
-                    <div>DateTime: {new Date(m.timestampIso).toLocaleString()}</div>
-                  ) : null}
-                  {m.address ? (
-                    <Box>
-                      <div>Barangay: {m.address.barangay || "N/A"}</div>
-                      <div>Municipality: {m.address.municipality || "N/A"}</div>
-                    </Box>
-                  ) : null}
-                  <div>Latitude: {m.pos[0].toFixed(5)}</div>
-                  <div>Longitude: {m.pos[1].toFixed(5)}</div>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 260 }}>
+                  {!isEditing ? (
+                    <>
+                      <strong>{m.title}</strong>
+                      {m.speciesName ? <div>Species: {m.speciesName}</div> : null}
+                      {m.status ? <div>Status: {m.status}</div> : null}
+                      {m.timestampIso ? (<div>DateTime: {new Date(m.timestampIso).toLocaleString()}</div>) : null}
+                      {m.address ? (
+                        <Box>
+                          <div>Barangay: {m.address.barangay || "N/A"}</div>
+                          <div>Municipality: {m.address.municipality || "N/A"}</div>
+                        </Box>
+                      ) : null}
+                      <div>Latitude: {m.pos[0].toFixed(5)}</div>
+                      <div>Longitude: {m.pos[1].toFixed(5)}</div>
+                      <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={() => {
+                            setEditDrafts((prev) => ({ ...prev, [m.id]: { speciesName: m.speciesName, status: m.status } }));
+                            setEditingMarkerId(m.id);
+                            setTimeout(() => {
+                              try {
+                                markerRefs.current[m.id]?.openPopup?.();
+                              } catch {}
+                              const el = editInputRefs.current[m.id];
+                              if (el) {
+                                try { el.focus(); } catch {}
+                              }
+                            }, 0);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          size="small"
+                          onClick={() => {
+                            if (window.confirm('Delete this marker? This cannot be undone.')) {
+                              setUserMarkers((prev) => prev.filter((mk) => mk.id !== m.id));
+                              setEditDrafts((prev) => { const cp = { ...prev }; delete cp[m.id]; return cp; });
+                              if (editingMarkerId === m.id) setEditingMarkerId(null);
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </Box>
+                    </>
+                  ) : (
+                    <>
+                      <strong>Edit marker</strong>
+                      <TextField
+                        placeholder="Species name"
+                        size="small"
+                        variant="outlined"
+                        fullWidth
+                        margin="dense"
+                        value={draft.speciesName}
+                        onChange={(e) => setEditDrafts((prev) => ({ ...prev, [m.id]: { ...draft, speciesName: e.target.value } }))}
+                        inputRef={(el) => { editInputRefs.current[m.id] = el; }}
+                      />
+                      <TextField
+                        select
+                        size="small"
+                        variant="outlined"
+                        fullWidth
+                        margin="dense"
+                        value={draft.status}
+                        onChange={(e) => setEditDrafts((prev) => ({ ...prev, [m.id]: { ...draft, status: String(e.target.value) } }))}
+                        SelectProps={{
+                          displayEmpty: true,
+                          renderValue: (value: unknown) => {
+                            const v = String(value || "");
+                            return v !== "" ? v : "Status";
+                          },
+                        }}
+                      >
+                        <MenuItem value="" disabled>
+                          Status
+                        </MenuItem>
+                        <MenuItem value="Sighted">Sighted</MenuItem>
+                        <MenuItem value="Rescued">Rescued</MenuItem>
+                        <MenuItem value="Released">Released</MenuItem>
+                      </TextField>
+                      <Box>
+                        {m.timestampIso ? (<div>DateTime: {new Date(m.timestampIso).toLocaleString()}</div>) : null}
+                        {m.address ? (
+                          <Box>
+                            <div>Barangay: {m.address.barangay || "N/A"}</div>
+                            <div>Municipality: {m.address.municipality || "N/A"}</div>
+                          </Box>
+                        ) : null}
+                        <div>Latitude: {m.pos[0].toFixed(5)}</div>
+                        <div>Longitude: {m.pos[1].toFixed(5)}</div>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          disabled={!draft.speciesName || !draft.status}
+                          onClick={() => {
+                            if (!draft.speciesName || !draft.status) return;
+                            if (window.confirm('Save changes to this marker?')) {
+                              setUserMarkers((prev) => prev.map((mk) => mk.id === m.id ? {
+                                ...mk,
+                                speciesName: draft.speciesName,
+                                status: draft.status,
+                                title: draft.speciesName || mk.title,
+                              } : mk));
+                              setEditingMarkerId(null);
+                            }
+                          }}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => setEditingMarkerId(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </Box>
+                    </>
+                  )}
                 </Box>
               </Popup>
             </Marker>
-          ))}
+          );})}
         </MarkerClusterGroup>
     </MapContainer>
     </Box>
