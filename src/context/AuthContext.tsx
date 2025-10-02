@@ -6,12 +6,14 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  logout: () => Promise<void>; // added logout function
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
+  logout: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -60,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initAuth();
 
-    // Listen to auth state changes, update user/session only (do not navigate here!)
+    // Listen to auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (newSession?.user) {
         setSession(newSession);
@@ -75,8 +77,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // New logout function
+  const logout = async () => {
+    setLoading(true);
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error("Logout error:", error.message);
+    setUser(null);
+    setSession(null);
+    setLoading(false);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading }}>
+    <AuthContext.Provider value={{ user, session, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );

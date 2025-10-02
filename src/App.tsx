@@ -7,6 +7,10 @@ import SignIn from "./sign-in-side/SignInSide";
 import { CircularProgress, Box } from "@mui/material";
 import React, { ReactElement } from "react";
 
+
+
+
+
 function App() {
   const { user, loading } = useAuth();
   const location = useLocation();
