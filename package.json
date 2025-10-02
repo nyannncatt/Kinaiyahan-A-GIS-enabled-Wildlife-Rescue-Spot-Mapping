@@ -26,6 +26,7 @@
     "firebase": "^12.2.1",
     "framer-motion": "^12.23.15",
     "leaflet": "^1.9.4",
+    "osmtogeojson": "^3.0.0-beta.5",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-leaflet": "^5.0.0",
