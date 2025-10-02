@@ -28,7 +28,7 @@ const xThemeComponents = {
 
 export default function Dashboard(props: { disableCustomTheme?: boolean }) {
   return (
-    <AppTheme {...props} themeComponents={xThemeComponents}>
+    <AppTheme {...props} themeComponents={xThemeComponents} disableBackground={true}>
       <CssBaseline enableColorScheme />
       <Box sx={{ display: 'flex' }}>
         <SideMenu />
@@ -49,7 +49,7 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
             sx={{
               alignItems: 'center',
               mx: 3,
-              pb: 5,
+              pb: 2,
               mt: { xs: 8, md: 0 },
             }}
           >

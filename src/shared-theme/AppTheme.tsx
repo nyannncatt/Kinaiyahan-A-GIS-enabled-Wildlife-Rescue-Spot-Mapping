@@ -48,9 +48,7 @@ export default function AppTheme({
                   backgroundSize: 'cover',
                   backgroundRepeat: 'no-repeat',
                   backgroundPosition: 'center',
-                  backgroundImage: disableBackground
-                    ? 'none'
-                    : 'url(https://i.pinimg.com/736x/b0/b0/bd/b0b0bd3f70bee1e06bd5a855b27057a9.jpg)',
+                  backgroundImage: 'none',
                   backgroundColor: disableBackground ? 'transparent' : undefined,
                 },
               },
