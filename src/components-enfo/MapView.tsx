@@ -92,7 +92,7 @@ function MapBoundsController() {
       }
     } catch {}
 
-    const locationBounds = L.latLngBounds([8.0, 124.6], [8.54, 125.3]);
+    const locationBounds = L.latLngBounds([8.0, 124.6], [8.84, 125.3]);
     map.setMaxBounds(locationBounds);
 
     map.setMinZoom(11);
@@ -661,6 +661,16 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
         /* Force confirm/save text to black in dark mode (enabled and disabled) */
         [data-mui-color-scheme="dark"] .themed-popup .confirm-btn { color: #000 !important; }
         [data-mui-color-scheme="dark"] .themed-popup .confirm-btn.Mui-disabled { color: #000 !important; }
+
+        /* Prevent tall popup from overflowing viewport: cap content and scroll inside */
+        .themed-popup .leaflet-popup-content {
+          max-height: 320px;
+          overflow: auto;
+          margin: 13px 19px; /* keep Leaflet default spacing */
+        }
+        .themed-popup .leaflet-popup-content-wrapper {
+          max-width: 320px; /* avoid overly wide popups at low zoom */
+        }
       `}</style>
       <Box sx={{ position: "absolute", top: 90, left: 10, zIndex: 1000 }}>
         <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
@@ -705,7 +715,7 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
             icon={createStatusIcon(pendingMarker.status)}
             eventHandlers={{ add: (e: any) => e.target.openPopup() }}
           >
-            <Popup className="themed-popup">
+            <Popup className="themed-popup" autoPan autoPanPadding={[16,16]}>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 260 }}>
                 <strong>Add marker here</strong>
                 <TextField
