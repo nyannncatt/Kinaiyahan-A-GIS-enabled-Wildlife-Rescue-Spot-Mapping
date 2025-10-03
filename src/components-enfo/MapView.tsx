@@ -82,8 +82,15 @@ function MapBoundsController() {
 
   useEffect(() => {
     const specificLocation: [number, number] = [8.371964645263802, 124.85604137091526];
-
-    map.setView(specificLocation, 10);
+    try {
+      if ((map as any)?._loaded) {
+        map.setView(specificLocation, 10, { animate: false });
+      } else {
+        map.whenReady(() => {
+          try { map.setView(specificLocation, 10, { animate: false }); } catch {}
+        });
+      }
+    } catch {}
 
     const locationBounds = L.latLngBounds([8.0, 124.6], [8.54, 125.3]);
     map.setMaxBounds(locationBounds);
@@ -798,7 +805,7 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                       }}
                     />
                   </Button>
-                      {pendingMarker.photo && (
+                  {pendingMarker.photo && (
                     <Box sx={{ mt: 1 }}>
                       <img src={pendingMarker.photo ?? undefined} alt="preview" style={{ width: "100%", borderRadius: 8 }} />
                       <Button size="small" onClick={() => setPendingMarker((p) => (p ? { ...p, photo: null } : p))}>Remove</Button>
@@ -852,7 +859,7 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                   >
                     Confirm
                   </Button>
-                  <Button variant="outlined" color="primary" size="small" onClick={() => setPendingMarker(null)}>
+                  <Button variant="outlined" color="primary" size="small" type="button" onClick={() => { setPendingMarker(null); setIsAddingMarker(false); }}>
                     Cancel
                   </Button>
                 </Box>
