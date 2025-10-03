@@ -5,13 +5,22 @@ import Cenro from "./pages/Cenro";
 import ReportSighting from "./pages/ReportSighting";
 import SignIn from "./sign-in-side/SignInSide";
 import { CircularProgress, Box } from "@mui/material";
-import React, { ReactElement } from "react";
+import React, { ReactElement, useEffect } from "react";
 
-
-
-
+// 🔍 Debug hook to detect refresh vs tab switch
+function useDebugReloads() {
+  useEffect(() => {
+    const handler = () => {
+      console.log("🔄 Page visibility changed:", document.visibilityState);
+    };
+    document.addEventListener("visibilitychange", handler);
+    return () => document.removeEventListener("visibilitychange", handler);
+  }, []);
+}
 
 function App() {
+  useDebugReloads(); // 👈 inserted here
+
   const { user, loading } = useAuth();
   const location = useLocation();
   const isRecovery = window.location.hash.includes("type=recovery");
