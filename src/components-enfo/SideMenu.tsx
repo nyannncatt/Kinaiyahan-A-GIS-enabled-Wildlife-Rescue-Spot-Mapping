@@ -5,9 +5,9 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Button from '@mui/material/Button';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
-import SelectContent from './SelectContent';
+
 import MenuContent from './MenuContent';
-import CardAlert from './CardAlert';
+
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -50,7 +50,7 @@ export default function SideMenu() {
           p: 1.5,
         }}
       >
-        <SelectContent />
+       
       </Box>
       <Divider />
       <Box
@@ -62,7 +62,7 @@ export default function SideMenu() {
         }}
       >
         <MenuContent />
-        <CardAlert />
+      
       </Box>
       <Box
         sx={{
