@@ -1,12 +1,24 @@
 import * as React from "react";
 import { Box, CssBaseline, Stack } from "@mui/material";
-import { motion } from "framer-motion"; // ✅ import framer-motion
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";   // ✅ add navigate
+import { useAuth } from "../context/AuthContext"; // ✅ hook into auth
 import AppTheme from "../shared-theme/AppTheme";
 import ColorModeSelect from "../shared-theme/ColorModeSelect";
 import SignInCard from "./components/SignInCard";
 import Content from "./components/Content";
 
 export default function SignInSide(props) {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+
+  // ✅ if user is logged in, redirect away from login page
+  React.useEffect(() => {
+    if (!loading && user) {
+      navigate("/enforcement", { replace: true });
+    }
+  }, [user, loading, navigate]);
+
   return (
     <AppTheme {...props}>
       <CssBaseline enableColorScheme />
@@ -14,7 +26,6 @@ export default function SignInSide(props) {
       {/* Fixed top-right color mode toggle */}
       <ColorModeSelect sx={{ position: "fixed", top: "1rem", right: "1rem" }} />
 
-      {/* Wrapper with gradient background covering full screen */}
       <Box
         sx={(theme) => ({
           minHeight: "100vh",
@@ -28,17 +39,17 @@ export default function SignInSide(props) {
           backgroundSize: "100% 100%",
           backgroundAttachment: "fixed",
           ...(theme.applyStyles("dark", {
-            background: "radial-gradient(at 95% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))",
+            background:
+              "radial-gradient(at 95% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))",
             backgroundSize: "100% 100%",
           })),
         })}
       >
-        {/* Animated content area */}
         <motion.div
-          initial={{ opacity: 0, y: -30 }}       // start invisible & slightly above
-          animate={{ opacity: 1, y: 0 }}         // fade in & slide down
-          transition={{ duration: 1.2 }}         // animation duration
-          style={{ width: "100%" }}              // ensure full width
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.2 }}
+          style={{ width: "100%" }}
         >
           <Stack
             direction={{ xs: "column-reverse", md: "row" }}

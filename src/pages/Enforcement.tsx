@@ -1,4 +1,3 @@
-
 import type {} from '@mui/x-date-pickers/themeAugmentation';
 import type {} from '@mui/x-charts/themeAugmentation';
 import type {} from '@mui/x-data-grid-pro/themeAugmentation';
@@ -18,6 +17,7 @@ import {
   datePickersCustomizations,
   treeViewCustomizations,
 } from '../theme/customizations';
+import React from 'react';
 
 const xThemeComponents = {
   ...chartsCustomizations,
@@ -26,14 +26,13 @@ const xThemeComponents = {
   ...treeViewCustomizations,
 };
 
-export default function Dashboard(props: { disableCustomTheme?: boolean }) {
+function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
   return (
     <AppTheme {...props} themeComponents={xThemeComponents} disableBackground={true}>
       <CssBaseline enableColorScheme />
       <Box sx={{ display: 'flex' }}>
         <SideMenu />
         <AppNavbar />
-        {/* Main content */}
         <Box
           component="main"
           sx={(theme) => ({
@@ -61,3 +60,7 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
     </AppTheme>
   );
 }
+
+// Memoize to prevent unnecessary remounts
+const Enforcement = React.memo(EnforcementComponent);
+export default Enforcement;

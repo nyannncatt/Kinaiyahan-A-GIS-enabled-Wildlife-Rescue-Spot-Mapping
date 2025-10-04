@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../services/supabase";
 
@@ -6,7 +12,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  logout: () => Promise<void>; // added logout function
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -33,7 +39,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error && error.code !== "PGRST116") throw error;
 
       if (!data) {
-        await supabase.from("users").insert([{ id: sessionUser.id, role: "reporter" }]);
+        await supabase
+          .from("users")
+          .insert([{ id: sessionUser.id, role: "reporter" }]);
         return "reporter";
       }
 
@@ -47,7 +55,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
       if (session?.user) {
         setSession(session);
@@ -62,22 +72,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initAuth();
 
-    // Listen to auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      if (newSession?.user) {
-        setSession(newSession);
-        setUser(newSession.user);
-      } else {
-        setSession(null);
-        setUser(null);
+    // 🔑 Listen to auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      // ✅ Only update if the session actually changed
+      setLoading(true);
+      const isDifferent =
+        JSON.stringify(newSession) !== JSON.stringify(session);
+
+      if (isDifferent) {
+        if (newSession?.user) {
+          setSession(newSession);
+          setUser(newSession.user);
+        } else {
+          setSession(null);
+          setUser(null);
+        }
       }
+
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // New logout function
+  // Logout
   const logout = async () => {
     setLoading(true);
     const { error } = await supabase.auth.signOut();
