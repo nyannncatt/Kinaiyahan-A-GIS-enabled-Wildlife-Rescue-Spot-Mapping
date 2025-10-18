@@ -530,11 +530,17 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         if (!res.ok) throw new Error("reverse geocode failed");
         const data = await res.json();
         const addr = data.address || {};
+        
+        // Debug logging to see what address fields are available
+        console.log('Address lookup result:', { addr, displayName: data.display_name });
+        
         const address: AddressInfo = {
-          barangay: addr.village || addr.suburb || addr.neighbourhood || addr.hamlet || addr.barangay,
-          municipality: addr.town || addr.city || addr.municipality || addr.county,
+          barangay: addr.village || addr.suburb || addr.neighbourhood || addr.hamlet || addr.barangay || addr.city_district || addr.district,
+          municipality: addr.town || addr.city || addr.municipality || addr.county || addr.state,
           displayName: data.display_name,
         };
+        
+        console.log('Parsed address:', address);
         setPendingMarker((prev) =>
           prev ? { ...prev, address, addressLoading: false } : prev
         );
@@ -671,16 +677,28 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     if (!pendingMarker || !user) return;
 
     try {
+      // Upload photo to Supabase if it exists
+      let photoUrl: string | undefined = undefined;
+      if (pendingMarker.photo && pendingMarker.photo.startsWith('blob:')) {
+        // Convert blob URL to file and upload
+        const response = await fetch(pendingMarker.photo);
+        const blob = await response.blob();
+        const file = new File([blob], 'wildlife-photo.jpg', { type: blob.type });
+        photoUrl = await handlePhotoUpload(file, 'temp');
+      } else if (pendingMarker.photo) {
+        photoUrl = pendingMarker.photo;
+      }
+
       const newRecord: CreateWildlifeRecord = {
         species_name: pendingMarker.speciesName,
         status: pendingMarker.status as any,
         latitude: pendingMarker.pos[0],
         longitude: pendingMarker.pos[1],
-        barangay: pendingMarker.barangay || undefined,
-        municipality: pendingMarker.municipality || undefined,
+        barangay: pendingMarker.address?.barangay || undefined,
+        municipality: pendingMarker.address?.municipality || undefined,
         reporter_name: pendingMarker.reporterName || undefined,
         contact_number: pendingMarker.contactNumber || undefined,
-        photo_url: pendingMarker.photo || undefined,
+        photo_url: photoUrl,
         timestamp_captured: pendingMarker.timestampIso,
       };
 

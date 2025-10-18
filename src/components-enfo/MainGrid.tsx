@@ -91,12 +91,15 @@ export default function MainGrid() {
       </Stack>
 
       {/* Map Container */}
-      <Box sx={{ 
-        height: 700, 
-        width: '100%',
-        border: '2px solid #1976d2',
-        backgroundColor: 'background.paper'
-      }}>
+      <Box 
+        data-map-container
+        sx={{ 
+          height: 700, 
+          width: '100%',
+          border: '2px solid #1976d2',
+          backgroundColor: 'background.paper'
+        }}
+      >
         <MapViewWithBackend skin={skin} />
       </Box>
       
