@@ -24,6 +24,7 @@ import {
   LocationOn as LocationIcon,
   Delete as DeleteIcon,
   Print as PrintIcon,
+  Map as MapIcon,
 } from '@mui/icons-material';
 import { getWildlifeRecords, deleteWildlifeRecord, type WildlifeRecord } from '../services/wildlifeRecords';
 import { useMapNavigation } from '../context/MapNavigationContext';
@@ -91,6 +92,15 @@ export default function WildlifeRescueStatistics() {
   // Handle print
   const handlePrint = () => {
     setPrintDialogOpen(true);
+  };
+
+  // Handle scroll to map
+  const handleBackToMap = () => {
+    // Always scroll to the very top of the page to show entire map section
+    window.scrollTo({ 
+      top: 0, 
+      behavior: 'smooth' 
+    });
   };
 
   // Print the form
@@ -168,11 +178,31 @@ export default function WildlifeRescueStatistics() {
   // Get status color
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'reported': return '#ff9800';
-      case 'rescued': return '#f44336';
-      case 'turned over': return '#2196f3';
-      case 'released': return '#4caf50';
+      case 'reported': return '#f44336'; // Red
+      case 'rescued': return '#2196f3'; // Blue
+      case 'turned over': return '#ffc107'; // Yellow
+      case 'released': return '#4caf50'; // Green
       default: return '#666';
+    }
+  };
+
+  // Get status text color with theme awareness - neutral in light mode, subtle colors in dark mode
+  const getStatusTextColorThemeAware = (status: string) => {
+    if (theme.palette.mode === 'light') {
+      return theme.palette.text.primary; // Use primary text color for light mode (dark text on light background)
+    } else { // Dark mode
+      switch (status.toLowerCase()) {
+        case 'reported':
+          return '#9ca3af'; // Lighter grey for dark mode
+        case 'rescued':
+          return '#60a5fa'; // Lighter blue for dark mode
+        case 'turned over':
+          return '#fbbf24'; // Lighter amber for dark mode
+        case 'released':
+          return '#34d399'; // Lighter green for dark mode
+        default:
+          return theme.palette.text.secondary; // Fallback to secondary text color
+      }
     }
   };
 
@@ -201,116 +231,223 @@ export default function WildlifeRescueStatistics() {
 
   return (
     <Box sx={{ width: '100%', p: 3 }}>
-      {/* Header with Print Button */}
+      {/* Header with Print and Back to Map Buttons */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1" sx={{ color: theme.palette.primary.main }}>
           Wildlife Rescue Statistics
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<PrintIcon />}
-          onClick={handlePrint}
-          sx={{ 
-            bgcolor: theme.palette.primary.main,
-            '&:hover': { bgcolor: theme.palette.primary.dark }
-          }}
-        >
-          Print
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<MapIcon />}
+            onClick={handleBackToMap}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 500,
+              borderColor: 'secondary.main',
+              color: 'secondary.main',
+              '&:hover': {
+                backgroundColor: 'secondary.main',
+                color: 'white',
+                borderColor: 'secondary.main',
+              }
+            }}
+          >
+            Back to Map
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<PrintIcon />}
+            onClick={handlePrint}
+            sx={{ 
+              bgcolor: theme.palette.primary.main,
+              '&:hover': { bgcolor: theme.palette.primary.dark }
+            }}
+          >
+            Print
+          </Button>
+        </Box>
       </Box>
 
       {/* Statistics Table */}
-      <TableContainer component={Paper} sx={{ boxShadow: 3 }}>
+      <TableContainer component={Paper} sx={{ 
+        boxShadow: 1, 
+        borderRadius: 2,
+        bgcolor: 'background.paper'
+      }}>
         <Table>
           <TableHead>
-            <TableRow sx={{ bgcolor: theme.palette.primary.main }}>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Species Name</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Status</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Location</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Reporter</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Date Captured</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Actions</TableCell>
+            <TableRow sx={{ 
+              bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)'
+            }}>
+              <TableCell sx={{ 
+                fontWeight: 600, 
+                color: 'text.primary', 
+                borderBottom: `1px solid ${theme.palette.divider}`,
+                py: 2
+              }}>
+                Species Name
+              </TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600, 
+                color: 'text.primary', 
+                borderBottom: `1px solid ${theme.palette.divider}`,
+                py: 2
+              }}>
+                Status
+              </TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600, 
+                color: 'text.primary', 
+                borderBottom: `1px solid ${theme.palette.divider}`,
+                py: 2
+              }}>
+                Location
+              </TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600, 
+                color: 'text.primary', 
+                borderBottom: `1px solid ${theme.palette.divider}`,
+                py: 2
+              }}>
+                Reporter
+              </TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600, 
+                color: 'text.primary', 
+                borderBottom: `1px solid ${theme.palette.divider}`,
+                py: 2
+              }}>
+                Date Captured
+              </TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600, 
+                color: 'text.primary', 
+                borderBottom: `1px solid ${theme.palette.divider}`,
+                py: 2
+              }}>
+                Actions
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {paginatedRecords.map((record) => (
+            {paginatedRecords.map((record, index) => (
               <TableRow 
                 key={record.id}
                 sx={{ 
-                  '&:nth-of-type(odd)': { bgcolor: theme.palette.action.hover },
-                  '&:hover': { bgcolor: theme.palette.action.selected }
+                  bgcolor: index % 2 === 0 
+                    ? 'background.paper' 
+                    : theme.palette.mode === 'dark' 
+                      ? 'rgba(255, 255, 255, 0.02)' 
+                      : 'rgba(0, 0, 0, 0.02)',
+                  '&:hover': { 
+                    bgcolor: theme.palette.mode === 'dark' 
+                      ? 'rgba(255, 255, 255, 0.05)' 
+                      : 'rgba(0, 0, 0, 0.04)' 
+                  },
+                  borderBottom: `1px solid ${theme.palette.divider}`
                 }}
               >
-                <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, color: 'text.primary' }}>
                     {record.species_name}
                   </Typography>
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
                   <Chip
                     label={record.status.toUpperCase()}
                     size="small"
                     sx={{
-                      bgcolor: getStatusColor(record.status),
-                      color: 'white',
-                      fontWeight: 'bold'
+                      bgcolor: 'transparent', // No background
+                      color: getStatusTextColorThemeAware(record.status), // Text color from the new function
+                      fontWeight: 600,
+                      fontSize: '0.75rem',
+                      height: 'auto', // Remove fixed height
+                      borderRadius: 0, // Remove border radius
+                      padding: '0', // Remove padding
+                      boxShadow: 'none', // Ensure no shadow
+                      border: 'none', // Ensure no border
+                      '&:hover': {
+                        opacity: 0.8, // Subtle hover effect
+                        transition: 'opacity 0.2s ease-in-out',
+                        bgcolor: 'transparent', // Ensure hover background is also transparent
+                      }
                     }}
                   />
                 </TableCell>
-                <TableCell>
-                  <Typography variant="body2">
+                <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
+                  <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 500 }}>
                     {record.barangay || 'N/A'}, {record.municipality || 'N/A'}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     Lat: {record.latitude.toFixed(6)}, Lng: {record.longitude.toFixed(6)}
                   </Typography>
                 </TableCell>
-                <TableCell>
-                  <Typography variant="body2">
-                    {record.reporter_name || 'N/A'}
-                  </Typography>
-                  {record.contact_number && (
-                    <Typography variant="caption" color="text.secondary">
-                      {record.contact_number}
-                    </Typography>
-                  )}
+                <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ 
+                      width: 32, 
+                      height: 32, 
+                      borderRadius: '50%', 
+                      bgcolor: theme.palette.primary.main,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 600,
+                      fontSize: '0.875rem'
+                    }}>
+                      {(record.reporter_name || 'N/A').charAt(0).toUpperCase()}
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 500 }}>
+                        {record.reporter_name || 'N/A'}
+                      </Typography>
+                    </Box>
+                  </Box>
                 </TableCell>
-                <TableCell>
-                  <Typography variant="body2">
+                <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
+                  <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 500 }}>
                     {new Date(record.timestamp_captured).toLocaleDateString()}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     {new Date(record.timestamp_captured).toLocaleTimeString()}
                   </Typography>
                 </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Tooltip title="View on Map">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleLocationClick(record)}
-                        sx={{ 
-                          bgcolor: theme.palette.primary.main,
-                          color: 'white',
-                          '&:hover': { bgcolor: theme.palette.primary.dark }
-                        }}
-                      >
-                        <LocationIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete Record">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDeleteRecord(record.id)}
-                        sx={{ 
-                          bgcolor: theme.palette.error.main,
-                          color: 'white',
-                          '&:hover': { bgcolor: theme.palette.error.dark }
-                        }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <Button
+                      variant="text"
+                      size="small"
+                      onClick={() => handleLocationClick(record)}
+                      sx={{ 
+                        color: theme.palette.primary.main,
+                        textTransform: 'none',
+                        fontWeight: 500,
+                        '&:hover': { 
+                          bgcolor: theme.palette.mode === 'dark' 
+                            ? 'rgba(25, 118, 210, 0.1)' 
+                            : 'rgba(25, 118, 210, 0.04)' 
+                        }
+                      }}
+                    >
+                      View Map
+                    </Button>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteRecord(record.id)}
+                      sx={{ 
+                        color: 'text.secondary',
+                        '&:hover': { 
+                          bgcolor: theme.palette.mode === 'dark' 
+                            ? 'rgba(239, 68, 68, 0.1)' 
+                            : 'rgba(239, 68, 68, 0.04)',
+                          color: theme.palette.error.main
+                        }
+                      }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
                   </Box>
                 </TableCell>
               </TableRow>
