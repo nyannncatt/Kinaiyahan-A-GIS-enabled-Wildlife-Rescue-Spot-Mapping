@@ -684,7 +684,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         const response = await fetch(pendingMarker.photo);
         const blob = await response.blob();
         const file = new File([blob], 'wildlife-photo.jpg', { type: blob.type });
-        photoUrl = await handlePhotoUpload(file, 'temp');
+        const uploadedUrl = await handlePhotoUpload(file, 'temp');
+        photoUrl = uploadedUrl || undefined;
       } else if (pendingMarker.photo) {
         photoUrl = pendingMarker.photo;
       }
