@@ -54,9 +54,26 @@ export default function WildlifeRescueStatistics() {
     loadRecords();
   }, []);
 
-  // Handle location click - navigate to map location
+  // Handle location click - navigate to map location and scroll to map
   const handleLocationClick = (record: WildlifeRecord) => {
     navigateToLocation(record.latitude, record.longitude, record.id);
+    
+    // Auto-scroll to the map section
+    const mapElement = document.querySelector('[data-map-container]') || 
+                      document.querySelector('h2')?.nextElementSibling; // Fallback to the map container after the "Wildlife Rescue Map" heading
+    
+    if (mapElement) {
+      mapElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    } else {
+      // Fallback: scroll to top of page
+      window.scrollTo({ 
+        top: 0, 
+        behavior: 'smooth' 
+      });
+    }
   };
 
   // Handle delete record
