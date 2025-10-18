@@ -261,10 +261,10 @@ type AddressInfo = { barangay?: string; municipality?: string; displayName?: str
   };
 
 const statusColors: Record<string, string> = {
-  'reported': '#ff9800',
-  'rescued': '#f44336',
-  'turned over': '#2196f3',
-  'released': '#4caf50'
+  'reported': '#f44336', // Red
+  'rescued': '#2196f3', // Blue
+  'turned over': '#ffc107', // Yellow
+  'released': '#4caf50' // Green
 };
 
 export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
