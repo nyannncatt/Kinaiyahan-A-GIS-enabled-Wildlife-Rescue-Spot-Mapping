@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
+import SuccessModal from "../components-enfo/SuccessModal";
 
 export default function ReportSighting() {
   const [species, setSpecies] = useState("");
@@ -22,6 +23,15 @@ export default function ReportSighting() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successModal, setSuccessModal] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+  }>({
+    open: false,
+    title: '',
+    message: '',
+  });
 
   const navigate = useNavigate();
   const theme = useTheme(); // ✅ get current theme (light/dark, colors, etc.)
@@ -59,6 +69,13 @@ export default function ReportSighting() {
       setSpecies("");
       setLocation("");
       setNotes("");
+      
+      // Show success modal
+      setSuccessModal({
+        open: true,
+        title: 'Success!',
+        message: `Wildlife sighting for "${species.trim()}" has been reported successfully.`,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -144,6 +161,14 @@ export default function ReportSighting() {
           {submitting ? "Submitting..." : "Submit"}
         </Button>
       </DialogActions>
+      
+      {/* Success Modal */}
+      <SuccessModal
+        open={successModal.open}
+        onClose={() => setSuccessModal(prev => ({ ...prev, open: false }))}
+        title={successModal.title}
+        message={successModal.message}
+      />
     </Dialog>
   );
 }

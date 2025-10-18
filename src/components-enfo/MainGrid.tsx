@@ -11,7 +11,9 @@ import CustomizedDataGrid from './CustomizedDataGrid';
 import HighlightedCard from './HighlightedCard';
 import PageViewsBarChart from './PageViewsBarChart';
 
-import MapView from './MapView';
+import MapViewWithBackend from './MapViewWithBackend';
+import WildlifeRescueStatistics from './WildlifeRescueStatistics';
+import { MapNavigationProvider } from '../context/MapNavigationContext';
 import Paper from '@mui/material/Paper';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -24,11 +26,12 @@ export default function MainGrid() {
   const [skin, setSkin] = useState<"streets" | "dark" | "satellite">("streets");
 
   return (
-    <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
-      {/* Map Header */}
-      <Typography component="h2" variant="h6" sx={{ mb: 2, mt: 4 }}>
-        Wildlife Rescue Map
-      </Typography>
+    <MapNavigationProvider>
+      <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
+        {/* Map Header */}
+        <Typography component="h2" variant="h6" sx={{ mb: 2, mt: 4 }}>
+          Wildlife Rescue Map
+        </Typography>
 
       {/* Skin Switch (icon-only, no background) */}
       <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
@@ -94,21 +97,14 @@ export default function MainGrid() {
         border: '2px solid #1976d2',
         backgroundColor: 'background.paper'
       }}>
-        <MapView skin={skin} />
+        <MapViewWithBackend skin={skin} />
       </Box>
       
-      {/* Additional Card Below Map */}
-      <Card sx={{ mt: 3, mb: 2 }}>
-        <CardContent>
-          <Typography variant="h6" component="h3" gutterBottom>
-            Wildlife Rescue Statistics
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            This area can be used for additional wildlife rescue data, statistics, or information cards.
-            The grey space at the bottom will be completely filled by this card.
-          </Typography>
-        </CardContent>
-      </Card>
-    </Box>
+        {/* Wildlife Rescue Statistics Component */}
+        <Box sx={{ mt: 3, mb: 2 }}>
+          <WildlifeRescueStatistics />
+        </Box>
+      </Box>
+    </MapNavigationProvider>
   );
 }
