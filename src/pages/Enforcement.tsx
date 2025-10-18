@@ -1,54 +1,63 @@
-import { Box, Typography, CssBaseline, Button } from "@mui/material";
-import AppTheme from "../shared-theme/AppTheme";
-import { supabase } from "../services/supabase"; // ✅ Supabase client
-import { useNavigate } from "react-router-dom";
 
-export default function Enforcement() {
-  const navigate = useNavigate();
+import type {} from '@mui/x-date-pickers/themeAugmentation';
+import type {} from '@mui/x-charts/themeAugmentation';
+import type {} from '@mui/x-data-grid-pro/themeAugmentation';
+import type {} from '@mui/x-tree-view/themeAugmentation';
+import { alpha } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import AppNavbar from '../components-enfo/AppNavbar';
+import Header from '../components-enfo/Header';
+import MainGrid from '../components-enfo/MainGrid';
+import SideMenu from '../components-enfo/SideMenu';
+import AppTheme from '../shared-theme/AppTheme';
+import {
+  chartsCustomizations,
+  dataGridCustomizations,
+  datePickersCustomizations,
+  treeViewCustomizations,
+} from '../theme/customizations';
 
-  const handleLogout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut(); // ✅ Supabase logout
-      if (error) throw error;
-      navigate("/login"); // Redirect to login page
-    } catch (err) {
-      if (err instanceof Error) {
-        console.error("Error logging out:", err.message);
-      } else {
-        console.error("Error logging out:", err);
-      }
-    }
-  };
+const xThemeComponents = {
+  ...chartsCustomizations,
+  ...dataGridCustomizations,
+  ...datePickersCustomizations,
+  ...treeViewCustomizations,
+};
 
+export default function Dashboard(props: { disableCustomTheme?: boolean }) {
   return (
-   <AppTheme disableBackground>
-  <CssBaseline />
-  <Box
-    sx={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      width: "100vw",
-      height: "100vh",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      textAlign: "center",
-    }}
-  >
-    <Box>
-      <Typography variant="h2" component="h1" gutterBottom>
-        Enforcement Dashboard - Test
-      </Typography>
-      <Typography variant="body1" gutterBottom>
-        Welcome to the enforcement dashboard. Add your components here.
-      </Typography>
-      <Button variant="contained" color="primary" onClick={handleLogout}>
-        Log Out
-      </Button>
-    </Box>
-  </Box>
-</AppTheme>
-
+    <AppTheme {...props} themeComponents={xThemeComponents} disableBackground={true}>
+      <CssBaseline enableColorScheme />
+      <Box sx={{ display: 'flex' }}>
+        <SideMenu />
+        <AppNavbar />
+        {/* Main content */}
+        <Box
+          component="main"
+          sx={(theme) => ({
+            flexGrow: 1,
+            backgroundColor: theme.vars
+              ? `rgba(${theme.vars.palette.background.defaultChannel} / 1)`
+              : alpha(theme.palette.background.default, 1),
+            overflow: 'auto',
+          })}
+        >
+          <Stack
+            spacing={2}
+            sx={{
+              alignItems: 'center',
+              mx: 3,
+              pb: 2,
+              mt: { xs: 8, md: 0 },
+            }}
+          >
+            <Header />
+            <MainGrid />
+          </Stack>
+        </Box>
+      </Box>
+    </AppTheme>
   );
 }
