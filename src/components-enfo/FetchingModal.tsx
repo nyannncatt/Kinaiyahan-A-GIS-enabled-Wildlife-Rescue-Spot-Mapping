@@ -29,6 +29,9 @@ export default function FetchingModal({
         sx: {
           borderRadius: 2,
           textAlign: 'center',
+          minHeight: 260,
+          display: 'flex',
+          flexDirection: 'column',
         },
       }}
     >
@@ -38,7 +41,7 @@ export default function FetchingModal({
         </Typography>
       </DialogTitle>
       
-      <DialogContent sx={{ pt: 1 }}>
+      <DialogContent sx={{ pt: 1, flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
           <CircularProgress size={40} />
           <Typography variant="body1" color="text.secondary">
