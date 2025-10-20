@@ -284,6 +284,15 @@ export default function WildlifeRescueStatistics() {
                 fontWeight: 600, 
                 color: 'text.primary', 
                 borderBottom: `1px solid ${theme.palette.divider}`,
+                py: 2,
+                width: 120
+              }}>
+                ID
+              </TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600, 
+                color: 'text.primary', 
+                borderBottom: `1px solid ${theme.palette.divider}`,
                 py: 2
               }}>
                 Species Name
@@ -348,6 +357,9 @@ export default function WildlifeRescueStatistics() {
                   borderBottom: `1px solid ${theme.palette.divider}`
                 }}
               >
+                <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2, fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                  {record.id}
+                </TableCell>
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
                   <Typography variant="body2" sx={{ fontWeight: 500, color: 'text.primary' }}>
                     {record.species_name}
