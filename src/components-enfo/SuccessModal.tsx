@@ -37,6 +37,9 @@ export default function SuccessModal({
         sx: {
           borderRadius: 2,
           textAlign: 'center',
+          minHeight: 260,
+          display: 'flex',
+          flexDirection: 'column',
         },
       }}
     >
@@ -49,7 +52,7 @@ export default function SuccessModal({
         </Box>
       </DialogTitle>
       
-      <DialogContent sx={{ pt: 1 }}>
+      <DialogContent sx={{ pt: 1, flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Typography variant="body1" color="text.secondary">
           {message}
         </Typography>
