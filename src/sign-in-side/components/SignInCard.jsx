@@ -1,5 +1,6 @@
 // src/sign-in-side/SignInCard.jsx
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../services/supabase";
 
 import Box from "@mui/material/Box";
@@ -49,6 +50,7 @@ export default function SignInCard() {
   const [loginError, setLoginError] = useState("");
   const [open, setOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
 
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -84,18 +86,7 @@ export default function SignInCard() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-                    redirectTo: "http://localhost:5173/report-sighting", // must match Supabase + Google
-
-      });
-      if (error) throw error;
-    } catch (err) {
-      alert(err?.message || "Google sign-in failed");
-    }
-  };
+  const goPublicReport = () => navigate('/public-report');
 
   return (
     <>
@@ -176,8 +167,8 @@ export default function SignInCard() {
 
         <Divider>or</Divider>
 
-        <Button fullWidth variant="outlined" startIcon={<GoogleColoredIcon />} onClick={handleGoogleSignIn}>
-          Report a Species – Sign in with Google
+        <Button fullWidth variant="outlined" onClick={goPublicReport}>
+          Report Sighting
         </Button>
       </Card>
 

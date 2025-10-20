@@ -98,6 +98,32 @@ export async function createWildlifeRecord(record: CreateWildlifeRecord): Promis
   return data;
 }
 
+// Create a wildlife record without requiring authentication (public report)
+// Public payload: same as CreateWildlifeRecord but without status (left null for enforcement verification)
+export type PublicWildlifeReport = Omit<CreateWildlifeRecord, 'status'> & { status?: never };
+
+export async function createWildlifeRecordPublic(record: PublicWildlifeReport): Promise<WildlifeRecord> {
+  // Set status to 'reported' for public reports (pending enforcement review)
+  const recordWithStatus = {
+    ...record,
+    status: 'reported' as const,
+    user_id: null
+  };
+  
+  const { data, error } = await supabase
+    .from('wildlife_records')
+    .insert([recordWithStatus])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating public wildlife record:', error);
+    throw error;
+  }
+
+  return data as WildlifeRecord;
+}
+
 // Update a wildlife record
 export async function updateWildlifeRecord(id: string, updates: UpdateWildlifeRecord): Promise<WildlifeRecord> {
   const { data, error } = await supabase
