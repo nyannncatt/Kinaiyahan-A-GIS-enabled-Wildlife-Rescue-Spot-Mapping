@@ -11,24 +11,65 @@ import CustomizedDataGrid from './CustomizedDataGrid';
 import HighlightedCard from './HighlightedCard';
 import PageViewsBarChart from './PageViewsBarChart';
 
-import MapView from './MapView';
+import MapViewWithBackend from './MapViewWithBackend';
+import WildlifeRescueStatistics from './WildlifeRescueStatistics';
+import { MapNavigationProvider } from '../context/MapNavigationContext';
 import Paper from '@mui/material/Paper';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import Button from '@mui/material/Button';
 import MapOutlinedIcon from '@mui/icons-material/MapOutlined';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import SatelliteAltOutlinedIcon from '@mui/icons-material/SatelliteAltOutlined';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import MapIcon from '@mui/icons-material/Map';
 
 export default function MainGrid() {
   // State to track selected map skin
   const [skin, setSkin] = useState<"streets" | "dark" | "satellite">("streets");
 
+  // Function to scroll to record list section
+  const scrollToRecordList = () => {
+    const recordListElement = document.querySelector('[data-record-list]');
+    if (recordListElement) {
+      recordListElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    } else {
+      // Fallback: scroll to bottom of page
+      window.scrollTo({ 
+        top: document.body.scrollHeight, 
+        behavior: 'smooth' 
+      });
+    }
+  };
+
+  // Function to scroll back to map section
+  const scrollToMap = () => {
+    const mapElement = document.querySelector('[data-map-container]');
+    if (mapElement) {
+      mapElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    } else {
+      // Fallback: scroll to top of page
+      window.scrollTo({ 
+        top: 0, 
+        behavior: 'smooth' 
+      });
+    }
+  };
+
   return (
-    <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
-      {/* Map Header */}
-      <Typography component="h2" variant="h6" sx={{ mb: 2, mt: 4 }}>
-        Wildlife Rescue Map
-      </Typography>
+    <MapNavigationProvider>
+      <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
+        {/* Map Header */}
+        <br></br>
+        <Typography component="h2" variant="h6" sx={{ mb: 2, mt: 4 }}>
+          Wildlife Rescue Map
+        </Typography>
 
       {/* Skin Switch (icon-only, no background) */}
       <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
@@ -85,30 +126,49 @@ export default function MainGrid() {
             <SatelliteAltOutlinedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
+
+        {/* View Record List Button */}
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<ListAltIcon />}
+          onClick={scrollToRecordList}
+          sx={{
+            ml: 2,
+            textTransform: 'none',
+            fontWeight: 500,
+            borderColor: 'primary.main',
+            color: 'primary.main',
+            '&:hover': {
+              backgroundColor: 'primary.main',
+              color: 'white',
+              borderColor: 'primary.main',
+            }
+          }}
+        >
+          View Record List
+        </Button>
+
       </Stack>
 
       {/* Map Container */}
-      <Box sx={{ 
-        height: 700, 
-        width: '100%',
-        border: '2px solid #1976d2',
-        backgroundColor: 'background.paper'
-      }}>
-        <MapView skin={skin} />
+      <Box 
+        data-map-container
+        sx={{ 
+          height: 700, 
+          width: '100%',
+          border: '2px solid #1976d2',
+          backgroundColor: 'background.paper'
+        }}
+      >
+        <MapViewWithBackend skin={skin} />
       </Box>
       
-      {/* Additional Card Below Map */}
-      <Card sx={{ mt: 3, mb: 2 }}>
-        <CardContent>
-          <Typography variant="h6" component="h3" gutterBottom>
-            Wildlife Rescue Statistics
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            This area can be used for additional wildlife rescue data, statistics, or information cards.
-            The grey space at the bottom will be completely filled by this card.
-          </Typography>
-        </CardContent>
-      </Card>
-    </Box>
+        {/* Wildlife Rescue Statistics Component */}
+        <Box data-record-list sx={{ mt: 3, mb: 2 }}>
+          <WildlifeRescueStatistics />
+        </Box>
+      </Box>
+    </MapNavigationProvider>
   );
 }

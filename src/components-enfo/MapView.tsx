@@ -658,9 +658,45 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
           border-color: var(--mui-palette-primary-main);
         }
 
-        /* Force confirm/save text to black in dark mode (enabled and disabled) */
-        [data-mui-color-scheme="dark"] .themed-popup .confirm-btn { color: #000 !important; }
-        [data-mui-color-scheme="dark"] .themed-popup .confirm-btn.Mui-disabled { color: #000 !important; }
+        /* Force Confirm and Save buttons to stay like light mode in dark mode */
+        [data-mui-color-scheme="dark"] .themed-popup .confirm-btn { 
+          background-color: var(--mui-palette-primary-main) !important; 
+          color: #000 !important; 
+        }
+        [data-mui-color-scheme="dark"] .themed-popup .confirm-btn:hover { 
+          background-color: var(--mui-palette-primary-dark) !important; 
+          color: #fff !important; 
+        }
+        [data-mui-color-scheme="dark"] .themed-popup .confirm-btn.Mui-disabled { 
+          background-color: var(--mui-palette-action-disabledBackground) !important; 
+          color: #000 !important; 
+        }
+        
+        /* Force Save button to stay like light mode in dark mode */
+        [data-mui-color-scheme="dark"] .themed-popup .MuiButton-containedPrimary { 
+          background-color: var(--mui-palette-primary-main) !important; 
+          color: #000 !important; 
+        }
+        [data-mui-color-scheme="dark"] .themed-popup .MuiButton-containedPrimary:hover { 
+          background-color: var(--mui-palette-primary-dark) !important; 
+          color: #fff !important; 
+        }
+        [data-mui-color-scheme="dark"] .themed-popup .MuiButton-containedPrimary.Mui-disabled { 
+          background-color: var(--mui-palette-action-disabledBackground) !important; 
+          color: #000 !important; 
+        }
+        
+        /* Style Cancel button in edit mode to match outlined design */
+        [data-mui-color-scheme="dark"] .themed-popup .MuiButton-outlinedPrimary { 
+          background-color: #000 !important; 
+          color: #fff !important; 
+          border-color: #000 !important;
+        }
+        [data-mui-color-scheme="dark"] .themed-popup .MuiButton-outlinedPrimary:hover { 
+          background-color: #000 !important; 
+          color: #fff !important; 
+          border-color: #000 !important;
+        }
 
         /* Prevent tall popup from overflowing viewport: cap content and scroll inside */
         .themed-popup .leaflet-popup-content {
@@ -832,43 +868,59 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                 </Box>
 
                 <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    size="small"
-                    sx={(theme) => ({
-                      bgcolor: theme.palette.primary.main,
-                      color: theme.palette.mode === 'light' ? '#fff' : '#000',
-                      '&:hover': { bgcolor: theme.palette.primary.dark },
-                      '&.Mui-disabled': {
-                        opacity: 1,
-                        bgcolor: theme.palette.action.disabledBackground,
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      size="small"
+                      sx={(theme) => ({
+                        bgcolor: theme.palette.primary.main,
                         color: theme.palette.mode === 'light' ? '#fff' : '#000',
-                      },
-                    })}
-                    className="confirm-btn"
-                    type="button"
-                    onClick={() => {
-                      const marker: UserMarker = {
-                        id: Date.now(),
-                        pos: pendingMarker.pos,
-                        title: pendingMarker.speciesName || "Custom Marker",
-                        speciesName: pendingMarker.speciesName || "",
-                        status: pendingMarker.status,
-                        timestampIso: pendingMarker.timestampIso,
-                        address: pendingMarker.address,
-                        photo: pendingMarker.photo || null,
-                        reporterName: pendingMarker.reporterName || "",
-                        contactNumber: pendingMarker.contactNumber || "",
-                      };
-                      setUserMarkers((prev) => [...prev, marker]);
-                      setPendingMarker(null);
-                      setIsAddingMarker(false);
-                    }}
-                    disabled={!pendingMarker.speciesName}
-                  >
-                    Confirm
-                  </Button>
+                        '&:hover': { bgcolor: theme.palette.primary.dark },
+                        '&.Mui-disabled': {
+                          opacity: 1,
+                          bgcolor: theme.palette.action.disabledBackground,
+                          color: theme.palette.mode === 'light' ? '#fff' : '#000',
+                        },
+                      })}
+                      className="confirm-btn"
+                      type="button"
+                      onClick={() => {
+                        // Check if all required fields are filled
+                        const requiredFields = [
+                          { value: pendingMarker.speciesName, name: "Species name" },
+                          { value: pendingMarker.status, name: "Status" },
+                          { value: pendingMarker.reporterName, name: "Name of who sighted" },
+                          { value: pendingMarker.contactNumber, name: "Contact number" }
+                        ];
+                        
+                        const emptyFields = requiredFields.filter(field => !field.value || field.value.trim() === "");
+                        
+                        if (emptyFields.length > 0) {
+                          const fieldNames = emptyFields.map(field => field.name).join(", ");
+                          alert(`Please fill in all fields: ${fieldNames}`);
+                          return;
+                        }
+                        
+                        const marker: UserMarker = {
+                          id: Date.now(),
+                          pos: pendingMarker.pos,
+                          title: pendingMarker.speciesName || "Custom Marker",
+                          speciesName: pendingMarker.speciesName || "",
+                          status: pendingMarker.status,
+                          timestampIso: pendingMarker.timestampIso,
+                          address: pendingMarker.address,
+                          photo: pendingMarker.photo || null,
+                          reporterName: pendingMarker.reporterName || "",
+                          contactNumber: pendingMarker.contactNumber || "",
+                        };
+                        setUserMarkers((prev) => [...prev, marker]);
+                        setPendingMarker(null);
+                        setIsAddingMarker(false);
+                      }}
+                      disabled={!pendingMarker.speciesName}
+                    >
+                      Confirm
+                    </Button>
                   <Button variant="outlined" color="primary" size="small" type="button" onClick={() => { setPendingMarker(null); setIsAddingMarker(false); }}>
                     Cancel
                   </Button>

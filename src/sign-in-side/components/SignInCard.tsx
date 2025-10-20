@@ -59,12 +59,21 @@ export default function SignInCard() {
         return;
       }
 
+      const go = (path: string) => {
+        try {
+          // Use hard navigation to avoid any SPA routing edge cases on Vercel
+          window.location.replace(`${window.location.origin}${path}`);
+        } catch {
+          navigate(path, { replace: true });
+        }
+      };
+
       if (userData?.role === "enforcement") {
-        navigate("/enforcement");
+        go("/enforcement");
       } else if (userData?.role === "cenro") {
-        navigate("/cenro");
+        go("/cenro");
       } else if (userData?.role === "admin") {
-        navigate("/admin");
+        go("/admin");
       } else {
         setLoginError("No role assigned. Please contact admin.");
       }
