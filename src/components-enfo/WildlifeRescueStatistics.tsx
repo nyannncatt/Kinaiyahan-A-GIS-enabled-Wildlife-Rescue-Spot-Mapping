@@ -31,29 +31,31 @@ import { useMapNavigation } from '../context/MapNavigationContext';
 
 export default function WildlifeRescueStatistics() {
   const theme = useTheme();
-  const { navigateToLocation } = useMapNavigation();
+  const { navigateToLocation, refreshRecordsVersion } = useMapNavigation();
   const [wildlifeRecords, setWildlifeRecords] = useState<WildlifeRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
 
-  // Load wildlife records
+  // Load wildlife records (initial + on refresh signal)
   useEffect(() => {
+    let isCancelled = false;
     const loadRecords = async () => {
       try {
         setLoading(true);
         const records = await getWildlifeRecords();
-        setWildlifeRecords(records);
+        if (!isCancelled) setWildlifeRecords(records);
       } catch (error) {
         console.error('Error loading wildlife records:', error);
       } finally {
-        setLoading(false);
+        if (!isCancelled) setLoading(false);
       }
     };
 
     loadRecords();
-  }, []);
+    return () => { isCancelled = true; };
+  }, [refreshRecordsVersion]);
 
   // Handle location click - navigate to map location and scroll to map
   const handleLocationClick = (record: WildlifeRecord) => {

@@ -4,6 +4,8 @@ interface MapNavigationContextType {
   navigateToLocation: (latitude: number, longitude: number, recordId?: string) => void;
   targetRecordId: string | null;
   clearTarget: () => void;
+  refreshRecordsVersion: number;
+  triggerRecordsRefresh: () => void;
 }
 
 const MapNavigationContext = createContext<MapNavigationContextType | undefined>(undefined);
@@ -22,6 +24,7 @@ interface MapNavigationProviderProps {
 
 export const MapNavigationProvider: React.FC<MapNavigationProviderProps> = ({ children }) => {
   const [targetRecordId, setTargetRecordId] = useState<string | null>(null);
+  const [refreshRecordsVersion, setRefreshRecordsVersion] = useState<number>(0);
 
   const navigateToLocation = (latitude: number, longitude: number, recordId?: string) => {
     if (recordId) {
@@ -34,11 +37,17 @@ export const MapNavigationProvider: React.FC<MapNavigationProviderProps> = ({ ch
     setTargetRecordId(null);
   };
 
+  const triggerRecordsRefresh = () => {
+    setRefreshRecordsVersion((v) => v + 1);
+  };
+
   return (
     <MapNavigationContext.Provider value={{
       navigateToLocation,
       targetRecordId,
-      clearTarget
+      clearTarget,
+      refreshRecordsVersion,
+      triggerRecordsRefresh
     }}>
       {children}
     </MapNavigationContext.Provider>
