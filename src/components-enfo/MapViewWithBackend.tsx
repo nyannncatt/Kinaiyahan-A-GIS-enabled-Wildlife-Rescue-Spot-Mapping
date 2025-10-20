@@ -246,18 +246,21 @@ interface PendingMarker {
 type AddressInfo = { barangay?: string; municipality?: string; displayName?: string };
   
   const tileUrls: Record<string, string> = {
+    // OSM standard (no key required)
     streets: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    dark: "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png",
-    satellite: "https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.png",
+    // CARTO Dark Matter (no key required; supports subdomains a,b,c,d)
+    dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+    // Esri World Imagery (satellite, no key required)
+    satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   };
 
   const attributions: Record<string, string> = {
     streets:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     dark:
-      '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+      'Map tiles by <a href="https://carto.com/attributions">CARTO</a>, &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
     satellite:
-      '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+      'Tiles &copy; Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
   };
 
 const statusColors: Record<string, string> = {
