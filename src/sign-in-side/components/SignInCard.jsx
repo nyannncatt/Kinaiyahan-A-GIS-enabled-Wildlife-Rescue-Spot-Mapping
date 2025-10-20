@@ -167,8 +167,8 @@ export default function SignInCard() {
 
         <Divider>or</Divider>
 
-        <Button fullWidth variant="outlined" onClick={goPublicReport}>
-          Report Sighting
+        <Button fullWidth variant="outlined" onClick={goPublicReport} aria-label="Report a wildlife sighting">
+          ⚠️ Report Sighting
         </Button>
       </Card>
 
