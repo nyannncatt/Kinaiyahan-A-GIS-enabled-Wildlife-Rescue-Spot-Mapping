@@ -285,6 +285,15 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [reloadKey, setReloadKey] = useState(0);
   const [visibilityBump, setVisibilityBump] = useState(0);
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
+  const [pendingWarning, setPendingWarning] = useState<string | null>(null);
+
+  const isPendingComplete = (pm: PendingMarker | null): boolean => {
+    if (!pm) return false;
+    const hasSpecies = Boolean(pm.speciesName && pm.speciesName.trim());
+    const hasReporter = Boolean(pm.reporterName && pm.reporterName.trim());
+    const hasContact = Boolean(pm.contactNumber && pm.contactNumber.trim());
+    return hasSpecies && hasReporter && hasContact;
+  };
 
   // Modal states
   const [successModal, setSuccessModal] = useState<{
@@ -335,6 +344,9 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const reopenRetryHandle = useRef<number | null>(null);
   const loadingTimeoutRef = useRef<number | null>(null);
   const isInitialLoad = useRef(true);
+  const pendingSpeciesRef = useRef<HTMLInputElement | null>(null);
+  const pendingReporterRef = useRef<HTMLInputElement | null>(null);
+  const pendingContactRef = useRef<HTMLInputElement | null>(null);
   let lastRecordsRefreshBlockUntil = 0;
 
   // Timeout wrapper for API calls
@@ -680,6 +692,15 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     if (!pendingMarker || !user) return;
 
     try {
+      // Validate required credentials before confirming
+      const speciesOk = Boolean(pendingMarker.speciesName && pendingMarker.speciesName.trim());
+      const reporterOk = Boolean(pendingMarker.reporterName && pendingMarker.reporterName.trim());
+      const contactOk = Boolean(pendingMarker.contactNumber && pendingMarker.contactNumber.trim());
+      if (!speciesOk || !reporterOk || !contactOk) {
+        setPendingWarning('Please provide Species, Reporter Name, and Contact number before confirming.');
+        return;
+      }
+
       // Upload photo to Supabase if it exists
       let photoUrl: string | undefined = undefined;
       if (pendingMarker.photo && pendingMarker.photo.startsWith('blob:')) {
@@ -710,6 +731,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       setWildlifeRecords(prev => [createdRecord, ...prev]);
       setPendingMarker(null);
       setIsAddingMarker(false);
+      setPendingWarning(null);
       try { triggerRecordsRefresh(); } catch {}
       
       // Show success modal
@@ -1144,6 +1166,11 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             <Popup className="themed-popup" autoPan autoPanPadding={[16,16]}>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 260 }}>
                 <strong>Add marker here</strong>
+                {pendingWarning && (
+                  <Alert severity="warning" sx={{ my: 0.5 }}>
+                    {pendingWarning}
+                  </Alert>
+                )}
                 <TextField
                   placeholder="Species name"
                   size="small"
@@ -1152,8 +1179,15 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   margin="dense"
                   value={pendingMarker.speciesName}
                   onChange={(e) =>
-                    setPendingMarker((p) => (p ? { ...p, speciesName: e.target.value } : p))
+                    setPendingMarker((p) => {
+                      const next = p ? { ...p, speciesName: e.target.value } : p;
+                      if (next && isPendingComplete(next)) setPendingWarning(null);
+                      return next as PendingMarker;
+                    })
                   }
+                  required
+                  error={Boolean(pendingWarning) && !(pendingMarker.speciesName || '').trim()}
+                  inputRef={(el) => { pendingSpeciesRef.current = el; }}
                 />
                 <Box sx={{ mt: 0.5, border: "1px solid", borderColor: "divider", borderRadius: 1, height: 128, overflow: "auto" }}>
                   {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
@@ -1212,7 +1246,14 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   fullWidth
                   margin="dense"
                   value={pendingMarker.reporterName || ""}
-                  onChange={(e) => setPendingMarker((p) => (p ? { ...p, reporterName: e.target.value } : p))}
+                  onChange={(e) => setPendingMarker((p) => {
+                    const next = p ? { ...p, reporterName: e.target.value } : p;
+                    if (next && isPendingComplete(next)) setPendingWarning(null);
+                    return next as PendingMarker;
+                  })}
+                  required
+                  error={Boolean(pendingWarning) && !(pendingMarker.reporterName || '').trim()}
+                  inputRef={(el) => { pendingReporterRef.current = el; }}
                 />
                 <TextField
                   placeholder="Contact number"
@@ -1221,7 +1262,14 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   fullWidth
                   margin="dense"
                   value={pendingMarker.contactNumber || ""}
-                  onChange={(e) => setPendingMarker((p) => (p ? { ...p, contactNumber: e.target.value } : p))}
+                  onChange={(e) => setPendingMarker((p) => {
+                    const next = p ? { ...p, contactNumber: e.target.value } : p;
+                    if (next && isPendingComplete(next)) setPendingWarning(null);
+                    return next as PendingMarker;
+                  })}
+                  required
+                  error={Boolean(pendingWarning) && !(pendingMarker.contactNumber || '').trim()}
+                  inputRef={(el) => { pendingContactRef.current = el; }}
                 />
 
                 {/* Upload photo */}
@@ -1274,8 +1322,22 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                       })}
                       className="confirm-btn"
                       type="button"
-                      onClick={handleAddMarker}
-                    disabled={!pendingMarker.speciesName}
+                      onClick={() => {
+                        if (!isPendingComplete(pendingMarker)) {
+                          setPendingWarning('Please provide Species, Reporter Name, and Contact number before confirming.');
+                          // Focus the first missing field for convenience
+                          const missing = [
+                            { ok: Boolean((pendingMarker?.speciesName || '').trim()), ref: pendingSpeciesRef },
+                            { ok: Boolean((pendingMarker?.reporterName || '').trim()), ref: pendingReporterRef },
+                            { ok: Boolean((pendingMarker?.contactNumber || '').trim()), ref: pendingContactRef },
+                          ];
+                          const firstMissing = missing.find((m) => !m.ok)?.ref?.current;
+                          try { firstMissing?.focus(); } catch {}
+                          return;
+                        }
+                        handleAddMarker();
+                      }}
+                    // Keep button enabled to allow warning popup UX, but gate in handler
                   >
                     Confirm
                   </Button>
