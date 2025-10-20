@@ -2,7 +2,7 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import Enforcement from "./pages/Enforcement";
 import Cenro from "./pages/Cenro";
-import ReportSighting from "./pages/ReportSighting";
+import PublicReport from "./pages/PublicReport";
 import SignIn from "./sign-in-side/SignInSide";
 import { CircularProgress, Box } from "@mui/material";
 import React, { ReactElement, useEffect } from "react";
@@ -47,7 +47,9 @@ function App() {
       <Route path="/login" element={<SignIn />} />
       <Route path="/enforcement" element={<RequireAuth><Enforcement /></RequireAuth>} />
       <Route path="/cenro" element={<RequireAuth><Cenro /></RequireAuth>} />
-      <Route path="/report-sighting" element={<RequireAuth><ReportSighting /></RequireAuth>} />
+      {/** removed legacy /report-sighting route */}
+      {/* Public report route (no auth) */}
+      <Route path="/public-report" element={<PublicReport />} />
       <Route path="/reset-password" element={isRecovery ? <SignIn /> : <Navigate to="/login" />} />
       <Route path="*" element={<Navigate to="/enforcement" />} />
     </Routes>
