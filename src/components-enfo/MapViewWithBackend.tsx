@@ -272,7 +272,7 @@ const statusColors: Record<string, string> = {
 
 export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const { user } = useAuth();
-  const { targetRecordId, clearTarget } = useMapNavigation();
+  const { targetRecordId, clearTarget, triggerRecordsRefresh } = useMapNavigation();
   const [wildlifeRecords, setWildlifeRecords] = useState<WildlifeRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -710,6 +710,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       setWildlifeRecords(prev => [createdRecord, ...prev]);
       setPendingMarker(null);
       setIsAddingMarker(false);
+      try { triggerRecordsRefresh(); } catch {}
       
       // Show success modal
       setSuccessModal({
@@ -744,6 +745,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         delete newDrafts[id];
         return newDrafts;
       });
+      try { triggerRecordsRefresh(); } catch {}
       
       // Show success modal
       setSuccessModal({
