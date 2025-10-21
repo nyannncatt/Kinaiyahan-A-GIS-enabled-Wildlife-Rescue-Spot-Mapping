@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Box, 
   Button, 
@@ -64,6 +65,7 @@ export default function PublicReport() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const navigate = useNavigate();
   
   const [barangay, setBarangay] = useState('');
   const [municipality, setMunicipality] = useState('');
@@ -132,6 +134,10 @@ export default function PublicReport() {
     setActiveStep(0);
     setError(null);
     setSuccess(null);
+  };
+
+  const handleExit = () => {
+    navigate('/login');
   };
 
   const isStepValid = (step: number) => {
@@ -679,19 +685,54 @@ export default function PublicReport() {
             }}
           >
             {/* Header */}
-            <Box sx={{ textAlign: 'center', mb: isMobile ? 3 : 4 }}>
-              <Avatar 
-                sx={{ 
-                  bgcolor: '#4caf50', 
-                  width: isMobile ? 56 : 80, 
-                  height: isMobile ? 56 : 80, 
-                  mx: 'auto', 
-                  mb: 2,
-                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
+            <Box sx={{ position: 'relative', mb: isMobile ? 3 : 4 }}>
+              {/* Cancel Button */}
+              <Button
+                onClick={handleExit}
+                variant="outlined"
+                size="small"
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  color: '#d32f2f',
+                  borderColor: '#d32f2f',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: 'scale(1)',
+                  '&:hover': {
+                    background: '#ffebee',
+                    borderColor: '#b71c1c',
+                    color: '#b71c1c',
+                    transform: 'scale(1.05)',
+                    boxShadow: '0 4px 12px rgba(211, 47, 47, 0.3)'
+                  },
+                  '&:active': {
+                    transform: 'scale(0.95)',
+                    transition: 'transform 0.1s ease'
+                  }
                 }}
               >
-                <Pets fontSize="large" />
-              </Avatar>
+                Cancel Form
+              </Button>
+
+              <Box sx={{ textAlign: 'center' }}>
+                <Avatar 
+                  sx={{ 
+                    bgcolor: '#4caf50', 
+                    width: isMobile ? 56 : 80, 
+                    height: isMobile ? 56 : 80, 
+                    mx: 'auto', 
+                    mb: 2,
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
+                  }}
+                >
+                  <Pets fontSize="large" />
+                </Avatar>
               <Typography 
                 variant={isMobile ? 'h4' : 'h3'} 
                 component="h1" 
@@ -724,6 +765,7 @@ export default function PublicReport() {
               >
                 Help protect wildlife by reporting sightings. Your report will be reviewed by enforcement officers.
               </Typography>
+              </Box>
             </Box>
 
             {/* Alerts */}
