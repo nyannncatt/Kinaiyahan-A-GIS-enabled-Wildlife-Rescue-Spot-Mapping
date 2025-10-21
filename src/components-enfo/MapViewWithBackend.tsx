@@ -860,6 +860,27 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
 
   // Debug: Add test markers if no real data - REMOVED TO PREVENT RANDOM PINS
   const testMarkers: any[] = []; // Disabled test markers
+  
+  // Add a test marker to verify coordinate system (temporary debugging)
+  const debugTestMarker = {
+    id: 'debug-test',
+    species_name: 'Test Marker',
+    status: 'reported' as const,
+    latitude: 8.371964645263802, // Manolo Fortich center
+    longitude: 124.85604137091526,
+    barangay: 'Test Barangay',
+    municipality: 'Manolo Fortich',
+    reporter_name: 'Debug User',
+    contact_number: '000-000-0000',
+    photo_url: undefined,
+    timestamp_captured: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    user_id: 'debug'
+  };
+  
+  // Uncomment the line below to enable debug test marker
+  // testMarkers.push(debugTestMarker);
 
   const allMarkers = [...wildlifeRecords, ...testMarkers];
   const finalFilteredMarkers = allMarkers.filter((m) => {
@@ -1441,13 +1462,16 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
               return L.divIcon({ html, className: "cluster-icon", iconSize: [32, 32] });
             }}
           >
-            {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId).map((m) => (
-            <Marker
-              key={m.id}
-              position={[m.latitude, m.longitude]}
-              icon={createStatusIcon(m.status)}
-              ref={(ref) => { markerRefs.current[m.id] = ref; }}
-            >
+            {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId).map((m) => {
+              console.log(`Marker ${m.id} coordinates:`, { lat: m.latitude, lng: m.longitude });
+              console.log(`Marker ${m.id} position array:`, [m.latitude, m.longitude]);
+              return (
+              <Marker
+                key={m.id}
+                position={[m.latitude, m.longitude]}
+                icon={createStatusIcon(m.status)}
+                ref={(ref) => { markerRefs.current[m.id] = ref; }}
+              >
               <Popup className="themed-popup">
                 {editingMarkerId === m.id ? (
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
@@ -1663,7 +1687,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                 )}
               </Popup>
             </Marker>
-          ))}
+            );
+            })}
         </MarkerClusterGroup>
         )}
       </MapContainer>
