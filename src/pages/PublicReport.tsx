@@ -50,14 +50,23 @@ import exifr from 'exifr';
 function extractLatLngFromExif(file: File): Promise<{ lat?: number; lng?: number } | null> {
   return new Promise(async (resolve) => {
     try {
+      console.log('Starting EXIF extraction for file:', file.name, file.size, 'bytes');
       const exifData = await exifr.parse(file, { gps: true });
+      console.log('Raw EXIF data:', exifData);
       
       if (exifData && exifData.latitude && exifData.longitude) {
+        console.log('GPS coordinates found:', { 
+          latitude: exifData.latitude, 
+          longitude: exifData.longitude,
+          latType: typeof exifData.latitude,
+          lngType: typeof exifData.longitude
+        });
         resolve({
           lat: exifData.latitude,
           lng: exifData.longitude
         });
       } else {
+        console.log('No GPS data found in EXIF');
         resolve(null);
       }
     } catch (error) {
@@ -303,6 +312,8 @@ export default function PublicReport() {
         lat = extractedCoords.lat;
         lng = extractedCoords.lng;
         console.log('Using extracted GPS coordinates:', { lat, lng });
+        console.log('Coordinate validation - lat:', typeof lat, 'lng:', typeof lng);
+        console.log('Coordinate values - lat:', lat, 'lng:', lng);
       }
 
       // Fallback to default location if no GPS data available
@@ -312,6 +323,8 @@ export default function PublicReport() {
         console.log('Using default coordinates (Manolo Fortich center):', { lat, lng });
       }
 
+      console.log('Submitting record with coordinates:', { lat, lng });
+      
       const created = await createWildlifeRecordPublic({
         species_name: speciesName.trim(),
         latitude: lat,
@@ -323,6 +336,9 @@ export default function PublicReport() {
         photo_url: undefined, // Public flow skips upload to keep simple
         timestamp_captured: todayIso,
       });
+      
+      console.log('Created record:', created);
+      console.log('Record coordinates:', { lat: created.latitude, lng: created.longitude });
 
       setShowSuccessModal(true);
     } catch (err) {
@@ -551,8 +567,14 @@ export default function PublicReport() {
                     }}
                   >
                     <Typography variant="body2">
-                      <strong>GPS Location Found!</strong> We've extracted coordinates from your photo: 
-                      {extractedCoords.lat.toFixed(6)}, {extractedCoords.lng.toFixed(6)}
+                      <strong>GPS Location Found!</strong> We've extracted coordinates from your photo:
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 1, fontFamily: 'monospace', bgcolor: 'rgba(0,0,0,0.05)', p: 1, borderRadius: 1 }}>
+                      <strong>Latitude:</strong> {extractedCoords.lat.toFixed(8)}<br/>
+                      <strong>Longitude:</strong> {extractedCoords.lng.toFixed(8)}
+                    </Typography>
+                    <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
+                      These coordinates will be used for the map marker location.
                     </Typography>
                   </Alert>
                 ) : (

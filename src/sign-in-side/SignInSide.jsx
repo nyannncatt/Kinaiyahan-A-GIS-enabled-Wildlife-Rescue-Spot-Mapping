@@ -3,6 +3,7 @@ import { Box, CssBaseline, Stack } from "@mui/material";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";   // ✅ add navigate
 import { useAuth } from "../context/AuthContext"; // ✅ hook into auth
+import { supabase } from "../services/supabase"; // ✅ add supabase
 import AppTheme from "../shared-theme/AppTheme";
 import ColorModeSelect from "../shared-theme/ColorModeSelect";
 import SignInCard from "./components/SignInCard";
@@ -15,7 +16,31 @@ export default function SignInSide(props) {
   // ✅ if user is logged in, redirect away from login page
   React.useEffect(() => {
     if (!loading && user) {
-      navigate("/enforcement", { replace: true });
+      // Get user role and redirect to appropriate page
+      const redirectUser = async () => {
+        try {
+          const { data: userData } = await supabase
+            .from("users")
+            .select("role")
+            .eq("id", user.id)
+            .single();
+
+          if (userData?.role === "enforcement") {
+            navigate("/enforcement", { replace: true });
+          } else if (userData?.role === "cenro") {
+            navigate("/cenro", { replace: true });
+          } else if (userData?.role === "admin") {
+            navigate("/admin", { replace: true });
+          } else {
+            navigate("/enforcement", { replace: true }); // Default fallback
+          }
+        } catch (error) {
+          console.error("Error getting user role:", error);
+          navigate("/enforcement", { replace: true }); // Default fallback
+        }
+      };
+
+      redirectUser();
     }
   }, [user, loading, navigate]);
 
