@@ -77,6 +77,7 @@ export default function PublicReport() {
   const [success, setSuccess] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState(0);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [stepTransition, setStepTransition] = useState(false);
 
   const todayIso = useMemo(() => new Date().toISOString(), []);
 
@@ -105,11 +106,19 @@ export default function PublicReport() {
   };
 
   const handleNext = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep + 1);
+    setStepTransition(true);
+    setTimeout(() => {
+      setActiveStep((prevActiveStep) => prevActiveStep + 1);
+      setStepTransition(false);
+    }, 150);
   };
 
   const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
+    setStepTransition(true);
+    setTimeout(() => {
+      setActiveStep((prevActiveStep) => prevActiveStep - 1);
+      setStepTransition(false);
+    }, 150);
   };
 
   const handleReset = () => {
@@ -780,11 +789,20 @@ export default function PublicReport() {
 
             {/* Step Content */}
             <Box component="form">
-              <Fade in timeout={500} key={activeStep}>
+              <Slide 
+                direction={stepTransition ? "left" : "right"} 
+                in={!stepTransition} 
+                timeout={300}
+                key={activeStep}
+              >
                 <Box>
-                  {renderStepContent(activeStep)}
+                  <Fade in timeout={400} key={`content-${activeStep}`}>
+                    <Box>
+                      {renderStepContent(activeStep)}
+                    </Box>
+                  </Fade>
                 </Box>
-              </Fade>
+              </Slide>
 
               {/* Navigation Buttons */}
               <Box 
@@ -810,15 +828,25 @@ export default function PublicReport() {
                      color: '#000000',
                      background: '#e8f5e8',
                      border: '2px solid #4caf50',
+                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                     transform: 'scale(1)',
                      '&:hover': {
                        background: '#c8e6c9',
                        borderColor: '#2e7d32',
-                       color: '#000000'
+                       color: '#000000',
+                       transform: 'scale(1.05)',
+                       boxShadow: '0 8px 25px rgba(76, 175, 80, 0.3)'
+                     },
+                     '&:active': {
+                       transform: 'scale(0.95)',
+                       transition: 'transform 0.1s ease'
                      },
                      '&:disabled': {
                        background: '#f5f5f5',
                        color: '#9e9e9e',
-                       borderColor: '#e0e0e0'
+                       borderColor: '#e0e0e0',
+                       transform: 'scale(1)',
+                       boxShadow: 'none'
                      }
                    }}
                 >
@@ -840,13 +868,38 @@ export default function PublicReport() {
                        py: 1.5,
                        color: '#ffffff',
                        background: 'linear-gradient(45deg, #2e7d32 30%, #4caf50 90%)',
+                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                       transform: 'scale(1)',
+                       position: 'relative',
+                       overflow: 'hidden',
                        '&:hover': {
                          background: 'linear-gradient(45deg, #1b5e20 30%, #388e3c 90%)',
-                         color: '#ffffff'
+                         color: '#ffffff',
+                         transform: 'scale(1.05)',
+                         boxShadow: '0 8px 25px rgba(46, 125, 50, 0.4)'
+                       },
+                       '&:active': {
+                         transform: 'scale(0.95)',
+                         transition: 'transform 0.1s ease'
                        },
                        '&:disabled': {
                          background: '#e0e0e0',
-                         color: '#9e9e9e'
+                         color: '#9e9e9e',
+                         transform: 'scale(1)',
+                         boxShadow: 'none'
+                       },
+                       '&::before': {
+                         content: '""',
+                         position: 'absolute',
+                         top: 0,
+                         left: '-100%',
+                         width: '100%',
+                         height: '100%',
+                         background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+                         transition: 'left 0.5s',
+                       },
+                       '&:hover::before': {
+                         left: '100%'
                        }
                      }}
                   >
@@ -867,15 +920,25 @@ export default function PublicReport() {
                        color: '#000000',
                        background: '#e8f5e8',
                        border: '2px solid #4caf50',
+                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                       transform: 'scale(1)',
                        '&:hover': {
                          background: '#c8e6c9',
                          borderColor: '#2e7d32',
-                         color: '#000000'
+                         color: '#000000',
+                         transform: 'scale(1.05)',
+                         boxShadow: '0 8px 25px rgba(76, 175, 80, 0.3)'
+                       },
+                       '&:active': {
+                         transform: 'scale(0.95)',
+                         transition: 'transform 0.1s ease'
                        },
                        '&:disabled': {
                          background: '#f5f5f5',
                          color: '#9e9e9e',
-                         borderColor: '#e0e0e0'
+                         borderColor: '#e0e0e0',
+                         transform: 'scale(1)',
+                         boxShadow: 'none'
                        }
                      }}
                   >
@@ -924,9 +987,13 @@ export default function PublicReport() {
         BackdropComponent={Backdrop}
         BackdropProps={{
           timeout: 500,
+          sx: {
+            background: 'rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(8px)',
+          }
         }}
       >
-        <Fade in={showSuccessModal}>
+        <Fade in={showSuccessModal} timeout={600}>
           <Box
             sx={{
               position: 'absolute',
@@ -936,9 +1003,25 @@ export default function PublicReport() {
               width: isMobile ? '90%' : 500,
               bgcolor: 'background.paper',
               borderRadius: 4,
-              boxShadow: 24,
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)',
               p: isMobile ? 3 : 4,
               outline: 'none',
+              border: '2px solid #4caf50',
+              animation: showSuccessModal ? 'modalBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)' : 'none',
+              '@keyframes modalBounce': {
+                '0%': {
+                  transform: 'translate(-50%, -50%) scale(0.3)',
+                  opacity: 0,
+                },
+                '50%': {
+                  transform: 'translate(-50%, -50%) scale(1.05)',
+                  opacity: 0.8,
+                },
+                '100%': {
+                  transform: 'translate(-50%, -50%) scale(1)',
+                  opacity: 1,
+                },
+              },
             }}
           >
             <Box sx={{ textAlign: 'center', mb: 3 }}>
@@ -1014,9 +1097,17 @@ export default function PublicReport() {
                   py: 1.5,
                   color: '#ffffff',
                   background: 'linear-gradient(45deg, #2e7d32 30%, #4caf50 90%)',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: 'scale(1)',
                   '&:hover': {
                     background: 'linear-gradient(45deg, #1b5e20 30%, #388e3c 90%)',
-                    color: '#ffffff'
+                    color: '#ffffff',
+                    transform: 'scale(1.05)',
+                    boxShadow: '0 8px 25px rgba(46, 125, 50, 0.4)'
+                  },
+                  '&:active': {
+                    transform: 'scale(0.95)',
+                    transition: 'transform 0.1s ease'
                   }
                 }}
               >
