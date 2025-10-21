@@ -40,22 +40,28 @@ import {
   Upload,
   Close,
   ArrowBack,
-  ArrowForward
+  ArrowForward,
+  CameraAlt,
+  Videocam
 } from '@mui/icons-material';
 import { createWildlifeRecordPublic } from '../services/wildlifeRecords';
+import exifr from 'exifr';
 
 function extractLatLngFromExif(file: File): Promise<{ lat?: number; lng?: number } | null> {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     try {
-      const reader = new FileReader();
-      reader.onload = () => {
-        // Lightweight placeholder: browsers don't expose EXIF easily without a lib.
-        // In real impl, use exifr or piexifjs. Here we just return null.
+      const exifData = await exifr.parse(file, { gps: true });
+      
+      if (exifData && exifData.latitude && exifData.longitude) {
+        resolve({
+          lat: exifData.latitude,
+          lng: exifData.longitude
+        });
+      } else {
         resolve(null);
-      };
-      reader.onerror = () => resolve(null);
-      reader.readAsArrayBuffer(file);
-    } catch {
+      }
+    } catch (error) {
+      console.log('EXIF extraction failed:', error);
       resolve(null);
     }
   });
@@ -80,6 +86,10 @@ export default function PublicReport() {
   const [activeStep, setActiveStep] = useState(0);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [stepTransition, setStepTransition] = useState(false);
+  const [extractedCoords, setExtractedCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
 
   const todayIso = useMemo(() => new Date().toISOString(), []);
 
@@ -95,15 +105,32 @@ export default function PublicReport() {
     'Review & Submit'
   ];
 
-  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setPhotoFile(file);
+      
+      // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {
         setPhotoPreview(e.target?.result as string);
       };
       reader.readAsDataURL(file);
+
+      // Extract EXIF GPS data
+      try {
+        const coords = await extractLatLngFromExif(file);
+        if (coords && coords.lat && coords.lng) {
+          setExtractedCoords({ lat: coords.lat, lng: coords.lng });
+          console.log('GPS coordinates extracted:', coords);
+        } else {
+          setExtractedCoords(null);
+          console.log('No GPS data found in photo');
+        }
+      } catch (error) {
+        console.error('Error extracting GPS data:', error);
+        setExtractedCoords(null);
+      }
     }
   };
 
@@ -131,6 +158,13 @@ export default function PublicReport() {
     setContactNumber('');
     setPhotoFile(null);
     setPhotoPreview(null);
+    setExtractedCoords(null);
+    setShowCamera(false);
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setLocationPermission(null);
     setActiveStep(0);
     setError(null);
     setSuccess(null);
@@ -140,16 +174,106 @@ export default function PublicReport() {
     navigate('/login');
   };
 
+  const requestLocationPermission = async () => {
+    try {
+      if ('geolocation' in navigator) {
+        const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+        if (permission.state === 'granted') {
+          setLocationPermission(true);
+          return true;
+        } else if (permission.state === 'prompt') {
+          // Request permission
+          return new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition(
+              () => {
+                setLocationPermission(true);
+                resolve(true);
+              },
+              () => {
+                setLocationPermission(false);
+                resolve(false);
+              }
+            );
+          });
+        } else {
+          setLocationPermission(false);
+          return false;
+        }
+      } else {
+        setLocationPermission(false);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error requesting location permission:', error);
+      setLocationPermission(false);
+      return false;
+    }
+  };
+
+  const startCamera = async () => {
+    try {
+      // Request location permission first
+      const hasLocationPermission = await requestLocationPermission();
+      
+      if (!hasLocationPermission) {
+        setError('Location permission is required for accurate GPS coordinates. Please enable location services and try again.');
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment', // Use back camera on mobile
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
+      });
+      
+      setCameraStream(stream);
+      setShowCamera(true);
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      setError('Unable to access camera. Please check permissions and try again.');
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setShowCamera(false);
+  };
+
+  const capturePhoto = () => {
+    const video = document.getElementById('camera-video') as HTMLVideoElement;
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    
+    if (video && context) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0);
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+          handlePhotoChange({ target: { files: [file] } } as any);
+          stopCamera();
+        }
+      }, 'image/jpeg', 0.8);
+    }
+  };
+
   const isStepValid = (step: number) => {
     switch (step) {
       case 0:
         return speciesName.trim() !== '';
       case 1:
-        return barangay.trim() !== '' || photoFile !== null;
+        return barangay.trim() !== '' || photoFile !== null || extractedCoords !== null;
       case 2:
         return true; // Contact info is optional
       case 3:
-        return speciesName.trim() !== '' && (barangay.trim() !== '' || photoFile !== null);
+        return speciesName.trim() !== '' && (barangay.trim() !== '' || photoFile !== null || extractedCoords !== null);
       default:
         return false;
     }
@@ -164,7 +288,7 @@ export default function PublicReport() {
       setError('Please provide species name.');
       return;
     }
-    if (!photoFile && !barangay.trim()) {
+    if (!photoFile && !barangay.trim() && !extractedCoords) {
       setError('Provide a photo (to extract location) or at least a barangay.');
       return;
     }
@@ -173,19 +297,19 @@ export default function PublicReport() {
     try {
       let lat: number | undefined;
       let lng: number | undefined;
-      if (photoFile) {
-        const exif = await extractLatLngFromExif(photoFile);
-        if (exif?.lat && exif?.lng) {
-          lat = exif.lat;
-          lng = exif.lng;
-        }
+      
+      // Use extracted coordinates if available
+      if (extractedCoords) {
+        lat = extractedCoords.lat;
+        lng = extractedCoords.lng;
+        console.log('Using extracted GPS coordinates:', { lat, lng });
       }
 
-      // Fallback randomization within municipality bounds is app-specific; here, if no lat/lng
-      // we set a safe default near Manolo Fortich center
+      // Fallback to default location if no GPS data available
       if (lat == null || lng == null) {
-        lat = 8.371964645263802;
+        lat = 8.371964645263802; // Manolo Fortich center
         lng = 124.85604137091526;
+        console.log('Using default coordinates (Manolo Fortich center):', { lat, lng });
       }
 
       const created = await createWildlifeRecordPublic({
@@ -271,28 +395,46 @@ export default function PublicReport() {
                     type="file"
                     onChange={handlePhotoChange}
                   />
-                  <label htmlFor="photo-upload">
+                  
+                  <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mb: 2 }}>
+                    <label htmlFor="photo-upload">
+                      <IconButton 
+                        color="primary" 
+                        component="span" 
+                        size={isMobile ? "medium" : "large"}
+                        sx={{ 
+                          '&:hover': {
+                            transform: 'scale(1.1)',
+                            transition: 'transform 0.2s ease'
+                          }
+                        }}
+                      >
+                        <PhotoCamera fontSize={isMobile ? "medium" : "large"} />
+                      </IconButton>
+                    </label>
+                    
                     <IconButton 
                       color="primary" 
-                      component="span" 
+                      onClick={startCamera}
                       size={isMobile ? "medium" : "large"}
                       sx={{ 
-                        mb: 1,
                         '&:hover': {
                           transform: 'scale(1.1)',
                           transition: 'transform 0.2s ease'
                         }
                       }}
                     >
-                      <PhotoCamera fontSize={isMobile ? "medium" : "large"} />
+                      <CameraAlt fontSize={isMobile ? "medium" : "large"} />
                     </IconButton>
-                  </label>
+                  </Box>
+                  
                   <Typography variant={isMobile ? "subtitle1" : "h6"} gutterBottom>
-                    {photoFile ? 'Photo Selected' : 'Upload Wildlife Photo'}
+                    {photoFile ? 'Photo Selected' : 'Upload or Take Photo'}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    {photoFile ? photoFile.name : 'Click to select a photo (optional but recommended)'}
+                    {photoFile ? photoFile.name : 'Choose from gallery or take a new photo with GPS location'}
                   </Typography>
+                  
                   {photoPreview && (
                     <Box sx={{ mt: 2 }}>
                       <img 
@@ -397,21 +539,39 @@ export default function PublicReport() {
                 </Box>
               </Box>
               <Box>
-                <Alert 
-                  severity="info" 
-                  sx={{ 
-                    mt: 2,
-                    borderRadius: 2,
-                    '& .MuiAlert-message': {
-                      width: '100%'
-                    }
-                  }}
-                >
-                  <Typography variant="body2">
-                    <strong>Location Help:</strong> If you uploaded a photo with GPS data, we'll use that location. 
-                    Otherwise, please provide at least the barangay name.
-                  </Typography>
-                </Alert>
+                {extractedCoords ? (
+                  <Alert 
+                    severity="success" 
+                    sx={{ 
+                      mt: 2,
+                      borderRadius: 2,
+                      '& .MuiAlert-message': {
+                        width: '100%'
+                      }
+                    }}
+                  >
+                    <Typography variant="body2">
+                      <strong>GPS Location Found!</strong> We've extracted coordinates from your photo: 
+                      {extractedCoords.lat.toFixed(6)}, {extractedCoords.lng.toFixed(6)}
+                    </Typography>
+                  </Alert>
+                ) : (
+                  <Alert 
+                    severity="info" 
+                    sx={{ 
+                      mt: 2,
+                      borderRadius: 2,
+                      '& .MuiAlert-message': {
+                        width: '100%'
+                      }
+                    }}
+                  >
+                    <Typography variant="body2">
+                      <strong>Location Help:</strong> If you uploaded a photo with GPS data, we'll use that location. 
+                      Otherwise, please provide at least the barangay name.
+                    </Typography>
+                  </Alert>
+                )}
               </Box>
             </Box>
           </Box>
@@ -1155,6 +1315,121 @@ export default function PublicReport() {
               >
                 Submit Another Report
               </Button>
+            </Box>
+          </Box>
+        </Fade>
+      </Modal>
+
+      {/* Camera Modal */}
+      <Modal
+        open={showCamera}
+        onClose={stopCamera}
+        closeAfterTransition
+        BackdropComponent={Backdrop}
+        BackdropProps={{
+          timeout: 500,
+          sx: {
+            background: 'rgba(0, 0, 0, 0.9)',
+            backdropFilter: 'blur(8px)',
+          }
+        }}
+      >
+        <Fade in={showCamera} timeout={300}>
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: isMobile ? '95%' : 600,
+              height: isMobile ? '70%' : 500,
+              bgcolor: 'black',
+              borderRadius: 2,
+              overflow: 'hidden',
+              outline: 'none',
+            }}
+          >
+            <Box sx={{ position: 'relative', height: '100%' }}>
+              <video
+                id="camera-video"
+                autoPlay
+                playsInline
+                muted
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+                ref={(video) => {
+                  if (video && cameraStream) {
+                    video.srcObject = cameraStream;
+                  }
+                }}
+              />
+              
+              {/* Camera Controls */}
+              <Box
+                sx={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
+                  p: 3,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: 2
+                }}
+              >
+                <Button
+                  onClick={stopCamera}
+                  variant="outlined"
+                  sx={{
+                    color: 'white',
+                    borderColor: 'white',
+                    '&:hover': {
+                      borderColor: '#ffebee',
+                      background: 'rgba(255,255,255,0.1)'
+                    }
+                  }}
+                >
+                  Cancel
+                </Button>
+                
+                <Button
+                  onClick={capturePhoto}
+                  variant="contained"
+                  sx={{
+                    background: '#4caf50',
+                    '&:hover': {
+                      background: '#388e3c'
+                    },
+                    minWidth: 120
+                  }}
+                >
+                  Capture
+                </Button>
+              </Box>
+              
+              {/* Location Permission Status */}
+              {locationPermission !== null && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 16,
+                    left: 16,
+                    right: 16,
+                    background: locationPermission ? 'rgba(76, 175, 80, 0.9)' : 'rgba(244, 67, 54, 0.9)',
+                    color: 'white',
+                    p: 1,
+                    borderRadius: 1,
+                    textAlign: 'center',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  {locationPermission ? '✓ Location enabled' : '⚠ Location disabled - GPS data may not be accurate'}
+                </Box>
+              )}
             </Box>
           </Box>
         </Fade>
