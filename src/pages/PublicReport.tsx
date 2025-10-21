@@ -99,6 +99,7 @@ export default function PublicReport() {
   const [showCamera, setShowCamera] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   const todayIso = useMemo(() => new Date().toISOString(), []);
 
@@ -168,6 +169,7 @@ export default function PublicReport() {
     setPhotoFile(null);
     setPhotoPreview(null);
     setExtractedCoords(null);
+    setCurrentLocation(null);
     setShowCamera(false);
     if (cameraStream) {
       cameraStream.getTracks().forEach(track => track.stop());
@@ -188,19 +190,56 @@ export default function PublicReport() {
       if ('geolocation' in navigator) {
         const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
         if (permission.state === 'granted') {
+          // Get current location since permission is already granted
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const coords = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+              };
+              console.log('Location already granted, coordinates:', {
+                ...coords,
+                accuracy: position.coords.accuracy
+              });
+              setCurrentLocation(coords);
+            },
+            (error) => {
+              console.log('Could not get current location despite permission:', error);
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 30000
+            }
+          );
           setLocationPermission(true);
           return true;
         } else if (permission.state === 'prompt') {
-          // Request permission
+          // Request permission and get actual coordinates
           return new Promise((resolve) => {
             navigator.geolocation.getCurrentPosition(
-              () => {
+              (position) => {
+                const coords = {
+                  lat: position.coords.latitude,
+                  lng: position.coords.longitude
+                };
+                console.log('Location permission granted, coordinates:', {
+                  ...coords,
+                  accuracy: position.coords.accuracy
+                });
+                setCurrentLocation(coords);
                 setLocationPermission(true);
                 resolve(true);
               },
-              () => {
+              (error) => {
+                console.log('Location permission denied:', error);
                 setLocationPermission(false);
                 resolve(false);
+              },
+              {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 30000
               }
             );
           });
@@ -253,7 +292,7 @@ export default function PublicReport() {
     setShowCamera(false);
   };
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     const video = document.getElementById('camera-video') as HTMLVideoElement;
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
@@ -263,10 +302,55 @@ export default function PublicReport() {
       canvas.height = video.videoHeight;
       context.drawImage(video, 0, 0);
       
-      canvas.toBlob((blob) => {
+      // Use stored current location or get fresh GPS location for the captured photo
+      let photoLocation: { lat: number; lng: number } | null = currentLocation;
+      
+      // If we don't have a stored location, try to get a fresh one
+      if (!photoLocation) {
+        try {
+          if (navigator.geolocation) {
+            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 60000
+              });
+            });
+            
+            photoLocation = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            };
+            
+            console.log('Fresh GPS location captured:', photoLocation);
+          }
+        } catch (error) {
+          console.log('Could not get fresh GPS location:', error);
+        }
+      } else {
+        console.log('Using stored GPS location for captured photo:', photoLocation);
+      }
+      
+      canvas.toBlob(async (blob) => {
         if (blob) {
           const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
-          handlePhotoChange({ target: { files: [file] } } as any);
+          
+          // Set the extracted coordinates if we got GPS location
+          if (photoLocation) {
+            setExtractedCoords(photoLocation);
+            console.log('Using GPS location for captured photo:', photoLocation);
+          }
+          
+          // Set the photo file and create preview
+          setPhotoFile(file);
+          
+          // Create preview
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setPhotoPreview(e.target?.result as string);
+          };
+          reader.readAsDataURL(file);
+          
           stopCamera();
         }
       }, 'image/jpeg', 0.8);
@@ -450,6 +534,17 @@ export default function PublicReport() {
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     {photoFile ? photoFile.name : 'Choose from gallery or take a new photo with GPS location'}
                   </Typography>
+                  
+                  {currentLocation && (
+                    <Alert severity="info" sx={{ mt: 1, mb: 2, borderRadius: 2 }}>
+                      <Typography variant="body2">
+                        <strong>GPS Ready!</strong> Your current location is available for camera capture.
+                      </Typography>
+                      <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontFamily: 'monospace' }}>
+                        Lat: {currentLocation.lat.toFixed(6)}, Lng: {currentLocation.lng.toFixed(6)}
+                      </Typography>
+                    </Alert>
+                  )}
                   
                   {photoPreview && (
                     <Box sx={{ mt: 2 }}>
