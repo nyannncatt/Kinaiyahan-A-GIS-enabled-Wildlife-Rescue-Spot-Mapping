@@ -25,7 +25,9 @@ import {
   useTheme,
   useMediaQuery,
   Fade,
-  Slide
+  Slide,
+  Modal,
+  Backdrop
 } from '@mui/material';
 import {
   PhotoCamera,
@@ -74,6 +76,7 @@ export default function PublicReport() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState(0);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const todayIso = useMemo(() => new Date().toISOString(), []);
 
@@ -182,7 +185,7 @@ export default function PublicReport() {
         timestamp_captured: todayIso,
       });
 
-      setSuccess('Report submitted successfully! It will appear as pending for enforcement review.');
+      setShowSuccessModal(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit report');
     } finally {
@@ -627,22 +630,6 @@ export default function PublicReport() {
                 </Box>
               </Box>
             </Paper>
-
-            <Alert 
-              severity="success" 
-              sx={{ 
-                mb: 2,
-                borderRadius: 2,
-                '& .MuiAlert-message': {
-                  width: '100%'
-                }
-              }}
-            >
-              <Typography variant="body2">
-                Your report will be submitted as <strong>"Reported"</strong> status and will appear on the map 
-                for enforcement officers to review and update.
-              </Typography>
-            </Alert>
           </Box>
         );
 
@@ -751,25 +738,6 @@ export default function PublicReport() {
               </Box>
             </Slide>
             
-            <Slide direction="down" in={!!success} timeout={300}>
-              <Box>
-                {success && (
-                  <Alert 
-                    severity="success" 
-                    sx={{ 
-                      mb: 3,
-                      borderRadius: 2,
-                      '& .MuiAlert-message': {
-                        width: '100%'
-                      }
-                    }} 
-                    onClose={() => setSuccess(null)}
-                  >
-                    {success}
-                  </Alert>
-                )}
-              </Box>
-            </Slide>
 
             {/* Stepper */}
             <Box sx={{ mb: isMobile ? 3 : 4 }}>
@@ -811,7 +779,7 @@ export default function PublicReport() {
             </Box>
 
             {/* Step Content */}
-            <Box component="form" onSubmit={handleSubmit}>
+            <Box component="form">
               <Fade in timeout={500} key={activeStep}>
                 <Box>
                   {renderStepContent(activeStep)}
@@ -859,9 +827,10 @@ export default function PublicReport() {
                 
                 {activeStep === steps.length - 1 ? (
                   <Button
-                    type="submit"
+                    type="button"
                     variant="contained"
                     disabled={submitting || !isStepValid(activeStep)}
+                    onClick={handleSubmit}
                     startIcon={submitting ? null : <CheckCircle />}
                      sx={{ 
                        minWidth: isSmallMobile ? '100%' : 140,
@@ -946,6 +915,117 @@ export default function PublicReport() {
           </Paper>
         </Fade>
       </Container>
+
+      {/* Success Modal */}
+      <Modal
+        open={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        closeAfterTransition
+        BackdropComponent={Backdrop}
+        BackdropProps={{
+          timeout: 500,
+        }}
+      >
+        <Fade in={showSuccessModal}>
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: isMobile ? '90%' : 500,
+              bgcolor: 'background.paper',
+              borderRadius: 4,
+              boxShadow: 24,
+              p: isMobile ? 3 : 4,
+              outline: 'none',
+            }}
+          >
+            <Box sx={{ textAlign: 'center', mb: 3 }}>
+              <Avatar 
+                sx={{ 
+                  bgcolor: '#4caf50', 
+                  width: isMobile ? 64 : 80, 
+                  height: isMobile ? 64 : 80, 
+                  mx: 'auto', 
+                  mb: 2,
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
+                }}
+              >
+                <CheckCircle fontSize="large" />
+              </Avatar>
+              <Typography 
+                variant={isMobile ? 'h5' : 'h4'} 
+                component="h2" 
+                gutterBottom 
+                sx={{ 
+                  fontWeight: 'bold',
+                  color: '#2e7d32'
+                }}
+              >
+                Report Submitted Successfully!
+              </Typography>
+            </Box>
+
+            <Box sx={{ mb: 3 }}>
+              <Alert 
+                severity="success" 
+                sx={{ 
+                  mb: 2,
+                  borderRadius: 2,
+                  '& .MuiAlert-message': {
+                    width: '100%'
+                  }
+                }}
+              >
+                <Typography variant="body2">
+                  <strong>Report submitted successfully!</strong> It will appear as pending for enforcement review.
+                </Typography>
+              </Alert>
+              
+              <Alert 
+                severity="info" 
+                sx={{ 
+                  borderRadius: 2,
+                  '& .MuiAlert-message': {
+                    width: '100%'
+                  }
+                }}
+              >
+                <Typography variant="body2">
+                  Your report will be submitted as <strong>"Reported"</strong> status and will appear on the map 
+                  for enforcement officers to review and update.
+                </Typography>
+              </Alert>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              <Button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  handleReset();
+                }}
+                variant="contained"
+                sx={{ 
+                  minWidth: 120,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  py: 1.5,
+                  color: '#ffffff',
+                  background: 'linear-gradient(45deg, #2e7d32 30%, #4caf50 90%)',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #1b5e20 30%, #388e3c 90%)',
+                    color: '#ffffff'
+                  }
+                }}
+              >
+                Submit Another Report
+              </Button>
+            </Box>
+          </Box>
+        </Fade>
+      </Modal>
     </Box>
   );
 }
