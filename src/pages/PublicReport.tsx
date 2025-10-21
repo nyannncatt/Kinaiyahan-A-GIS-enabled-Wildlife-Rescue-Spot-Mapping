@@ -21,7 +21,11 @@ import {
   StepLabel,
   StepContent,
   Avatar,
-  Stack
+  Stack,
+  useTheme,
+  useMediaQuery,
+  Fade,
+  Slide
 } from '@mui/material';
 import {
   PhotoCamera,
@@ -31,7 +35,9 @@ import {
   Pets,
   CheckCircle,
   Upload,
-  Close
+  Close,
+  ArrowBack,
+  ArrowForward
 } from '@mui/icons-material';
 import { createWildlifeRecordPublic } from '../services/wildlifeRecords';
 
@@ -53,6 +59,10 @@ function extractLatLngFromExif(file: File): Promise<{ lat?: number; lng?: number
 }
 
 export default function PublicReport() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
   const [barangay, setBarangay] = useState('');
   const [municipality, setMunicipality] = useState('');
   const [speciesName, setSpeciesName] = useState('');
@@ -67,7 +77,12 @@ export default function PublicReport() {
 
   const todayIso = useMemo(() => new Date().toISOString(), []);
 
-  const steps = [
+  const steps = isMobile ? [
+    'Wildlife',
+    'Location', 
+    'Contact',
+    'Review'
+  ] : [
     'Wildlife Information',
     'Location Details', 
     'Contact Information',
@@ -180,7 +195,7 @@ export default function PublicReport() {
       case 0:
         return (
           <Box sx={{ mt: 2 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 2 : 3 }}>
               <Box>
                 <FormControl fullWidth variant="outlined">
                   <InputLabel htmlFor="species-name">Species Name *</InputLabel>
@@ -195,6 +210,12 @@ export default function PublicReport() {
                     }
                     label="Species Name *"
                     required
+                    sx={{
+                      borderRadius: 2,
+                      '& .MuiOutlinedInput-root': {
+                        fontSize: isMobile ? '0.875rem' : '1rem'
+                      }
+                    }}
                   />
                 </FormControl>
               </Box>
@@ -202,11 +223,17 @@ export default function PublicReport() {
                 <Paper 
                   variant="outlined" 
                   sx={{ 
-                    p: 3, 
+                    p: isMobile ? 2 : 3, 
                     textAlign: 'center',
                     border: '2px dashed',
                     borderColor: photoFile ? 'success.main' : 'grey.300',
-                    bgcolor: photoFile ? 'success.50' : 'grey.50'
+                    bgcolor: photoFile ? 'success.50' : 'grey.50',
+                    borderRadius: 3,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      borderColor: photoFile ? 'success.dark' : 'primary.main',
+                      bgcolor: photoFile ? 'success.100' : 'primary.50'
+                    }
                   }}
                 >
                   <input
@@ -217,14 +244,25 @@ export default function PublicReport() {
                     onChange={handlePhotoChange}
                   />
                   <label htmlFor="photo-upload">
-                    <IconButton color="primary" component="span" size="large">
-                      <PhotoCamera fontSize="large" />
+                    <IconButton 
+                      color="primary" 
+                      component="span" 
+                      size={isMobile ? "medium" : "large"}
+                      sx={{ 
+                        mb: 1,
+                        '&:hover': {
+                          transform: 'scale(1.1)',
+                          transition: 'transform 0.2s ease'
+                        }
+                      }}
+                    >
+                      <PhotoCamera fontSize={isMobile ? "medium" : "large"} />
                     </IconButton>
                   </label>
-                  <Typography variant="h6" gutterBottom>
+                  <Typography variant={isMobile ? "subtitle1" : "h6"} gutterBottom>
                     {photoFile ? 'Photo Selected' : 'Upload Wildlife Photo'}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     {photoFile ? photoFile.name : 'Click to select a photo (optional but recommended)'}
                   </Typography>
                   {photoPreview && (
@@ -234,9 +272,10 @@ export default function PublicReport() {
                         alt="Preview" 
                         style={{ 
                           maxWidth: '100%', 
-                          maxHeight: 200, 
-                          borderRadius: 8,
-                          objectFit: 'cover'
+                          maxHeight: isMobile ? 150 : 200, 
+                          borderRadius: 12,
+                          objectFit: 'cover',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
                         }} 
                       />
                     </Box>
@@ -250,9 +289,17 @@ export default function PublicReport() {
       case 1:
         return (
           <Box sx={{ mt: 2 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                <Box sx={{ flex: 1, minWidth: 200 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 2 : 3 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 2, 
+                flexWrap: 'wrap',
+                flexDirection: isSmallMobile ? 'column' : 'row'
+              }}>
+                <Box sx={{ 
+                  flex: 1, 
+                  minWidth: isSmallMobile ? '100%' : 200 
+                }}>
                   <FormControl fullWidth variant="outlined">
                     <InputLabel htmlFor="barangay">Barangay *</InputLabel>
                     <OutlinedInput
@@ -266,10 +313,19 @@ export default function PublicReport() {
                       }
                       label="Barangay *"
                       required
+                      sx={{
+                        borderRadius: 2,
+                        '& .MuiOutlinedInput-root': {
+                          fontSize: isMobile ? '0.875rem' : '1rem'
+                        }
+                      }}
                     />
                   </FormControl>
                 </Box>
-                <Box sx={{ flex: 1, minWidth: 200 }}>
+                <Box sx={{ 
+                  flex: 1, 
+                  minWidth: isSmallMobile ? '100%' : 200 
+                }}>
                   <FormControl fullWidth variant="outlined">
                     <InputLabel htmlFor="municipality">Municipality</InputLabel>
                     <OutlinedInput
@@ -282,12 +338,27 @@ export default function PublicReport() {
                         </InputAdornment>
                       }
                       label="Municipality"
+                      sx={{
+                        borderRadius: 2,
+                        '& .MuiOutlinedInput-root': {
+                          fontSize: isMobile ? '0.875rem' : '1rem'
+                        }
+                      }}
                     />
                   </FormControl>
                 </Box>
               </Box>
               <Box>
-                <Alert severity="info" sx={{ mt: 2 }}>
+                <Alert 
+                  severity="info" 
+                  sx={{ 
+                    mt: 2,
+                    borderRadius: 2,
+                    '& .MuiAlert-message': {
+                      width: '100%'
+                    }
+                  }}
+                >
                   <Typography variant="body2">
                     <strong>Location Help:</strong> If you uploaded a photo with GPS data, we'll use that location. 
                     Otherwise, please provide at least the barangay name.
@@ -301,9 +372,17 @@ export default function PublicReport() {
       case 2:
         return (
           <Box sx={{ mt: 2 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                <Box sx={{ flex: 1, minWidth: 200 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 2 : 3 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 2, 
+                flexWrap: 'wrap',
+                flexDirection: isSmallMobile ? 'column' : 'row'
+              }}>
+                <Box sx={{ 
+                  flex: 1, 
+                  minWidth: isSmallMobile ? '100%' : 200 
+                }}>
                   <FormControl fullWidth variant="outlined">
                     <InputLabel htmlFor="reporter-name">Your Name</InputLabel>
                     <OutlinedInput
@@ -316,10 +395,19 @@ export default function PublicReport() {
                         </InputAdornment>
                       }
                       label="Your Name"
+                      sx={{
+                        borderRadius: 2,
+                        '& .MuiOutlinedInput-root': {
+                          fontSize: isMobile ? '0.875rem' : '1rem'
+                        }
+                      }}
                     />
                   </FormControl>
                 </Box>
-                <Box sx={{ flex: 1, minWidth: 200 }}>
+                <Box sx={{ 
+                  flex: 1, 
+                  minWidth: isSmallMobile ? '100%' : 200 
+                }}>
                   <FormControl fullWidth variant="outlined">
                     <InputLabel htmlFor="contact-number">Contact Number</InputLabel>
                     <OutlinedInput
@@ -332,12 +420,26 @@ export default function PublicReport() {
                         </InputAdornment>
                       }
                       label="Contact Number"
+                      sx={{
+                        borderRadius: 2,
+                        '& .MuiOutlinedInput-root': {
+                          fontSize: isMobile ? '0.875rem' : '1rem'
+                        }
+                      }}
                     />
                   </FormControl>
                 </Box>
               </Box>
               <Box>
-                <Alert severity="info">
+                <Alert 
+                  severity="info"
+                  sx={{ 
+                    borderRadius: 2,
+                    '& .MuiAlert-message': {
+                      width: '100%'
+                    }
+                  }}
+                >
                   <Typography variant="body2">
                     Contact information is optional but helps enforcement officers follow up if needed.
                   </Typography>
@@ -350,52 +452,142 @@ export default function PublicReport() {
       case 3:
         return (
           <Box sx={{ mt: 2 }}>
-            <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom color="primary">
+            <Paper 
+              variant="outlined" 
+              sx={{ 
+                p: isMobile ? 2 : 3, 
+                mb: 3,
+                borderRadius: 3,
+                border: '2px solid',
+                borderColor: 'primary.100',
+                bgcolor: 'primary.50'
+              }}
+            >
+              <Typography 
+                variant={isMobile ? "subtitle1" : "h6"} 
+                gutterBottom 
+                color="primary"
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  fontWeight: 600
+                }}
+              >
                 <CheckCircle sx={{ mr: 1, verticalAlign: 'middle' }} />
                 Review Your Report
               </Typography>
               <Divider sx={{ my: 2 }} />
               
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                  <Box sx={{ flex: 1, minWidth: 200 }}>
-                    <Typography variant="subtitle2" color="text.secondary">Species</Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 1.5 : 2 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: 2, 
+                  flexWrap: 'wrap',
+                  flexDirection: isSmallMobile ? 'column' : 'row'
+                }}>
+                  <Box sx={{ 
+                    flex: 1, 
+                    minWidth: isSmallMobile ? '100%' : 200 
+                  }}>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                      Species
+                    </Typography>
+                    <Typography 
+                      variant="body1" 
+                      sx={{ 
+                        fontWeight: 'medium',
+                        fontSize: isMobile ? '0.875rem' : '1rem'
+                      }}
+                    >
                       {speciesName || 'Not provided'}
                     </Typography>
                   </Box>
-                  <Box sx={{ flex: 1, minWidth: 200 }}>
-                    <Typography variant="subtitle2" color="text.secondary">Location</Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                  <Box sx={{ 
+                    flex: 1, 
+                    minWidth: isSmallMobile ? '100%' : 200 
+                  }}>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                      Location
+                    </Typography>
+                    <Typography 
+                      variant="body1" 
+                      sx={{ 
+                        fontWeight: 'medium',
+                        fontSize: isMobile ? '0.875rem' : '1rem'
+                      }}
+                    >
                       {barangay && municipality ? `${barangay}, ${municipality}` : barangay || 'Not provided'}
                     </Typography>
                   </Box>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                  <Box sx={{ flex: 1, minWidth: 200 }}>
-                    <Typography variant="subtitle2" color="text.secondary">Reporter</Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: 2, 
+                  flexWrap: 'wrap',
+                  flexDirection: isSmallMobile ? 'column' : 'row'
+                }}>
+                  <Box sx={{ 
+                    flex: 1, 
+                    minWidth: isSmallMobile ? '100%' : 200 
+                  }}>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                      Reporter
+                    </Typography>
+                    <Typography 
+                      variant="body1" 
+                      sx={{ 
+                        fontWeight: 'medium',
+                        fontSize: isMobile ? '0.875rem' : '1rem'
+                      }}
+                    >
                       {reporterName || 'Anonymous'}
                     </Typography>
                   </Box>
-                  <Box sx={{ flex: 1, minWidth: 200 }}>
-                    <Typography variant="subtitle2" color="text.secondary">Contact</Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                  <Box sx={{ 
+                    flex: 1, 
+                    minWidth: isSmallMobile ? '100%' : 200 
+                  }}>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                      Contact
+                    </Typography>
+                    <Typography 
+                      variant="body1" 
+                      sx={{ 
+                        fontWeight: 'medium',
+                        fontSize: isMobile ? '0.875rem' : '1rem'
+                      }}
+                    >
                       {contactNumber || 'Not provided'}
                     </Typography>
                   </Box>
                 </Box>
                 <Box>
-                  <Typography variant="subtitle2" color="text.secondary">Photo</Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                    Photo
+                  </Typography>
+                  <Typography 
+                    variant="body1" 
+                    sx={{ 
+                      fontWeight: 'medium',
+                      fontSize: isMobile ? '0.875rem' : '1rem'
+                    }}
+                  >
                     {photoFile ? photoFile.name : 'No photo uploaded'}
                   </Typography>
                 </Box>
               </Box>
             </Paper>
 
-            <Alert severity="success" sx={{ mb: 2 }}>
+            <Alert 
+              severity="success" 
+              sx={{ 
+                mb: 2,
+                borderRadius: 2,
+                '& .MuiAlert-message': {
+                  width: '100%'
+                }
+              }}
+            >
               <Typography variant="body2">
                 Your report will be submitted as <strong>"Reported"</strong> status and will appear on the map 
                 for enforcement officers to review and update.
@@ -410,101 +602,256 @@ export default function PublicReport() {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        {/* Header */}
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Avatar sx={{ bgcolor: 'primary.main', width: 64, height: 64, mx: 'auto', mb: 2 }}>
-            <Pets fontSize="large" />
-          </Avatar>
-          <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-            Wildlife Report
-          </Typography>
-          <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
-            Report Wildlife Sightings or Rescues
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Help protect wildlife by reporting sightings. Your report will be reviewed by enforcement officers.
-          </Typography>
-        </Box>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        py: isMobile ? 2 : 4,
+        px: isMobile ? 1 : 2,
+      }}
+    >
+      <Container 
+        maxWidth="md" 
+        sx={{ 
+          width: '100%',
+          maxWidth: isMobile ? '100%' : 'md'
+        }}
+      >
+        <Fade in timeout={800}>
+          <Paper 
+            elevation={24} 
+            sx={{ 
+              p: isMobile ? 3 : 4,
+              borderRadius: 4,
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            }}
+          >
+            {/* Header */}
+            <Box sx={{ textAlign: 'center', mb: isMobile ? 3 : 4 }}>
+              <Avatar 
+                sx={{ 
+                  bgcolor: 'primary.main', 
+                  width: isMobile ? 56 : 80, 
+                  height: isMobile ? 56 : 80, 
+                  mx: 'auto', 
+                  mb: 2,
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
+                }}
+              >
+                <Pets fontSize="large" />
+              </Avatar>
+              <Typography 
+                variant={isMobile ? 'h4' : 'h3'} 
+                component="h1" 
+                gutterBottom 
+                sx={{ 
+                  fontWeight: 'bold',
+                  background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                Wildlife Report
+              </Typography>
+              <Typography 
+                variant={isMobile ? 'body1' : 'h6'} 
+                color="text.secondary" 
+                sx={{ mb: 2 }}
+              >
+                Report Wildlife Sightings or Rescues
+              </Typography>
+              <Typography 
+                variant="body2" 
+                color="text.secondary"
+                sx={{ 
+                  maxWidth: 600, 
+                  mx: 'auto',
+                  lineHeight: 1.6
+                }}
+              >
+                Help protect wildlife by reporting sightings. Your report will be reviewed by enforcement officers.
+              </Typography>
+            </Box>
 
-        {/* Alerts */}
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        )}
-        {success && (
-          <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess(null)}>
-            {success}
-          </Alert>
-        )}
-
-        {/* Stepper */}
-        <Stepper activeStep={activeStep} orientation="horizontal" sx={{ mb: 4 }}>
-          {steps.map((label, index) => (
-            <Step key={label}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
-
-        {/* Step Content */}
-        <Box component="form" onSubmit={handleSubmit}>
-          {renderStepContent(activeStep)}
-
-          {/* Navigation Buttons */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-            <Button
-              disabled={activeStep === 0}
-              onClick={handleBack}
-              variant="outlined"
-              startIcon={<Close />}
-            >
-              Back
-            </Button>
+            {/* Alerts */}
+            <Slide direction="down" in={!!error} timeout={300}>
+              <Box>
+                {error && (
+                  <Alert 
+                    severity="error" 
+                    sx={{ 
+                      mb: 3,
+                      borderRadius: 2,
+                      '& .MuiAlert-message': {
+                        width: '100%'
+                      }
+                    }} 
+                    onClose={() => setError(null)}
+                  >
+                    {error}
+                  </Alert>
+                )}
+              </Box>
+            </Slide>
             
-            {activeStep === steps.length - 1 ? (
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={submitting || !isStepValid(activeStep)}
-                startIcon={submitting ? null : <CheckCircle />}
-                sx={{ minWidth: 120 }}
-              >
-                {submitting ? 'Submitting...' : 'Submit Report'}
-              </Button>
-            ) : (
-              <Button
-                variant="contained"
-                onClick={handleNext}
-                disabled={!isStepValid(activeStep)}
-                sx={{ minWidth: 120 }}
-              >
-                Next
-              </Button>
-            )}
-          </Box>
-        </Box>
+            <Slide direction="down" in={!!success} timeout={300}>
+              <Box>
+                {success && (
+                  <Alert 
+                    severity="success" 
+                    sx={{ 
+                      mb: 3,
+                      borderRadius: 2,
+                      '& .MuiAlert-message': {
+                        width: '100%'
+                      }
+                    }} 
+                    onClose={() => setSuccess(null)}
+                  >
+                    {success}
+                  </Alert>
+                )}
+              </Box>
+            </Slide>
 
-        {/* Progress Indicator */}
-        <Box sx={{ mt: 4, textAlign: 'center' }}>
-          <Typography variant="body2" color="text.secondary">
-            Step {activeStep + 1} of {steps.length}
-          </Typography>
-          <Box sx={{ width: '100%', bgcolor: 'grey.200', borderRadius: 1, height: 8, mt: 1 }}>
-            <Box 
-              sx={{ 
-                bgcolor: 'primary.main', 
-                height: '100%', 
-                borderRadius: 1,
-                width: `${((activeStep + 1) / steps.length) * 100}%`,
-                transition: 'width 0.3s ease'
-              }} 
-            />
-          </Box>
-        </Box>
-      </Paper>
-    </Container>
+            {/* Stepper */}
+            <Box sx={{ mb: isMobile ? 3 : 4 }}>
+              <Stepper 
+                activeStep={activeStep} 
+                orientation={isMobile ? "vertical" : "horizontal"}
+                sx={{ 
+                  '& .MuiStepLabel-root': {
+                    padding: isMobile ? '8px 0' : '8px 16px'
+                  },
+                  '& .MuiStepLabel-label': {
+                    fontSize: isMobile ? '0.75rem' : '0.875rem',
+                    fontWeight: 500
+                  }
+                }}
+              >
+                {steps.map((label, index) => (
+                  <Step key={label}>
+                    <StepLabel>{label}</StepLabel>
+                  </Step>
+                ))}
+              </Stepper>
+            </Box>
+
+            {/* Step Content */}
+            <Box component="form" onSubmit={handleSubmit}>
+              <Fade in timeout={500} key={activeStep}>
+                <Box>
+                  {renderStepContent(activeStep)}
+                </Box>
+              </Fade>
+
+              {/* Navigation Buttons */}
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  mt: isMobile ? 3 : 4,
+                  gap: 2,
+                  flexDirection: isSmallMobile ? 'column' : 'row'
+                }}
+              >
+                <Button
+                  disabled={activeStep === 0}
+                  onClick={handleBack}
+                  variant="outlined"
+                  startIcon={<ArrowBack />}
+                  sx={{
+                    minWidth: isSmallMobile ? '100%' : 120,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    py: 1.5
+                  }}
+                >
+                  Back
+                </Button>
+                
+                {activeStep === steps.length - 1 ? (
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    disabled={submitting || !isStepValid(activeStep)}
+                    startIcon={submitting ? null : <CheckCircle />}
+                    sx={{ 
+                      minWidth: isSmallMobile ? '100%' : 140,
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      py: 1.5,
+                      background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
+                      '&:hover': {
+                        background: 'linear-gradient(45deg, #5a6fd8 30%, #6a4190 90%)',
+                      }
+                    }}
+                  >
+                    {submitting ? 'Submitting...' : 'Submit Report'}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="contained"
+                    onClick={handleNext}
+                    disabled={!isStepValid(activeStep)}
+                    startIcon={<ArrowForward />}
+                    sx={{ 
+                      minWidth: isSmallMobile ? '100%' : 120,
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      py: 1.5,
+                      background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
+                      '&:hover': {
+                        background: 'linear-gradient(45deg, #5a6fd8 30%, #6a4190 90%)',
+                      }
+                    }}
+                  >
+                    Next
+                  </Button>
+                )}
+              </Box>
+            </Box>
+
+            {/* Progress Indicator */}
+            <Box sx={{ mt: isMobile ? 3 : 4, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Step {activeStep + 1} of {steps.length}
+              </Typography>
+              <Box 
+                sx={{ 
+                  width: '100%', 
+                  bgcolor: 'grey.200', 
+                  borderRadius: 2, 
+                  height: 8, 
+                  overflow: 'hidden',
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
+                }}
+              >
+                <Box 
+                  sx={{ 
+                    background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
+                    height: '100%', 
+                    borderRadius: 2,
+                    width: `${((activeStep + 1) / steps.length) * 100}%`,
+                    transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
+                  }} 
+                />
+              </Box>
+            </Box>
+          </Paper>
+        </Fade>
+      </Container>
+    </Box>
   );
 }
