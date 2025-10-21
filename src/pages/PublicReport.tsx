@@ -199,24 +199,34 @@ export default function PublicReport() {
               <Box>
                 <FormControl fullWidth variant="outlined">
                   <InputLabel htmlFor="species-name">Species Name *</InputLabel>
-                  <OutlinedInput
-                    id="species-name"
-                    value={speciesName}
-                    onChange={(e) => setSpeciesName(e.target.value)}
-                    startAdornment={
-                      <InputAdornment position="start">
-                        <Pets color="action" />
-                      </InputAdornment>
-                    }
-                    label="Species Name *"
-                    required
-                    sx={{
-                      borderRadius: 2,
-                      '& .MuiOutlinedInput-root': {
-                        fontSize: isMobile ? '0.875rem' : '1rem'
-                      }
-                    }}
-                  />
+                   <OutlinedInput
+                     id="species-name"
+                     value={speciesName}
+                     onChange={(e) => setSpeciesName(e.target.value)}
+                     startAdornment={
+                       <InputAdornment position="start">
+                         <Pets color="action" />
+                       </InputAdornment>
+                     }
+                     label="Species Name *"
+                     required
+                     sx={{
+                       borderRadius: 2,
+                       '& .MuiOutlinedInput-root': {
+                         fontSize: isMobile ? '0.875rem' : '1rem',
+                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                           borderColor: '#4caf50',
+                           borderWidth: 2
+                         },
+                         '&:hover .MuiOutlinedInput-notchedOutline': {
+                           borderColor: '#66bb6a'
+                         }
+                       },
+                       '& .MuiInputLabel-root.Mui-focused': {
+                         color: '#2e7d32'
+                       }
+                     }}
+                   />
                 </FormControl>
               </Box>
               <Box>
@@ -231,8 +241,8 @@ export default function PublicReport() {
                     borderRadius: 3,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      borderColor: photoFile ? 'success.dark' : 'primary.main',
-                      bgcolor: photoFile ? 'success.100' : 'primary.50'
+                      borderColor: photoFile ? 'success.dark' : '#4caf50',
+                      bgcolor: photoFile ? 'success.100' : '#e8f5e8'
                     }
                   }}
                 >
@@ -302,24 +312,34 @@ export default function PublicReport() {
                 }}>
                   <FormControl fullWidth variant="outlined">
                     <InputLabel htmlFor="barangay">Barangay *</InputLabel>
-                    <OutlinedInput
-                      id="barangay"
-                      value={barangay}
-                      onChange={(e) => setBarangay(e.target.value)}
-                      startAdornment={
-                        <InputAdornment position="start">
-                          <LocationOn color="action" />
-                        </InputAdornment>
-                      }
-                      label="Barangay *"
-                      required
-                      sx={{
-                        borderRadius: 2,
-                        '& .MuiOutlinedInput-root': {
-                          fontSize: isMobile ? '0.875rem' : '1rem'
-                        }
-                      }}
-                    />
+                     <OutlinedInput
+                       id="barangay"
+                       value={barangay}
+                       onChange={(e) => setBarangay(e.target.value)}
+                       startAdornment={
+                         <InputAdornment position="start">
+                           <LocationOn color="action" />
+                         </InputAdornment>
+                       }
+                       label="Barangay *"
+                       required
+                       sx={{
+                         borderRadius: 2,
+                         '& .MuiOutlinedInput-root': {
+                           fontSize: isMobile ? '0.875rem' : '1rem',
+                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                             borderColor: '#4caf50',
+                             borderWidth: 2
+                           },
+                           '&:hover .MuiOutlinedInput-notchedOutline': {
+                             borderColor: '#66bb6a'
+                           }
+                         },
+                         '& .MuiInputLabel-root.Mui-focused': {
+                           color: '#2e7d32'
+                         }
+                       }}
+                     />
                   </FormControl>
                 </Box>
                 <Box sx={{ 
@@ -328,23 +348,33 @@ export default function PublicReport() {
                 }}>
                   <FormControl fullWidth variant="outlined">
                     <InputLabel htmlFor="municipality">Municipality</InputLabel>
-                    <OutlinedInput
-                      id="municipality"
-                      value={municipality}
-                      onChange={(e) => setMunicipality(e.target.value)}
-                      startAdornment={
-                        <InputAdornment position="start">
-                          <LocationOn color="action" />
-                        </InputAdornment>
-                      }
-                      label="Municipality"
-                      sx={{
-                        borderRadius: 2,
-                        '& .MuiOutlinedInput-root': {
-                          fontSize: isMobile ? '0.875rem' : '1rem'
-                        }
-                      }}
-                    />
+                     <OutlinedInput
+                       id="municipality"
+                       value={municipality}
+                       onChange={(e) => setMunicipality(e.target.value)}
+                       startAdornment={
+                         <InputAdornment position="start">
+                           <LocationOn color="action" />
+                         </InputAdornment>
+                       }
+                       label="Municipality"
+                       sx={{
+                         borderRadius: 2,
+                         '& .MuiOutlinedInput-root': {
+                           fontSize: isMobile ? '0.875rem' : '1rem',
+                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                             borderColor: '#4caf50',
+                             borderWidth: 2
+                           },
+                           '&:hover .MuiOutlinedInput-notchedOutline': {
+                             borderColor: '#66bb6a'
+                           }
+                         },
+                         '& .MuiInputLabel-root.Mui-focused': {
+                           color: '#2e7d32'
+                         }
+                       }}
+                     />
                   </FormControl>
                 </Box>
               </Box>
@@ -385,23 +415,33 @@ export default function PublicReport() {
                 }}>
                   <FormControl fullWidth variant="outlined">
                     <InputLabel htmlFor="reporter-name">Your Name</InputLabel>
-                    <OutlinedInput
-                      id="reporter-name"
-                      value={reporterName}
-                      onChange={(e) => setReporterName(e.target.value)}
-                      startAdornment={
-                        <InputAdornment position="start">
-                          <Person color="action" />
-                        </InputAdornment>
-                      }
-                      label="Your Name"
-                      sx={{
-                        borderRadius: 2,
-                        '& .MuiOutlinedInput-root': {
-                          fontSize: isMobile ? '0.875rem' : '1rem'
-                        }
-                      }}
-                    />
+                     <OutlinedInput
+                       id="reporter-name"
+                       value={reporterName}
+                       onChange={(e) => setReporterName(e.target.value)}
+                       startAdornment={
+                         <InputAdornment position="start">
+                           <Person color="action" />
+                         </InputAdornment>
+                       }
+                       label="Your Name"
+                       sx={{
+                         borderRadius: 2,
+                         '& .MuiOutlinedInput-root': {
+                           fontSize: isMobile ? '0.875rem' : '1rem',
+                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                             borderColor: '#4caf50',
+                             borderWidth: 2
+                           },
+                           '&:hover .MuiOutlinedInput-notchedOutline': {
+                             borderColor: '#66bb6a'
+                           }
+                         },
+                         '& .MuiInputLabel-root.Mui-focused': {
+                           color: '#2e7d32'
+                         }
+                       }}
+                     />
                   </FormControl>
                 </Box>
                 <Box sx={{ 
@@ -410,23 +450,33 @@ export default function PublicReport() {
                 }}>
                   <FormControl fullWidth variant="outlined">
                     <InputLabel htmlFor="contact-number">Contact Number</InputLabel>
-                    <OutlinedInput
-                      id="contact-number"
-                      value={contactNumber}
-                      onChange={(e) => setContactNumber(e.target.value)}
-                      startAdornment={
-                        <InputAdornment position="start">
-                          <Phone color="action" />
-                        </InputAdornment>
-                      }
-                      label="Contact Number"
-                      sx={{
-                        borderRadius: 2,
-                        '& .MuiOutlinedInput-root': {
-                          fontSize: isMobile ? '0.875rem' : '1rem'
-                        }
-                      }}
-                    />
+                     <OutlinedInput
+                       id="contact-number"
+                       value={contactNumber}
+                       onChange={(e) => setContactNumber(e.target.value)}
+                       startAdornment={
+                         <InputAdornment position="start">
+                           <Phone color="action" />
+                         </InputAdornment>
+                       }
+                       label="Contact Number"
+                       sx={{
+                         borderRadius: 2,
+                         '& .MuiOutlinedInput-root': {
+                           fontSize: isMobile ? '0.875rem' : '1rem',
+                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                             borderColor: '#4caf50',
+                             borderWidth: 2
+                           },
+                           '&:hover .MuiOutlinedInput-notchedOutline': {
+                             borderColor: '#66bb6a'
+                           }
+                         },
+                         '& .MuiInputLabel-root.Mui-focused': {
+                           color: '#2e7d32'
+                         }
+                       }}
+                     />
                   </FormControl>
                 </Box>
               </Box>
@@ -459,14 +509,14 @@ export default function PublicReport() {
                 mb: 3,
                 borderRadius: 3,
                 border: '2px solid',
-                borderColor: 'primary.100',
-                bgcolor: 'primary.50'
+                borderColor: '#c8e6c9',
+                bgcolor: '#e8f5e8'
               }}
             >
               <Typography 
                 variant={isMobile ? "subtitle1" : "h6"} 
                 gutterBottom 
-                color="primary"
+                color="#2e7d32"
                 sx={{ 
                   display: 'flex', 
                   alignItems: 'center',
@@ -605,7 +655,7 @@ export default function PublicReport() {
     <Box
       sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -636,7 +686,7 @@ export default function PublicReport() {
             <Box sx={{ textAlign: 'center', mb: isMobile ? 3 : 4 }}>
               <Avatar 
                 sx={{ 
-                  bgcolor: 'primary.main', 
+                  bgcolor: '#4caf50', 
                   width: isMobile ? 56 : 80, 
                   height: isMobile ? 56 : 80, 
                   mx: 'auto', 
@@ -652,7 +702,7 @@ export default function PublicReport() {
                 gutterBottom 
                 sx={{ 
                   fontWeight: 'bold',
-                  background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
+                  background: 'linear-gradient(45deg, #2e7d32 30%, #4caf50 90%)',
                   backgroundClip: 'text',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
@@ -726,15 +776,31 @@ export default function PublicReport() {
               <Stepper 
                 activeStep={activeStep} 
                 orientation={isMobile ? "vertical" : "horizontal"}
-                sx={{ 
-                  '& .MuiStepLabel-root': {
-                    padding: isMobile ? '8px 0' : '8px 16px'
-                  },
-                  '& .MuiStepLabel-label': {
-                    fontSize: isMobile ? '0.75rem' : '0.875rem',
-                    fontWeight: 500
-                  }
-                }}
+                 sx={{ 
+                   '& .MuiStepLabel-root': {
+                     padding: isMobile ? '8px 0' : '8px 16px'
+                   },
+                   '& .MuiStepLabel-label': {
+                     fontSize: isMobile ? '0.75rem' : '0.875rem',
+                     fontWeight: 500
+                   },
+                   '& .MuiStepIcon-root': {
+                     color: '#c8e6c9',
+                     '&.Mui-active': {
+                       color: '#4caf50'
+                     },
+                     '&.Mui-completed': {
+                       color: '#2e7d32'
+                     }
+                   },
+                   '& .MuiStepLabel-label.Mui-active': {
+                     color: '#2e7d32',
+                     fontWeight: 600
+                   },
+                   '& .MuiStepLabel-label.Mui-completed': {
+                     color: '#2e7d32'
+                   }
+                 }}
               >
                 {steps.map((label, index) => (
                   <Step key={label}>
@@ -767,13 +833,26 @@ export default function PublicReport() {
                   onClick={handleBack}
                   variant="outlined"
                   startIcon={<ArrowBack />}
-                  sx={{
-                    minWidth: isSmallMobile ? '100%' : 120,
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    py: 1.5
-                  }}
+                   sx={{
+                     minWidth: isSmallMobile ? '100%' : 120,
+                     borderRadius: 2,
+                     textTransform: 'none',
+                     fontWeight: 600,
+                     py: 1.5,
+                     color: '#000000',
+                     background: '#e8f5e8',
+                     border: '2px solid #4caf50',
+                     '&:hover': {
+                       background: '#c8e6c9',
+                       borderColor: '#2e7d32',
+                       color: '#000000'
+                     },
+                     '&:disabled': {
+                       background: '#f5f5f5',
+                       color: '#9e9e9e',
+                       borderColor: '#e0e0e0'
+                     }
+                   }}
                 >
                   Back
                 </Button>
@@ -784,17 +863,23 @@ export default function PublicReport() {
                     variant="contained"
                     disabled={submitting || !isStepValid(activeStep)}
                     startIcon={submitting ? null : <CheckCircle />}
-                    sx={{ 
-                      minWidth: isSmallMobile ? '100%' : 140,
-                      borderRadius: 2,
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      py: 1.5,
-                      background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
-                      '&:hover': {
-                        background: 'linear-gradient(45deg, #5a6fd8 30%, #6a4190 90%)',
-                      }
-                    }}
+                     sx={{ 
+                       minWidth: isSmallMobile ? '100%' : 140,
+                       borderRadius: 2,
+                       textTransform: 'none',
+                       fontWeight: 600,
+                       py: 1.5,
+                       color: '#ffffff',
+                       background: 'linear-gradient(45deg, #2e7d32 30%, #4caf50 90%)',
+                       '&:hover': {
+                         background: 'linear-gradient(45deg, #1b5e20 30%, #388e3c 90%)',
+                         color: '#ffffff'
+                       },
+                       '&:disabled': {
+                         background: '#e0e0e0',
+                         color: '#9e9e9e'
+                       }
+                     }}
                   >
                     {submitting ? 'Submitting...' : 'Submit Report'}
                   </Button>
@@ -804,17 +889,26 @@ export default function PublicReport() {
                     onClick={handleNext}
                     disabled={!isStepValid(activeStep)}
                     startIcon={<ArrowForward />}
-                    sx={{ 
-                      minWidth: isSmallMobile ? '100%' : 120,
-                      borderRadius: 2,
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      py: 1.5,
-                      background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
-                      '&:hover': {
-                        background: 'linear-gradient(45deg, #5a6fd8 30%, #6a4190 90%)',
-                      }
-                    }}
+                     sx={{ 
+                       minWidth: isSmallMobile ? '100%' : 120,
+                       borderRadius: 2,
+                       textTransform: 'none',
+                       fontWeight: 600,
+                       py: 1.5,
+                       color: '#000000',
+                       background: '#e8f5e8',
+                       border: '2px solid #4caf50',
+                       '&:hover': {
+                         background: '#c8e6c9',
+                         borderColor: '#2e7d32',
+                         color: '#000000'
+                       },
+                       '&:disabled': {
+                         background: '#f5f5f5',
+                         color: '#9e9e9e',
+                         borderColor: '#e0e0e0'
+                       }
+                     }}
                   >
                     Next
                   </Button>
@@ -839,12 +933,12 @@ export default function PublicReport() {
               >
                 <Box 
                   sx={{ 
-                    background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
+                    background: 'linear-gradient(45deg, #2e7d32 30%, #4caf50 90%)',
                     height: '100%', 
                     borderRadius: 2,
                     width: `${((activeStep + 1) / steps.length) * 100}%`,
                     transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
+                    boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)'
                   }} 
                 />
               </Box>
