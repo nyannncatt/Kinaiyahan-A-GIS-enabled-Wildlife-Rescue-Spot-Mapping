@@ -18,6 +18,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Alert,
   useTheme,
 } from '@mui/material';
 import {
@@ -25,8 +31,9 @@ import {
   Delete as DeleteIcon,
   Print as PrintIcon,
   Map as MapIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
-import { getWildlifeRecords, deleteWildlifeRecord, type WildlifeRecord } from '../services/wildlifeRecords';
+import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
 import { useMapNavigation } from '../context/MapNavigationContext';
 
 export default function WildlifeRescueStatistics() {
@@ -37,6 +44,13 @@ export default function WildlifeRescueStatistics() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
+  
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<WildlifeRecord | null>(null);
+  const [editFormData, setEditFormData] = useState<UpdateWildlifeRecord>({});
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
 
   // Load wildlife records (initial + on refresh signal)
   useEffect(() => {
@@ -89,6 +103,52 @@ export default function WildlifeRescueStatistics() {
         console.error('Error deleting wildlife record:', error);
       }
     }
+  };
+
+  // Handle edit record
+  const handleEditRecord = (record: WildlifeRecord) => {
+    setEditingRecord(record);
+    setEditFormData({
+      species_name: record.species_name,
+      status: record.status as 'reported' | 'rescued' | 'turned over' | 'released',
+      barangay: record.barangay || '',
+      municipality: record.municipality || '',
+      reporter_name: record.reporter_name || '',
+      contact_number: record.contact_number || '',
+    });
+    setEditError(null);
+    setEditDialogOpen(true);
+  };
+
+  // Handle edit form submission
+  const handleEditSubmit = async () => {
+    if (!editingRecord) return;
+
+    setEditError(null);
+    setEditLoading(true);
+
+    try {
+      const updatedRecord = await updateWildlifeRecord(editingRecord.id, editFormData);
+      setWildlifeRecords(prev => 
+        prev.map(record => record.id === editingRecord.id ? updatedRecord : record)
+      );
+      setEditDialogOpen(false);
+      setEditingRecord(null);
+      setEditFormData({});
+    } catch (error) {
+      console.error('Error updating wildlife record:', error);
+      setEditError(error instanceof Error ? error.message : 'Failed to update wildlife record');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // Handle edit dialog close
+  const handleEditDialogClose = () => {
+    setEditDialogOpen(false);
+    setEditingRecord(null);
+    setEditFormData({});
+    setEditError(null);
   };
 
   // Handle print
@@ -449,6 +509,21 @@ export default function WildlifeRescueStatistics() {
                     </Button>
                     <IconButton
                       size="small"
+                      onClick={() => handleEditRecord(record)}
+                      sx={{ 
+                        color: 'text.secondary',
+                        '&:hover': { 
+                          bgcolor: theme.palette.mode === 'dark' 
+                            ? 'rgba(25, 118, 210, 0.1)' 
+                            : 'rgba(25, 118, 210, 0.04)',
+                          color: theme.palette.primary.main
+                        }
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
                       onClick={() => handleDeleteRecord(record.id)}
                       sx={{ 
                         color: 'text.secondary',
@@ -493,6 +568,87 @@ export default function WildlifeRescueStatistics() {
         <DialogActions>
           <Button onClick={() => setPrintDialogOpen(false)}>Cancel</Button>
           <Button onClick={printForm} variant="contained">Print Report</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Record Dialog */}
+      <Dialog 
+        open={editDialogOpen} 
+        onClose={handleEditDialogClose}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Edit Wildlife Record</DialogTitle>
+        <DialogContent>
+          {editError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {editError}
+            </Alert>
+          )}
+          
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <TextField
+              label="Species Name"
+              value={editFormData.species_name || ''}
+              onChange={(e) => setEditFormData(prev => ({ ...prev, species_name: e.target.value }))}
+              fullWidth
+              required
+            />
+            
+            <FormControl fullWidth>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={editFormData.status || ''}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value as any }))}
+                label="Status"
+              >
+                <MenuItem value="reported">Reported</MenuItem>
+                <MenuItem value="rescued">Rescued</MenuItem>
+                <MenuItem value="turned over">Turned Over</MenuItem>
+                <MenuItem value="released">Released</MenuItem>
+              </Select>
+            </FormControl>
+            
+            <TextField
+              label="Barangay"
+              value={editFormData.barangay || ''}
+              onChange={(e) => setEditFormData(prev => ({ ...prev, barangay: e.target.value }))}
+              fullWidth
+            />
+            
+            <TextField
+              label="Municipality"
+              value={editFormData.municipality || ''}
+              onChange={(e) => setEditFormData(prev => ({ ...prev, municipality: e.target.value }))}
+              fullWidth
+            />
+            
+            <TextField
+              label="Reporter Name"
+              value={editFormData.reporter_name || ''}
+              onChange={(e) => setEditFormData(prev => ({ ...prev, reporter_name: e.target.value }))}
+              fullWidth
+            />
+            
+            <TextField
+              label="Contact Number"
+              value={editFormData.contact_number || ''}
+              onChange={(e) => setEditFormData(prev => ({ ...prev, contact_number: e.target.value }))}
+              fullWidth
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleEditDialogClose} disabled={editLoading}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleEditSubmit} 
+            variant="contained" 
+            disabled={editLoading || !editFormData.species_name?.trim()}
+          >
+            {editLoading ? 'Updating...' : 'Update Record'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
