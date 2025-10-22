@@ -172,6 +172,169 @@ export default function WildlifeRescueStatistics() {
     setPrintDialogOpen(true);
   };
 
+  // Handle print individual record
+  const handlePrintRecord = (record: WildlifeRecord) => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Wildlife Record - ${record.species_name}</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 20px; 
+              line-height: 1.6;
+            }
+            .header { 
+              text-align: center; 
+              margin-bottom: 30px; 
+              border-bottom: 2px solid #1976d2;
+              padding-bottom: 20px;
+            }
+            .header h1 { 
+              color: #1976d2; 
+              margin-bottom: 10px; 
+              font-size: 28px;
+            }
+            .header p { 
+              color: #666; 
+              font-size: 14px;
+            }
+            .record-details {
+              max-width: 800px;
+              margin: 0 auto;
+              background: #f9f9f9;
+              padding: 25px;
+              border-radius: 8px;
+              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            .detail-row {
+              display: flex;
+              margin-bottom: 15px;
+              border-bottom: 1px solid #e0e0e0;
+              padding-bottom: 10px;
+            }
+            .detail-label {
+              font-weight: bold;
+              width: 200px;
+              color: #333;
+              font-size: 14px;
+            }
+            .detail-value {
+              flex: 1;
+              color: #555;
+              font-size: 14px;
+            }
+            .status-${record.status.replace(' ', '-')} {
+              color: ${getStatusColor(record.status)};
+              font-weight: bold;
+              font-size: 16px;
+            }
+            .coordinates {
+              font-family: monospace;
+              background: #f0f0f0;
+              padding: 5px 8px;
+              border-radius: 4px;
+              font-size: 12px;
+            }
+            .footer { 
+              margin-top: 30px; 
+              text-align: center; 
+              color: #666; 
+              font-size: 12px;
+              border-top: 1px solid #ddd;
+              padding-top: 15px;
+            }
+            .record-id {
+              background: #1976d2;
+              color: white;
+              padding: 5px 10px;
+              border-radius: 4px;
+              font-family: monospace;
+              font-size: 12px;
+              display: inline-block;
+              margin-bottom: 10px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Wildlife Rescue Record</h1>
+            <p>Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+          </div>
+          
+          <div class="record-details">
+            <div class="record-id">ID: ${record.id}</div>
+            
+            <div class="detail-row">
+              <div class="detail-label">Species Name:</div>
+              <div class="detail-value">${record.species_name}</div>
+            </div>
+            
+            <div class="detail-row">
+              <div class="detail-label">Status:</div>
+              <div class="detail-value">
+                <span class="status-${record.status.replace(' ', '-')}">${record.status.toUpperCase()}</span>
+              </div>
+            </div>
+            
+            <div class="detail-row">
+              <div class="detail-label">Location:</div>
+              <div class="detail-value">
+                ${record.barangay || 'N/A'}, ${record.municipality || 'N/A'}<br>
+                <span class="coordinates">Lat: ${record.latitude.toFixed(6)}, Lng: ${record.longitude.toFixed(6)}</span>
+              </div>
+            </div>
+            
+            <div class="detail-row">
+              <div class="detail-label">Reporter:</div>
+              <div class="detail-value">${record.reporter_name || 'N/A'}</div>
+            </div>
+            
+            <div class="detail-row">
+              <div class="detail-label">Contact Number:</div>
+              <div class="detail-value">${record.contact_number || 'N/A'}</div>
+            </div>
+            
+            <div class="detail-row">
+              <div class="detail-label">Date Captured:</div>
+              <div class="detail-value">
+                ${new Date(record.timestamp_captured).toLocaleDateString()} at ${new Date(record.timestamp_captured).toLocaleTimeString()}
+              </div>
+            </div>
+            
+            <div class="detail-row">
+              <div class="detail-label">Record Created:</div>
+              <div class="detail-value">
+                ${new Date(record.created_at).toLocaleDateString()} at ${new Date(record.created_at).toLocaleTimeString()}
+              </div>
+            </div>
+            
+            <div class="detail-row">
+              <div class="detail-label">Last Updated:</div>
+              <div class="detail-value">
+                ${new Date(record.updated_at).toLocaleDateString()} at ${new Date(record.updated_at).toLocaleTimeString()}
+              </div>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <p>Wildlife GIS System - Individual Record Report</p>
+            <p>This report contains detailed information for a single wildlife rescue record.</p>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.print();
+      printWindow.close();
+    }
+  };
+
   // Handle scroll to map
   const handleBackToMap = () => {
     // Always scroll to the very top of the page to show entire map section
@@ -529,6 +692,21 @@ export default function WildlifeRescueStatistics() {
                       }}
                     >
                       <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handlePrintRecord(record)}
+                      sx={{ 
+                        color: 'text.secondary',
+                        '&:hover': { 
+                          bgcolor: theme.palette.mode === 'dark' 
+                            ? 'rgba(76, 175, 80, 0.1)' 
+                            : 'rgba(76, 175, 80, 0.04)',
+                          color: '#4caf50'
+                        }
+                      }}
+                    >
+                      <PrintIcon fontSize="small" />
                     </IconButton>
                     <IconButton
                       size="small"
