@@ -540,9 +540,7 @@ export default function PublicReport() {
                       <Typography variant="body2">
                         <strong>GPS Ready!</strong> Your current location is available for camera capture.
                       </Typography>
-                      <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontFamily: 'monospace' }}>
-                        Lat: {currentLocation.lat.toFixed(6)}, Lng: {currentLocation.lng.toFixed(6)}
-                      </Typography>
+                     
                     </Alert>
                   )}
                   
