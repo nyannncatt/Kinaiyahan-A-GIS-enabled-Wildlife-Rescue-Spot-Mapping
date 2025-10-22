@@ -1391,7 +1391,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   onChange={(e) =>
                     setEditDrafts((prev) => ({
                       ...prev,
-                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: e.target.value, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url },
+                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: e.target.value, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
                     }))
                   }
                   inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
@@ -1407,7 +1407,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   onChange={(e) =>
                     setEditDrafts((prev) => ({
                       ...prev,
-                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), status: String(e.target.value), species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url },
+                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), status: String(e.target.value), species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
                     }))
                   }
                 >
@@ -1444,7 +1444,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                     }))
                   }
                 />
-                <Box sx={{ fontSize: 11, color: 'text.secondary', mt: 1 }}>
+                <Box>
                   {editingMarker.timestamp_captured ? (<div>DateTime: {new Date(editingMarker.timestamp_captured).toLocaleString()}</div>) : null}
                   <div>Latitude: {editingMarker.latitude.toFixed(5)}</div>
                   <div>Longitude: {editingMarker.longitude.toFixed(5)}</div>
@@ -1516,10 +1516,6 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                             species_name: e.target.value,
                             status: prev[m.id]?.status ?? m.status,
                             photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                            reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
-                            contact_number: prev[m.id]?.contact_number ?? m.contact_number,
-                            barangay: prev[m.id]?.barangay ?? m.barangay,
-                            municipality: prev[m.id]?.municipality ?? m.municipality,
                       },
                     }))
                   }
@@ -1541,10 +1537,6 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                             species_name: prev[m.id]?.species_name ?? m.species_name,
                             status: e.target.value,
                             photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                            reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
-                            contact_number: prev[m.id]?.contact_number ?? m.contact_number,
-                            barangay: prev[m.id]?.barangay ?? m.barangay,
-                            municipality: prev[m.id]?.municipality ?? m.municipality,
                       },
                     }))
                   }
@@ -1573,8 +1565,6 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                             status: prev[m.id]?.status ?? m.status,
                             photo_url: prev[m.id]?.photo_url ?? m.photo_url,
                             contact_number: prev[m.id]?.contact_number ?? m.contact_number,
-                            barangay: prev[m.id]?.barangay ?? m.barangay,
-                            municipality: prev[m.id]?.municipality ?? m.municipality,
                       },
                     }))
                   }
@@ -1596,54 +1586,6 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                             status: prev[m.id]?.status ?? m.status,
                             photo_url: prev[m.id]?.photo_url ?? m.photo_url,
                             reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
-                            barangay: prev[m.id]?.barangay ?? m.barangay,
-                            municipality: prev[m.id]?.municipality ?? m.municipality,
-                      },
-                    }))
-                  }
-                />
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Barangay</Box>
-                <TextField
-                  variant="outlined"
-                  margin="dense"
-                  fullWidth
-                  size="small"
-                      value={editDrafts[m.id]?.barangay ?? m.barangay ?? ""}
-                  onChange={(e) =>
-                    setEditDrafts((prev) => ({
-                      ...prev,
-                          [m.id]: {
-                            ...prev[m.id],
-                            barangay: e.target.value,
-                            species_name: prev[m.id]?.species_name ?? m.species_name,
-                            status: prev[m.id]?.status ?? m.status,
-                            photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                            reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
-                            contact_number: prev[m.id]?.contact_number ?? m.contact_number,
-                            municipality: prev[m.id]?.municipality ?? m.municipality,
-                      },
-                    }))
-                  }
-                />
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Municipality</Box>
-                <TextField
-                  variant="outlined"
-                  margin="dense"
-                  fullWidth
-                  size="small"
-                      value={editDrafts[m.id]?.municipality ?? m.municipality ?? ""}
-                  onChange={(e) =>
-                    setEditDrafts((prev) => ({
-                      ...prev,
-                          [m.id]: {
-                            ...prev[m.id],
-                            municipality: e.target.value,
-                            species_name: prev[m.id]?.species_name ?? m.species_name,
-                            status: prev[m.id]?.status ?? m.status,
-                            photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                            reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
-                            contact_number: prev[m.id]?.contact_number ?? m.contact_number,
-                            barangay: prev[m.id]?.barangay ?? m.barangay,
                       },
                     }))
                   }
@@ -1743,6 +1685,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                               species_name: m.species_name,
                               status: m.status,
                               photo_url: m.photo_url ?? null,
+                              barangay: m.barangay ?? null,
+                              municipality: m.municipality ?? null,
                               },
                             }));
                           setEditingMarkerId(m.id);

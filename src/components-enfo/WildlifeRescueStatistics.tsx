@@ -24,6 +24,7 @@ import {
   Select,
   MenuItem,
   Alert,
+  Snackbar,
   useTheme,
 } from '@mui/material';
 import {
@@ -51,6 +52,15 @@ export default function WildlifeRescueStatistics() {
   const [editFormData, setEditFormData] = useState<UpdateWildlifeRecord>({});
   const [editError, setEditError] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
+  
+  // Success notification state
+  const [successSnackbar, setSuccessSnackbar] = useState<{
+    open: boolean;
+    message: string;
+  }>({
+    open: false,
+    message: '',
+  });
 
   // Load wildlife records (initial + on refresh signal)
   useEffect(() => {
@@ -135,6 +145,12 @@ export default function WildlifeRescueStatistics() {
       setEditDialogOpen(false);
       setEditingRecord(null);
       setEditFormData({});
+      
+      // Show success popup
+      setSuccessSnackbar({
+        open: true,
+        message: `Wildlife record for "${updatedRecord.species_name}" has been updated successfully!`,
+      });
     } catch (error) {
       console.error('Error updating wildlife record:', error);
       setEditError(error instanceof Error ? error.message : 'Failed to update wildlife record');
@@ -649,8 +665,25 @@ export default function WildlifeRescueStatistics() {
           >
             {editLoading ? 'Updating...' : 'Update Record'}
           </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
-  );
-}
+         </DialogActions>
+       </Dialog>
+
+       {/* Success Snackbar */}
+       <Snackbar
+         open={successSnackbar.open}
+         autoHideDuration={4000}
+         onClose={() => setSuccessSnackbar(prev => ({ ...prev, open: false }))}
+         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+       >
+         <Alert
+           onClose={() => setSuccessSnackbar(prev => ({ ...prev, open: false }))}
+           severity="success"
+           variant="filled"
+           sx={{ width: '100%' }}
+         >
+           {successSnackbar.message}
+         </Alert>
+       </Snackbar>
+     </Box>
+   );
+ }
