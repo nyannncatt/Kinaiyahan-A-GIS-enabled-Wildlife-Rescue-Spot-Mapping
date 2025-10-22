@@ -444,26 +444,18 @@ export default function WildlifeRescueStatistics() {
                   </Typography>
                 </TableCell>
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
-                  <Chip
-                    label={record.status.toUpperCase()}
-                    size="small"
+                  <Typography
+                    variant="body2"
                     sx={{
-                      bgcolor: 'transparent', // No background
-                      color: getStatusTextColorThemeAware(record.status), // Text color from the new function
-                      fontWeight: 600,
-                      fontSize: '0.75rem',
-                      height: 'auto', // Remove fixed height
-                      borderRadius: 0, // Remove border radius
-                      padding: '0', // Remove padding
-                      boxShadow: 'none', // Ensure no shadow
-                      border: 'none', // Ensure no border
-                      '&:hover': {
-                        opacity: 0.8, // Subtle hover effect
-                        transition: 'opacity 0.2s ease-in-out',
-                        bgcolor: 'transparent', // Ensure hover background is also transparent
-                      }
+                      color: getStatusColor(record.status),
+                      fontWeight: 700,
+                      fontSize: '0.80rem',
+                      letterSpacing: 0.5,
+                      textTransform: 'uppercase',
                     }}
-                  />
+                  >
+                    {record.status}
+                  </Typography>
                 </TableCell>
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
                   <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 500 }}>
