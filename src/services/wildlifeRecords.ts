@@ -156,25 +156,35 @@ export async function deleteWildlifeRecord(id: string): Promise<void> {
 
 // Get user role
 export async function getUserRole(): Promise<string | null> {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const user = sessionData?.session?.user;
-  
-  if (!user) {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData?.session?.user;
+    
+    if (!user) {
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching user role:', error);
+      // If there's a policy error, return a default role to prevent infinite loops
+      if (error.code === '42P17' || error.message.includes('infinite recursion')) {
+        console.warn('Users table policy error detected, using default role');
+        return 'user'; // Default role
+      }
+      return null;
+    }
+
+    return data?.role || null;
+  } catch (error) {
+    console.error('Unexpected error fetching user role:', error);
     return null;
   }
-
-  const { data, error } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (error) {
-    console.error('Error fetching user role:', error);
-    return null;
-  }
-
-  return data?.role || null;
 }
 
 // Upload photo to storage (requires authentication)

@@ -165,9 +165,31 @@ function BoundaryGuide() {
 
     const fetchFrom = async (endpoint: string) => {
       const url = `${endpoint}?data=${encodeURIComponent(query)}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Overpass ${endpoint} status ${res.status}`);
-      return res.json();
+      
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      try {
+        const res = await fetch(url, { 
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'Wildlife-GIS/1.0'
+          }
+        });
+        clearTimeout(timeoutId);
+        
+        if (!res.ok) {
+          throw new Error(`Overpass ${endpoint} status ${res.status}`);
+        }
+        return res.json();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+          throw new Error('Request timeout');
+        }
+        throw error;
+      }
     };
 
     (async () => {
