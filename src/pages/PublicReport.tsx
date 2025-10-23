@@ -490,16 +490,32 @@ export default function PublicReport() {
                 <Paper 
                   variant="outlined" 
                   sx={{ 
-                    p: isMobile ? 2 : 3, 
+                    p: isMobile ? 3 : 4, 
                     textAlign: 'center',
-                    border: '2px dashed',
-                    borderColor: photoFile ? 'success.main' : 'grey.300',
-                    bgcolor: photoFile ? 'success.50' : 'grey.50',
-                    borderRadius: 3,
+                    border: '3px solid',
+                    borderColor: photoFile ? '#4caf50' : '#ffffff',
+                    bgcolor: photoFile ? 'rgba(76, 175, 80, 0.05)' : 'rgba(255, 255, 255, 0.8)',
+                    borderRadius: 4,
                     transition: 'all 0.3s ease',
+                    position: 'relative',
+                    overflow: 'hidden',
                     '&:hover': {
-                      borderColor: photoFile ? 'success.dark' : '#4caf50',
-                      bgcolor: photoFile ? 'success.100' : '#e8f5e8'
+                      borderColor: photoFile ? '#2e7d32' : '#4caf50',
+                      bgcolor: photoFile ? 'rgba(76, 175, 80, 0.1)' : 'rgba(76, 175, 80, 0.05)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 8px 25px rgba(76, 175, 80, 0.15)'
+                    },
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: photoFile 
+                        ? 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%)'
+                        : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(240, 248, 255, 0.8) 100%)',
+                      zIndex: 0
                     }
                   }}
                 >
@@ -511,69 +527,176 @@ export default function PublicReport() {
                     onChange={handlePhotoChange}
                   />
                   
-                  <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mb: 2 }}>
-                    <label htmlFor="photo-upload">
-                      <IconButton 
-                        color="primary" 
-                        component="span" 
-                        size={isMobile ? "medium" : "large"}
-                        sx={{ 
+                  <Box sx={{ position: 'relative', zIndex: 1 }}>
+                    {/* Single Camera Icon - More Clear */}
+                    <Box sx={{ mb: 3 }}>
+                      <Box
+                        sx={{
+                          width: 80,
+                          height: 80,
+                          borderRadius: '50%',
+                          bgcolor: photoFile ? '#4caf50' : '#ffffff',
+                          border: '3px solid',
+                          borderColor: photoFile ? '#2e7d32' : '#4caf50',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          mx: 'auto',
+                          mb: 2,
+                          transition: 'all 0.3s ease',
                           '&:hover': {
-                            transform: 'scale(1.1)',
-                            transition: 'transform 0.2s ease'
+                            transform: 'scale(1.05)',
+                            bgcolor: photoFile ? '#2e7d32' : '#4caf50',
+                            borderColor: photoFile ? '#1b5e20' : '#2e7d32'
                           }
                         }}
                       >
-                        <PhotoCamera fontSize={isMobile ? "medium" : "large"} />
-                      </IconButton>
-                    </label>
+                        <PhotoCamera 
+                          sx={{ 
+                            fontSize: 40, 
+                            color: photoFile ? 'white' : '#4caf50',
+                            transition: 'color 0.3s ease'
+                          }} 
+                        />
+                      </Box>
+                    </Box>
                     
-                    <IconButton 
-                      color="primary" 
-                      onClick={startCamera}
-                      size={isMobile ? "medium" : "large"}
+                    {/* Action Buttons */}
+                    <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mb: 3 }}>
+                      <Button
+                        variant="contained"
+                        component="label"
+                        htmlFor="photo-upload"
+                        startIcon={<Upload />}
+                        sx={{
+                          bgcolor: '#4caf50',
+                          color: 'white',
+                          px: 3,
+                          py: 1,
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          '&:hover': {
+                            bgcolor: '#2e7d32',
+                            transform: 'translateY(-1px)'
+                          }
+                        }}
+                      >
+                        Choose File
+                      </Button>
+                      
+                      <Button
+                        variant="outlined"
+                        startIcon={<CameraAlt />}
+                        onClick={startCamera}
+                        sx={{
+                          borderColor: '#4caf50',
+                          color: '#4caf50',
+                          px: 3,
+                          py: 1,
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          '&:hover': {
+                            borderColor: '#2e7d32',
+                            color: '#2e7d32',
+                            bgcolor: 'rgba(76, 175, 80, 0.05)',
+                            transform: 'translateY(-1px)'
+                          }
+                        }}
+                      >
+                        Take Photo
+                      </Button>
+                    </Box>
+                    
+                    {/* Status Text */}
+                    <Typography 
+                      variant={isMobile ? "h6" : "h5"} 
                       sx={{ 
-                        '&:hover': {
-                          transform: 'scale(1.1)',
-                          transition: 'transform 0.2s ease'
-                        }
+                        color: photoFile ? '#2e7d32' : '#1976d2',
+                        fontWeight: 700,
+                        mb: 1
                       }}
                     >
-                      <CameraAlt fontSize={isMobile ? "medium" : "large"} />
-                    </IconButton>
+                      {photoFile ? '✓ Photo Selected' : 'Add Wildlife Photo'}
+                    </Typography>
+                    
+                    <Typography 
+                      variant="body1" 
+                      sx={{ 
+                        color: photoFile ? '#4caf50' : '#666',
+                        fontWeight: 500,
+                        mb: 2
+                      }}
+                    >
+                      {photoFile ? photoFile.name : 'Upload from gallery or capture with GPS location'}
+                    </Typography>
+                    
+                    {/* GPS Location Info */}
+                    {currentLocation && (
+                      <Box sx={{ 
+                        bgcolor: 'rgba(76, 175, 80, 0.1)', 
+                        border: '1px solid #4caf50',
+                        borderRadius: 2,
+                        p: 2,
+                        mb: 2
+                      }}>
+                        <Typography variant="body2" sx={{ color: '#2e7d32', fontWeight: 600, mb: 0.5 }}>
+                          📍 GPS Location Ready
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#4caf50', fontFamily: 'monospace' }}>
+                          Lat: {currentLocation.lat.toFixed(6)}, Lng: {currentLocation.lng.toFixed(6)}
+                        </Typography>
+                      </Box>
+                    )}
                   </Box>
                   
-                  <Typography variant={isMobile ? "subtitle1" : "h6"} gutterBottom>
-                    {photoFile ? 'Photo Selected' : 'Upload or Take Photo'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    {photoFile ? photoFile.name : 'Choose from gallery or take a new photo with GPS location'}
-                  </Typography>
-                  
-                  {currentLocation && (
-                    <Alert severity="info" sx={{ mt: 1, mb: 2, borderRadius: 2 }}>
-                      <Typography variant="body2">
-                        <strong>GPS Ready!</strong> Your current location is available for camera capture.
-                      </Typography>
-                      <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontFamily: 'monospace' }}>
-                        Lat: {currentLocation.lat.toFixed(6)}, Lng: {currentLocation.lng.toFixed(6)}
-                      </Typography>
-                    </Alert>
-                  )}
-                  
                   {photoPreview && (
-                    <Box sx={{ mt: 2 }}>
-                      <img 
-                        src={photoPreview} 
-                        alt="Preview" 
-                        style={{ 
-                          maxWidth: '100%', 
-                          maxHeight: isMobile ? 150 : 200, 
-                          borderRadius: 12,
-                          objectFit: 'cover',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                        }} 
-                      />
+                    <Box sx={{ mt: 3 }}>
+                      <Box sx={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+                        <img 
+                          src={photoPreview} 
+                          alt="Preview" 
+                          style={{ 
+                            maxWidth: '100%', 
+                            maxHeight: isMobile ? 300 : 400, 
+                            borderRadius: 12,
+                            objectFit: 'contain',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            width: '100%',
+                            backgroundColor: '#f5f5f5'
+                          }} 
+                        />
+                        <Button
+                          variant="contained"
+                          color="error"
+                          size="small"
+                          startIcon={<Close />}
+                          onClick={() => {
+                            setPhotoFile(null);
+                            setPhotoPreview(null);
+                            setExtractedCoords(null);
+                          }}
+                          sx={{
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                            minWidth: 'auto',
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                            '&:hover': {
+                              transform: 'scale(1.05)',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                            }
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </Box>
                     </Box>
                   )}
                 </Paper>
