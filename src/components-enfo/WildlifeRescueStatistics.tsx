@@ -26,7 +26,6 @@ import {
   Alert,
   Snackbar,
   useTheme,
-  Grid,
   Card,
   CardContent,
   InputAdornment,
@@ -627,82 +626,86 @@ export default function WildlifeRescueStatistics() {
 
           {/* Collapsible Filters */}
           <Collapse in={filtersExpanded}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6} md={4}>
-                <TextField
-                  fullWidth
-                  label="Species Name"
-                  placeholder="Filter by species name"
-                  value={speciesFilter}
-                  onChange={(e) => {
-                    setSpeciesFilter(e.target.value);
-                    setPage(0);
-                  }}
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6} md={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Status</InputLabel>
-                  <Select
-                    value={statusFilter}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
+                  <TextField
+                    fullWidth
+                    label="Species Name"
+                    placeholder="Filter by species name"
+                    value={speciesFilter}
                     onChange={(e) => {
-                      setStatusFilter(e.target.value);
+                      setSpeciesFilter(e.target.value);
                       setPage(0);
                     }}
-                    label="Status"
-                    sx={{ minWidth: 200 }}
-                  >
-                    <MenuItem value="">All Statuses</MenuItem>
-                    <MenuItem value="reported">Reported</MenuItem>
-                    <MenuItem value="rescued">Rescued</MenuItem>
-                    <MenuItem value="turned over">Turned Over</MenuItem>
-                    <MenuItem value="released">Released</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
+                  />
+                </Box>
+                
+                <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Status</InputLabel>
+                    <Select
+                      value={statusFilter}
+                      onChange={(e) => {
+                        setStatusFilter(e.target.value);
+                        setPage(0);
+                      }}
+                      label="Status"
+                      sx={{ minWidth: 200 }}
+                    >
+                      <MenuItem value="">All Statuses</MenuItem>
+                      <MenuItem value="reported">Reported</MenuItem>
+                      <MenuItem value="rescued">Rescued</MenuItem>
+                      <MenuItem value="turned over">Turned Over</MenuItem>
+                      <MenuItem value="released">Released</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
+                
+                <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
+                  <TextField
+                    fullWidth
+                    label="Location"
+                    placeholder="Barangay or Municipality"
+                    value={locationFilter}
+                    onChange={(e) => {
+                      setLocationFilter(e.target.value);
+                      setPage(0);
+                    }}
+                  />
+                </Box>
+              </Box>
               
-              <Grid item xs={12} sm={6} md={4}>
-                <TextField
-                  fullWidth
-                  label="Location"
-                  placeholder="Barangay or Municipality"
-                  value={locationFilter}
-                  onChange={(e) => {
-                    setLocationFilter(e.target.value);
-                    setPage(0);
-                  }}
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6} md={6}>
-                <TextField
-                  fullWidth
-                  label="Date From"
-                  type="date"
-                  value={dateFromFilter}
-                  onChange={(e) => {
-                    setDateFromFilter(e.target.value);
-                    setPage(0);
-                  }}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6} md={6}>
-                <TextField
-                  fullWidth
-                  label="Date To"
-                  type="date"
-                  value={dateToFilter}
-                  onChange={(e) => {
-                    setDateToFilter(e.target.value);
-                    setPage(0);
-                  }}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-            </Grid>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                <Box sx={{ flex: '1 1 250px', minWidth: 0 }}>
+                  <TextField
+                    fullWidth
+                    label="Date From"
+                    type="date"
+                    value={dateFromFilter}
+                    onChange={(e) => {
+                      setDateFromFilter(e.target.value);
+                      setPage(0);
+                    }}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Box>
+                
+                <Box sx={{ flex: '1 1 250px', minWidth: 0 }}>
+                  <TextField
+                    fullWidth
+                    label="Date To"
+                    type="date"
+                    value={dateToFilter}
+                    onChange={(e) => {
+                      setDateToFilter(e.target.value);
+                      setPage(0);
+                    }}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Box>
+              </Box>
+            </Box>
           </Collapse>
 
           {/* Results Summary */}
