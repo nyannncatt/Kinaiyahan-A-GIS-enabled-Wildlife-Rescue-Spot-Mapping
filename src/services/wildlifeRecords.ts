@@ -177,7 +177,7 @@ export async function getUserRole(): Promise<string | null> {
   return data?.role || null;
 }
 
-// Upload photo to storage
+// Upload photo to storage (requires authentication)
 export async function uploadWildlifePhoto(file: File, recordId: string): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();
   const user = sessionData?.session?.user;
@@ -196,6 +196,36 @@ export async function uploadWildlifePhoto(file: File, recordId: string): Promise
 
   if (error) {
     console.error('Error uploading photo:', error);
+    throw error;
+  }
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from('wildlife-photos')
+    .getPublicUrl(filePath);
+
+  return urlData.publicUrl;
+}
+
+// Upload photo to storage (public - no authentication required)
+export async function uploadWildlifePhotoPublic(file: File): Promise<string> {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `public-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+  const filePath = `public/${fileName}`;
+
+  // Try to upload to the existing wildlife-photos bucket
+  const { data, error } = await supabase.storage
+    .from('wildlife-photos')
+    .upload(filePath, file);
+
+  if (error) {
+    console.error('Error uploading public photo:', error);
+    
+    // If the bucket doesn't allow public uploads, we need to handle this differently
+    if (error.message.includes('Bucket not found') || error.message.includes('permission')) {
+      throw new Error('Photo upload is currently unavailable. Please try again later or contact support.');
+    }
+    
     throw error;
   }
 
