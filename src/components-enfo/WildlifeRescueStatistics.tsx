@@ -26,7 +26,7 @@ import {
   Alert,
   Snackbar,
   useTheme,
-  Grid2 as Grid,
+  Grid,
   Card,
   CardContent,
   InputAdornment,
@@ -628,7 +628,7 @@ export default function WildlifeRescueStatistics() {
           {/* Collapsible Filters */}
           <Collapse in={filtersExpanded}>
             <Grid container spacing={2}>
-              <Grid xs={12} sm={6} md={4}>
+              <Grid item xs={12} sm={6} md={4}>
                 <TextField
                   fullWidth
                   label="Species Name"
@@ -641,7 +641,7 @@ export default function WildlifeRescueStatistics() {
                 />
               </Grid>
               
-              <Grid xs={12} sm={6} md={4}>
+              <Grid item xs={12} sm={6} md={4}>
                 <FormControl fullWidth>
                   <InputLabel>Status</InputLabel>
                   <Select
@@ -662,7 +662,7 @@ export default function WildlifeRescueStatistics() {
                 </FormControl>
               </Grid>
               
-              <Grid xs={12} sm={6} md={4}>
+              <Grid item xs={12} sm={6} md={4}>
                 <TextField
                   fullWidth
                   label="Location"
@@ -675,7 +675,7 @@ export default function WildlifeRescueStatistics() {
                 />
               </Grid>
               
-              <Grid xs={12} sm={6} md={6}>
+              <Grid item xs={12} sm={6} md={6}>
                 <TextField
                   fullWidth
                   label="Date From"
@@ -689,7 +689,7 @@ export default function WildlifeRescueStatistics() {
                 />
               </Grid>
               
-              <Grid xs={12} sm={6} md={6}>
+              <Grid item xs={12} sm={6} md={6}>
                 <TextField
                   fullWidth
                   label="Date To"
