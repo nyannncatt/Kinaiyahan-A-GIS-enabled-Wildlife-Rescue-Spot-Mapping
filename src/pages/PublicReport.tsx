@@ -44,7 +44,7 @@ import {
   CameraAlt,
   Videocam
 } from '@mui/icons-material';
-import { createWildlifeRecordPublic } from '../services/wildlifeRecords';
+import { createWildlifeRecordPublic, uploadWildlifePhotoPublic } from '../services/wildlifeRecords';
 import exifr from 'exifr';
 
 function extractLatLngFromExif(file: File): Promise<{ lat?: number; lng?: number } | null> {
@@ -409,6 +409,21 @@ export default function PublicReport() {
 
       console.log('Submitting record with coordinates:', { lat, lng });
       
+      // Upload photo if available
+      let photoUrl: string | undefined = undefined;
+      if (photoFile) {
+        try {
+          console.log('Uploading photo:', photoFile.name);
+          photoUrl = await uploadWildlifePhotoPublic(photoFile);
+          console.log('Photo uploaded successfully:', photoUrl);
+        } catch (photoError) {
+          console.error('Failed to upload photo:', photoError);
+          // Continue without photo rather than failing the entire submission
+          console.warn('Photo upload failed, submitting report without photo. Please configure Supabase storage bucket for public uploads.');
+          // Don't show error to user for now, just log it
+        }
+      }
+      
       const created = await createWildlifeRecordPublic({
         species_name: speciesName.trim(),
         latitude: lat,
@@ -417,7 +432,7 @@ export default function PublicReport() {
         municipality: municipality || undefined,
         reporter_name: reporterName || undefined,
         contact_number: contactNumber || undefined,
-        photo_url: undefined, // Public flow skips upload to keep simple
+        photo_url: photoUrl,
         timestamp_captured: todayIso,
       });
       
