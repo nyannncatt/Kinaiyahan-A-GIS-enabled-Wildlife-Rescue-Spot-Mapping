@@ -146,9 +146,9 @@ export default function SignInCard() {
         <Button
           fullWidth
           variant="outlined"
-          onClick={() => alert("Sign in with Google")}
+          onClick={() => navigate('/public-report')}
         >
-          Sign in with Google
+          Report Sighting
         </Button>
         <Button
           fullWidth
