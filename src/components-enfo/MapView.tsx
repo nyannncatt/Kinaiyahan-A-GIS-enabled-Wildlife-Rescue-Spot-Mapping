@@ -373,6 +373,8 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
   }, [editingMarkerId, userMarkers]);
 
   function AddMarkerOnClick({ enabled }: { enabled: boolean }) {
+    const map = useMap();
+    
     useMapEvents({
       click(e) {
         if (!enabled) return;
@@ -390,6 +392,18 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
         });
       },
     });
+
+    // Change cursor when in add marker mode
+    useEffect(() => {
+      if (enabled) {
+        // Use a custom cursor with plus icon for adding markers
+        map.getContainer().style.cursor = 'url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyUzYuNDggMjIgMTIgMjJTMjIgMTcuNTIgMjIgMTJTMTcuNTIgMiAxMiAyWk0xNyAxM0gxM1YxN0gxMVYxM0g3VjExSDExVjdIMTNWMTFIMTdWMTNaIiBmaWxsPSIjRkY2MDAwIi8+Cjwvc3ZnPg==") 12 12, crosshair';
+        return () => {
+          map.getContainer().style.cursor = '';
+        };
+      }
+    }, [enabled, map]);
+
     return null;
   }
 
