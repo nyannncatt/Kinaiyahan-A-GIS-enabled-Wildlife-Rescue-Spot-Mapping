@@ -860,12 +860,124 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     }
   };
 
+  // Get barangay from coordinates using reverse geocoding API
+  const getBarangayFromCoordinates = async (lat: number, lng: number) => {
+    try {
+      console.log('Reverse geocoding coordinates:', { lat, lng });
+      
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+      );
+      const data = await response.json();
+      
+      console.log('Reverse geocoding response:', data);
+      
+      if (data && data.address) {
+        const address = data.address;
+        
+        // Extract barangay from various address fields
+        let extractedBarangay = '';
+        
+        if (address.suburb) {
+          extractedBarangay = address.suburb;
+        } else if (address.village) {
+          extractedBarangay = address.village;
+        } else if (address.hamlet) {
+          extractedBarangay = address.hamlet;
+        } else if (address.neighbourhood) {
+          extractedBarangay = address.neighbourhood;
+        } else if (address.quarter) {
+          extractedBarangay = address.quarter;
+        }
+        
+        // Check if we found a barangay and match it to our predefined list
+        if (extractedBarangay) {
+          const predefinedBarangays = [
+            'Agusan Canyon', 'Alae', 'Dahilayan', 'Dalirig', 'Damilag', 'Diclum',
+            'Guilang-guilang', 'Kalugmanan', 'Lindaban', 'Lingion', 'Lunocan',
+            'Maluko', 'Mambatangan', 'Mampayag', 'Minsuro', 'Mantibugao',
+            'Tankulan (Pob.)', 'San Miguel', 'Sankanan', 'Santiago', 'Santo Niño', 'Ticala'
+          ];
+          
+          // Try exact match first
+          let matchedBarangay = predefinedBarangays.find(barangay => 
+            barangay.toLowerCase() === extractedBarangay.toLowerCase()
+          );
+          
+          // If no exact match, try partial matching
+          if (!matchedBarangay) {
+            matchedBarangay = predefinedBarangays.find(barangay => 
+              barangay.toLowerCase().includes(extractedBarangay.toLowerCase()) ||
+              extractedBarangay.toLowerCase().includes(barangay.toLowerCase()) ||
+              barangay.toLowerCase().replace(/\s+/g, '').includes(extractedBarangay.toLowerCase().replace(/\s+/g, ''))
+            );
+          }
+          
+          if (matchedBarangay) {
+            console.log(`Matched barangay: ${matchedBarangay} for coordinates ${lat}, ${lng}`);
+            return matchedBarangay;
+          }
+        }
+        
+        // If no match found, try to find the closest barangay based on distance
+        const barangayCenters = [
+          { name: 'Tankulan (Pob.)', lat: 8.356, lng: 124.864 },
+          { name: 'Agusan Canyon', lat: 8.45, lng: 124.85 },
+          { name: 'Alae', lat: 8.40, lng: 124.95 },
+          { name: 'Dahilayan', lat: 8.50, lng: 124.85 },
+          { name: 'Dalirig', lat: 8.30, lng: 124.90 },
+          { name: 'Damilag', lat: 8.35, lng: 124.75 },
+          { name: 'Diclum', lat: 8.35, lng: 125.00 },
+          { name: 'Guilang-guilang', lat: 8.45, lng: 124.90 },
+          { name: 'Kalugmanan', lat: 8.25, lng: 124.85 },
+          { name: 'Lindaban', lat: 8.35, lng: 124.65 },
+          { name: 'Lingion', lat: 8.30, lng: 125.00 },
+          { name: 'Lunocan', lat: 8.50, lng: 124.90 },
+          { name: 'Maluko', lat: 8.25, lng: 124.90 },
+          { name: 'Mambatangan', lat: 8.35, lng: 124.55 },
+          { name: 'Mampayag', lat: 8.30, lng: 125.05 },
+          { name: 'Minsuro', lat: 8.55, lng: 124.85 },
+          { name: 'Mantibugao', lat: 8.20, lng: 124.85 },
+          { name: 'San Miguel', lat: 8.35, lng: 124.45 },
+          { name: 'Sankanan', lat: 8.30, lng: 125.10 },
+          { name: 'Santiago', lat: 8.50, lng: 124.95 },
+          { name: 'Santo Niño', lat: 8.20, lng: 124.90 },
+          { name: 'Ticala', lat: 8.35, lng: 124.35 }
+        ];
+        
+        let closestBarangay = '';
+        let minDistance = Infinity;
+        
+        for (const barangay of barangayCenters) {
+          const distance = Math.sqrt(Math.pow(lat - barangay.lat, 2) + Math.pow(lng - barangay.lng, 2));
+          
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestBarangay = barangay.name;
+          }
+        }
+        
+        console.log(`Using closest barangay: ${closestBarangay} (distance: ${minDistance})`);
+        return closestBarangay;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error reverse geocoding:', error);
+      return null;
+    }
+  };
+
   // Handle relocating marker
   const handleRelocateMarker = async (id: string, newLat: number, newLng: number) => {
     try {
+      // Get the new barangay based on coordinates using reverse geocoding
+      const newBarangay = await getBarangayFromCoordinates(newLat, newLng);
+      
       const updates = {
         latitude: newLat,
-        longitude: newLng
+        longitude: newLng,
+        barangay: newBarangay || undefined
       };
       
       const updatedRecord = await updateWildlifeRecord(id, updates);
@@ -879,7 +991,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       setSuccessModal({
         open: true,
         title: 'Success!',
-        message: `Wildlife record location has been updated successfully.`,
+        message: `Wildlife record location has been updated successfully.${newBarangay ? ` New location: ${newBarangay}` : ''}`,
       });
       
       // Refresh map data after successful update
