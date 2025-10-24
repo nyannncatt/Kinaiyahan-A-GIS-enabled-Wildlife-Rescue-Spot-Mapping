@@ -36,6 +36,8 @@ export interface UpdateWildlifeRecord {
   species_name?: string;
   status?: 'reported' | 'rescued' | 'turned over' | 'released';
   approval_status?: 'pending' | 'approved' | 'rejected';
+  latitude?: number;
+  longitude?: number;
   barangay?: string;
   municipality?: string;
   reporter_name?: string;
