@@ -871,13 +871,15 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const filteredMarkers = wildlifeRecords.filter((m) => {
     const normalizedStatus = normalizeStatus(m.status);
     const isIncluded = enabledStatuses.includes(normalizedStatus);
+    // Show approved records OR records created by authenticated users (no approval needed)
+    const isApproved = m.approval_status === 'approved' || m.user_id !== null;
     // Debug logging (remove in production)
     if (process.env.NODE_ENV === 'development') {
-      console.log(`Marker ${m.id}: status="${m.status}" -> normalized="${normalizedStatus}" -> included=${isIncluded}`);
+      console.log(`Marker ${m.id}: status="${m.status}" -> normalized="${normalizedStatus}" -> included=${isIncluded}, approved=${isApproved}`);
       console.log('Enabled statuses:', enabledStatuses);
       console.log('Total wildlife records:', wildlifeRecords.length);
     }
-    return isIncluded;
+    return isIncluded && isApproved;
   });
 
   // Debug: Add test markers if no real data - REMOVED TO PREVENT RANDOM PINS
@@ -908,7 +910,9 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const finalFilteredMarkers = allMarkers.filter((m) => {
     const normalizedStatus = normalizeStatus(m.status);
     const isIncluded = enabledStatuses.includes(normalizedStatus);
-    return isIncluded;
+    // Show approved records OR records created by authenticated users (no approval needed)
+    const isApproved = m.approval_status === 'approved' || m.user_id !== null;
+    return isIncluded && isApproved;
   });
   const editingMarker = editingMarkerId != null ? wildlifeRecords.find((m) => m.id === editingMarkerId) || null : null;
 
