@@ -780,34 +780,57 @@ export default function PublicReport() {
                 }}>
                   <FormControl fullWidth variant="outlined">
                     <InputLabel htmlFor="barangay">Barangay *</InputLabel>
-                     <OutlinedInput
-                       id="barangay"
-                       value={barangay}
-                       onChange={(e) => setBarangay(e.target.value)}
-                       startAdornment={
-                         <InputAdornment position="start">
-                           <LocationOn color="action" />
-                         </InputAdornment>
-                       }
-                       label="Barangay *"
-                       required
-                       sx={{
-                         borderRadius: 2,
-                         '& .MuiOutlinedInput-root': {
-                           fontSize: isMobile ? '0.875rem' : '1rem',
-                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                             borderColor: '#4caf50',
-                             borderWidth: 2
-                           },
-                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                             borderColor: '#66bb6a'
-                           }
-                         },
-                         '& .MuiInputLabel-root.Mui-focused': {
-                           color: '#2e7d32'
-                         }
-                       }}
-                     />
+                    <Select
+                      id="barangay"
+                      value={barangay}
+                      onChange={(e) => setBarangay(e.target.value)}
+                      label="Barangay *"
+                      required
+                      startAdornment={
+                        <InputAdornment position="start">
+                          <LocationOn color="action" />
+                        </InputAdornment>
+                      }
+                      sx={{
+                        borderRadius: 2,
+                        '& .MuiOutlinedInput-root': {
+                          fontSize: isMobile ? '0.875rem' : '1rem',
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#4caf50',
+                            borderWidth: 2
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#66bb6a'
+                          }
+                        },
+                        '& .MuiInputLabel-root.Mui-focused': {
+                          color: '#2e7d32'
+                        }
+                      }}
+                    >
+                      <MenuItem value="Agusan Canyon">Agusan Canyon</MenuItem>
+                      <MenuItem value="Alae">Alae</MenuItem>
+                      <MenuItem value="Dahilayan">Dahilayan</MenuItem>
+                      <MenuItem value="Dalirig">Dalirig</MenuItem>
+                      <MenuItem value="Damilag">Damilag</MenuItem>
+                      <MenuItem value="Diclum">Diclum</MenuItem>
+                      <MenuItem value="Guilang-guilang">Guilang-guilang</MenuItem>
+                      <MenuItem value="Kalugmanan">Kalugmanan</MenuItem>
+                      <MenuItem value="Lindaban">Lindaban</MenuItem>
+                      <MenuItem value="Lingion">Lingion</MenuItem>
+                      <MenuItem value="Lunocan">Lunocan</MenuItem>
+                      <MenuItem value="Maluko">Maluko</MenuItem>
+                      <MenuItem value="Mambatangan">Mambatangan</MenuItem>
+                      <MenuItem value="Mampayag">Mampayag</MenuItem>
+                      <MenuItem value="Minsuro">Minsuro</MenuItem>
+                      <MenuItem value="Mantibugao">Mantibugao</MenuItem>
+                      <MenuItem value="Tankulan (Pob.)">Tankulan (Pob.)</MenuItem>
+                      <MenuItem value="San Miguel">San Miguel</MenuItem>
+                      <MenuItem value="Sankanan">Sankanan</MenuItem>
+                      <MenuItem value="Santiago">Santiago</MenuItem>
+                      <MenuItem value="Santo Niño">Santo Niño</MenuItem>
+                      <MenuItem value="Ticala">Ticala</MenuItem>
+                    </Select>
                   </FormControl>
                 </Box>
               </Box>
