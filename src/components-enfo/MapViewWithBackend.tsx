@@ -302,6 +302,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [pendingMarker, setPendingMarker] = useState<PendingMarker | null>(null);
   const [editingMarkerId, setEditingMarkerId] = useState<string | null>(null);
   const [editDrafts, setEditDrafts] = useState<Record<string, any>>({});
+  const [relocatingMarkerId, setRelocatingMarkerId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [hasLoadedRecords, setHasLoadedRecords] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -822,6 +823,38 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     }
   };
 
+  // Handle relocating marker
+  const handleRelocateMarker = async (id: string, newLat: number, newLng: number) => {
+    try {
+      const updates = {
+        latitude: newLat,
+        longitude: newLng
+      };
+      
+      const updatedRecord = await updateWildlifeRecord(id, updates);
+      setWildlifeRecords(prev => 
+        prev.map(record => record.id === id ? updatedRecord : record)
+      );
+      setRelocatingMarkerId(null);
+      try { triggerRecordsRefresh(); } catch {}
+      
+      // Show success modal
+      setSuccessModal({
+        open: true,
+        title: 'Success!',
+        message: `Wildlife record location has been updated successfully.`,
+      });
+      
+      // Refresh map data after successful update
+      setTimeout(() => {
+        refreshMapData();
+      }, 1000);
+    } catch (err) {
+      console.error('Error relocating wildlife record:', err);
+      setError(err instanceof Error ? err.message : 'Failed to relocate wildlife record');
+    }
+  };
+
   // Handle photo upload
   const handlePhotoUpload = async (file: File, recordId?: string) => {
     try {
@@ -856,6 +889,33 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         setIsAddingMarker(true);
       }
     });
+    return null;
+  }
+
+  // Relocate marker on click component
+  function RelocateMarkerOnClick({ enabled, markerId }: { enabled: boolean; markerId: string | null }) {
+    const map = useMap();
+    
+    useMapEvents({
+      click(e) {
+        if (!enabled || !markerId) return;
+        const lat = Number(e.latlng.lat);
+        const lng = Number(e.latlng.lng);
+        handleRelocateMarker(markerId, lat, lng);
+      }
+    });
+
+    // Change cursor when in relocation mode
+    useEffect(() => {
+      if (enabled) {
+        // Use a custom cursor with location pin icon
+        map.getContainer().style.cursor = 'url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyUzYuNDggMjIgMTIgMjJTMjIgMTcuNTIgMjIgMTJTMTcuNTIgMiAxMiAyWk0xMiAxM0MxMC4zNCAxMyA5IDExLjY2IDkgMTBTMTAuMzQgNyAxMiA3UzE1IDguMzQgMTUgMTBTMTMuNjYgMTMgMTIgMTNaIiBmaWxsPSIjRkY2MDAwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjMiIGZpbGw9IiNGRkZGRkYiLz4KPC9zdmc+") 12 12, pointer';
+        return () => {
+          map.getContainer().style.cursor = '';
+        };
+      }
+    }, [enabled, map]);
+
     return null;
   }
 
@@ -1201,6 +1261,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         <BoundaryGuide />
         <MapInstance />
         <AddMarkerOnClick enabled={isAddingMarker && role === 'enforcement'} />
+        <RelocateMarkerOnClick enabled={!!relocatingMarkerId} markerId={relocatingMarkerId} />
 
         {/* Pending marker with photo upload */}
         {pendingMarker && (
@@ -1495,8 +1556,40 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
           </Marker>
         )}
 
+        {/* When relocating, render that marker outside the cluster */}
+        {relocatingMarkerId && (() => {
+          const relocatingMarker = finalFilteredMarkers.find(m => m.id === relocatingMarkerId);
+          return relocatingMarker ? (
+            <Marker
+              key={`relocating-${relocatingMarker.id}`}
+              position={[relocatingMarker.latitude, relocatingMarker.longitude]}
+              icon={createStatusIcon(relocatingMarker.status)}
+              ref={(ref) => { if (ref) markerRefs.current[relocatingMarker.id] = ref; }}
+            >
+              <Popup className="themed-popup">
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
+                    Relocating: {relocatingMarker.species_name}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    Click anywhere on the map to move this pin to the new location.
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setRelocatingMarkerId(null)}
+                    sx={{ mt: 1 }}
+                  >
+                    Cancel Relocation
+                  </Button>
+                </Box>
+              </Popup>
+            </Marker>
+          ) : null;
+        })()}
+
         {/* Saved user markers */}
-        {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId).length > 0 && (
+        {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId && m.id !== relocatingMarkerId).length > 0 && (
           <MarkerClusterGroup
             chunkedLoading
             iconCreateFunction={(cluster: any) => {
@@ -1728,6 +1821,19 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                         <Button
                           variant="outlined"
                           size="small"
+                          color="secondary"
+                          onClick={(e) => {
+                            try { e.preventDefault(); e.stopPropagation(); } catch {}
+                            setRelocatingMarkerId(m.id);
+                            // Close the popup to allow clicking on map
+                            try { markerRefs.current[m.id]?.closePopup?.(); } catch {}
+                          }}
+                        >
+                          Relocate Pin
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
                           color="error"
                         onClick={(e) => {
                             try { e.preventDefault(); e.stopPropagation(); } catch {}
@@ -1761,6 +1867,48 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         title={fetchingModal.title}
         message={fetchingModal.message}
       />
+
+      {/* Relocation Mode Indicator */}
+      {relocatingMarkerId && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 20,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1000,
+            bgcolor: 'warning.main',
+            color: 'warning.contrastText',
+            px: 2,
+            py: 1,
+            borderRadius: 1,
+            boxShadow: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            Click on the map to relocate the pin (cursor changed to location icon)
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            color="inherit"
+            onClick={() => setRelocatingMarkerId(null)}
+            sx={{ 
+              color: 'inherit',
+              borderColor: 'currentColor',
+              '&:hover': {
+                borderColor: 'currentColor',
+                bgcolor: 'rgba(255,255,255,0.1)'
+              }
+            }}
+          >
+            Cancel
+          </Button>
+        </Box>
+      )}
       
     </Box>
   );
