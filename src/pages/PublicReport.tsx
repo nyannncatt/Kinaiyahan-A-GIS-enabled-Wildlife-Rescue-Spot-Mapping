@@ -742,18 +742,17 @@ export default function PublicReport() {
                   minWidth: isSmallMobile ? '100%' : 200 
                 }}>
                   <FormControl fullWidth variant="outlined">
-                    <InputLabel htmlFor="barangay">Barangay *</InputLabel>
+                    <InputLabel htmlFor="municipality">Municipality</InputLabel>
                      <OutlinedInput
-                       id="barangay"
-                       value={barangay}
-                       onChange={(e) => setBarangay(e.target.value)}
+                       id="municipality"
+                       value={municipality}
+                       onChange={(e) => setMunicipality(e.target.value)}
                        startAdornment={
                          <InputAdornment position="start">
                            <LocationOn color="action" />
                          </InputAdornment>
                        }
-                       label="Barangay *"
-                       required
+                       label="Municipality"
                        sx={{
                          borderRadius: 2,
                          '& .MuiOutlinedInput-root': {
@@ -778,17 +777,18 @@ export default function PublicReport() {
                   minWidth: isSmallMobile ? '100%' : 200 
                 }}>
                   <FormControl fullWidth variant="outlined">
-                    <InputLabel htmlFor="municipality">Municipality</InputLabel>
+                    <InputLabel htmlFor="barangay">Barangay *</InputLabel>
                      <OutlinedInput
-                       id="municipality"
-                       value={municipality}
-                       onChange={(e) => setMunicipality(e.target.value)}
+                       id="barangay"
+                       value={barangay}
+                       onChange={(e) => setBarangay(e.target.value)}
                        startAdornment={
                          <InputAdornment position="start">
                            <LocationOn color="action" />
                          </InputAdornment>
                        }
-                       label="Municipality"
+                       label="Barangay *"
+                       required
                        sx={{
                          borderRadius: 2,
                          '& .MuiOutlinedInput-root': {
