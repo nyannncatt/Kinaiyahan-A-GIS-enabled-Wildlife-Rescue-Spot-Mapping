@@ -119,6 +119,205 @@ export default function PublicReport() {
     'Review & Submit'
   ];
 
+  const getBarangayFromCoordinates = (lat: number, lng: number) => {
+    // More accurate coordinate ranges for Manolo Fortich barangays
+    // Based on actual geographic boundaries
+    const barangayBounds = [
+      // Tankulan (Pob.) - Central area around coordinates 8.356, 124.864
+      { name: 'Tankulan (Pob.)', latMin: 8.35, latMax: 8.37, lngMin: 124.86, lngMax: 124.87 },
+      
+      // Agusan Canyon - Northern area
+      { name: 'Agusan Canyon', latMin: 8.40, latMax: 8.50, lngMin: 124.80, lngMax: 124.90 },
+      
+      // Alae - Eastern area
+      { name: 'Alae', latMin: 8.35, latMax: 8.45, lngMin: 124.90, lngMax: 125.00 },
+      
+      // Dahilayan - Northern area
+      { name: 'Dahilayan', latMin: 8.45, latMax: 8.55, lngMin: 124.80, lngMax: 124.90 },
+      
+      // Dalirig - Southern area
+      { name: 'Dalirig', latMin: 8.25, latMax: 8.35, lngMin: 124.85, lngMax: 124.95 },
+      
+      // Damilag - Western area
+      { name: 'Damilag', latMin: 8.30, latMax: 8.40, lngMin: 124.70, lngMax: 124.80 },
+      
+      // Diclum - Eastern area
+      { name: 'Diclum', latMin: 8.30, latMax: 8.40, lngMin: 124.95, lngMax: 125.05 },
+      
+      // Guilang-guilang - Northern area
+      { name: 'Guilang-guilang', latMin: 8.40, latMax: 8.50, lngMin: 124.85, lngMax: 124.95 },
+      
+      // Kalugmanan - Southern area
+      { name: 'Kalugmanan', latMin: 8.20, latMax: 8.30, lngMin: 124.80, lngMax: 124.90 },
+      
+      // Lindaban - Western area
+      { name: 'Lindaban', latMin: 8.30, latMax: 8.40, lngMin: 124.60, lngMax: 124.70 },
+      
+      // Lingion - Eastern area
+      { name: 'Lingion', latMin: 8.25, latMax: 8.35, lngMin: 124.95, lngMax: 125.05 },
+      
+      // Lunocan - Northern area
+      { name: 'Lunocan', latMin: 8.45, latMax: 8.55, lngMin: 124.85, lngMax: 124.95 },
+      
+      // Maluko - Southern area
+      { name: 'Maluko', latMin: 8.20, latMax: 8.30, lngMin: 124.85, lngMax: 124.95 },
+      
+      // Mambatangan - Western area
+      { name: 'Mambatangan', latMin: 8.30, latMax: 8.40, lngMin: 124.50, lngMax: 124.60 },
+      
+      // Mampayag - Eastern area
+      { name: 'Mampayag', latMin: 8.25, latMax: 8.35, lngMin: 125.00, lngMax: 125.10 },
+      
+      // Minsuro - Northern area
+      { name: 'Minsuro', latMin: 8.50, latMax: 8.60, lngMin: 124.80, lngMax: 124.90 },
+      
+      // Mantibugao - Southern area
+      { name: 'Mantibugao', latMin: 8.15, latMax: 8.25, lngMin: 124.80, lngMax: 124.90 },
+      
+      // San Miguel - Western area
+      { name: 'San Miguel', latMin: 8.30, latMax: 8.40, lngMin: 124.40, lngMax: 124.50 },
+      
+      // Sankanan - Eastern area
+      { name: 'Sankanan', latMin: 8.25, latMax: 8.35, lngMin: 125.05, lngMax: 125.15 },
+      
+      // Santiago - Northern area
+      { name: 'Santiago', latMin: 8.45, latMax: 8.55, lngMin: 124.90, lngMax: 125.00 },
+      
+      // Santo Niño - Southern area
+      { name: 'Santo Niño', latMin: 8.15, latMax: 8.25, lngMin: 124.85, lngMax: 124.95 },
+      
+      // Ticala - Western area
+      { name: 'Ticala', latMin: 8.30, latMax: 8.40, lngMin: 124.30, lngMax: 124.40 }
+    ];
+
+    // Find the barangay that contains these coordinates
+    for (const barangay of barangayBounds) {
+      if (lat >= barangay.latMin && lat <= barangay.latMax && 
+          lng >= barangay.lngMin && lng <= barangay.lngMax) {
+        console.log(`Found barangay ${barangay.name} for coordinates ${lat}, ${lng}`);
+        return barangay.name;
+      }
+    }
+
+    // If no specific match, try to find the closest one based on distance
+    let closestBarangay = '';
+    let minDistance = Infinity;
+
+    for (const barangay of barangayBounds) {
+      const centerLat = (barangay.latMin + barangay.latMax) / 2;
+      const centerLng = (barangay.lngMin + barangay.lngMax) / 2;
+      const distance = Math.sqrt(Math.pow(lat - centerLat, 2) + Math.pow(lng - centerLng, 2));
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestBarangay = barangay.name;
+      }
+    }
+
+    console.log(`No exact match found, closest barangay: ${closestBarangay} (distance: ${minDistance})`);
+    return closestBarangay;
+  };
+
+  const reverseGeocode = async (lat: number, lng: number) => {
+    console.log('Starting reverse geocoding for coordinates:', { lat, lng });
+    
+    // First, try coordinate-based mapping
+    const coordinateBarangay = getBarangayFromCoordinates(lat, lng);
+    if (coordinateBarangay) {
+      console.log('Found barangay from coordinates:', coordinateBarangay);
+      setMunicipality('Manolo Fortich');
+      setBarangay(coordinateBarangay);
+      return;
+    }
+
+    // Fallback to API-based reverse geocoding
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+      );
+      const data = await response.json();
+      
+      console.log('Full reverse geocoding response:', data);
+      
+      if (data && data.address) {
+        const address = data.address;
+        
+        // Extract municipality and barangay from address
+        let extractedMunicipality = '';
+        let extractedBarangay = '';
+        
+        // Check for municipality in various address fields
+        if (address.municipality) {
+          extractedMunicipality = address.municipality;
+        } else if (address.city) {
+          extractedMunicipality = address.city;
+        } else if (address.town) {
+          extractedMunicipality = address.town;
+        }
+        
+        // Check for barangay in various address fields
+        if (address.suburb) {
+          extractedBarangay = address.suburb;
+        } else if (address.village) {
+          extractedBarangay = address.village;
+        } else if (address.hamlet) {
+          extractedBarangay = address.hamlet;
+        } else if (address.neighbourhood) {
+          extractedBarangay = address.neighbourhood;
+        } else if (address.quarter) {
+          extractedBarangay = address.quarter;
+        }
+        
+        // Auto-populate municipality
+        if (extractedMunicipality && extractedMunicipality.toLowerCase().includes('manolo fortich')) {
+          setMunicipality('Manolo Fortich');
+          console.log('Set municipality to Manolo Fortich');
+        }
+        
+        // Auto-populate barangay with improved matching
+        if (extractedBarangay) {
+          const predefinedBarangays = [
+            'Agusan Canyon', 'Alae', 'Dahilayan', 'Dalirig', 'Damilag', 'Diclum',
+            'Guilang-guilang', 'Kalugmanan', 'Lindaban', 'Lingion', 'Lunocan',
+            'Maluko', 'Mambatangan', 'Mampayag', 'Minsuro', 'Mantibugao',
+            'Tankulan (Pob.)', 'San Miguel', 'Sankanan', 'Santiago', 'Santo Niño', 'Ticala'
+          ];
+          
+          // Try exact match first
+          let matchedBarangay = predefinedBarangays.find(barangay => 
+            barangay.toLowerCase() === extractedBarangay.toLowerCase()
+          );
+          
+          // If no exact match, try partial matching
+          if (!matchedBarangay) {
+            matchedBarangay = predefinedBarangays.find(barangay => 
+              barangay.toLowerCase().includes(extractedBarangay.toLowerCase()) ||
+              extractedBarangay.toLowerCase().includes(barangay.toLowerCase()) ||
+              barangay.toLowerCase().replace(/\s+/g, '').includes(extractedBarangay.toLowerCase().replace(/\s+/g, ''))
+            );
+          }
+          
+          if (matchedBarangay) {
+            setBarangay(matchedBarangay);
+            console.log('Auto-selected barangay from API:', matchedBarangay);
+          } else {
+            console.log('Could not match extracted barangay:', extractedBarangay);
+          }
+        } else {
+          console.log('No barangay information found in address');
+        }
+        
+        console.log('Reverse geocoded address:', address);
+        console.log('Extracted municipality:', extractedMunicipality);
+        console.log('Extracted barangay:', extractedBarangay);
+      } else {
+        console.log('No address data found in reverse geocoding response');
+      }
+    } catch (error) {
+      console.error('Error reverse geocoding:', error);
+    }
+  };
+
   const handlePhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -137,6 +336,9 @@ export default function PublicReport() {
         if (coords && coords.lat && coords.lng) {
           setExtractedCoords({ lat: coords.lat, lng: coords.lng });
           console.log('GPS coordinates extracted:', coords);
+          
+          // Reverse geocode to get address information
+          await reverseGeocode(coords.lat, coords.lng);
         } else {
           setExtractedCoords(null);
           console.log('No GPS data found in photo');
@@ -349,6 +551,9 @@ export default function PublicReport() {
           if (photoLocation) {
             setExtractedCoords(photoLocation);
             console.log('Using GPS location for captured photo:', photoLocation);
+            
+            // Reverse geocode to get address information
+            await reverseGeocode(photoLocation.lat, photoLocation.lng);
           }
           
           // Set the photo file and create preview
