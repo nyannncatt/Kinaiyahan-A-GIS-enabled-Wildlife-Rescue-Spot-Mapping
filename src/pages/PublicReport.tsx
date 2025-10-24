@@ -28,7 +28,9 @@ import {
   Fade,
   Slide,
   Modal,
-  Backdrop
+  Backdrop,
+  Select,
+  MenuItem
 } from '@mui/material';
 import {
   PhotoCamera,
@@ -87,6 +89,8 @@ export default function PublicReport() {
   const [speciesName, setSpeciesName] = useState('');
   const [reporterName, setReporterName] = useState('');
   const [contactNumber, setContactNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [countryCode, setCountryCode] = useState('+63');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -885,10 +889,49 @@ export default function PublicReport() {
                     <InputLabel htmlFor="contact-number">Contact Number</InputLabel>
                      <OutlinedInput
                        id="contact-number"
-                       value={contactNumber}
-                       onChange={(e) => setContactNumber(e.target.value)}
+                       value={phoneNumber}
+                       onChange={(e) => {
+                         const phoneNumberValue = e.target.value;
+                         const fullNumber = countryCode + phoneNumberValue;
+                         setPhoneNumber(phoneNumberValue);
+                         setContactNumber(fullNumber);
+                       }}
                        startAdornment={
                          <InputAdornment position="start">
+                           <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                             <FormControl size="small" sx={{ minWidth: 80 }}>
+                               <Select
+                                 value={countryCode}
+                                 onChange={(e) => {
+                                   const newCountryCode = e.target.value;
+                                   const fullNumber = newCountryCode + phoneNumber;
+                                   setCountryCode(newCountryCode);
+                                   setContactNumber(fullNumber);
+                                 }}
+                                 variant="standard"
+                                 sx={{ 
+                                   '&:before': { borderBottom: 'none' },
+                                   '&:after': { borderBottom: 'none' },
+                                   '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                                   '& .MuiSelect-select': { 
+                                     padding: '0',
+                                     fontSize: '14px',
+                                     fontWeight: 500,
+                                     minHeight: 'auto'
+                                   }
+                                 }}
+                               >
+                                 <MenuItem value="+63">🇵🇭 +63</MenuItem>
+                                 <MenuItem value="+1">🇺🇸 +1</MenuItem>
+                                 <MenuItem value="+44">🇬🇧 +44</MenuItem>
+                                 <MenuItem value="+81">🇯🇵 +81</MenuItem>
+                                 <MenuItem value="+86">🇨🇳 +86</MenuItem>
+                                 <MenuItem value="+82">🇰🇷 +82</MenuItem>
+                                 <MenuItem value="+65">🇸🇬 +65</MenuItem>
+                                 <MenuItem value="+60">🇲🇾 +60</MenuItem>
+                               </Select>
+                             </FormControl>
+                           </Box>
                            <Phone color="action" />
                          </InputAdornment>
                        }
