@@ -701,6 +701,24 @@ export default function PublicReport() {
                           Remove
                         </Button>
                       </Box>
+                      
+                      {/* EXIF Location Status Message */}
+                      {!extractedCoords && !currentLocation && (
+                        <Box sx={{ 
+                          bgcolor: 'rgba(255, 152, 0, 0.1)', 
+                          border: '1px solid #ff9800',
+                          borderRadius: 2,
+                          p: 2,
+                          mt: 2
+                        }}>
+                          <Typography variant="body2" sx={{ color: '#f57c00', fontWeight: 600, mb: 0.5 }}>
+                            ⚠️ No Location Data Found
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#ff9800' }}>
+                            This photo doesn't contain GPS location data. You'll need to manually enter the location in the next step.
+                          </Typography>
+                        </Box>
+                      )}
                     </Box>
                   )}
                 </Paper>
