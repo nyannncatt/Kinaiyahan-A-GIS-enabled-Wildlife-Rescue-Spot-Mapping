@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -18,18 +18,64 @@ import Paper from '@mui/material/Paper';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Button from '@mui/material/Button';
+import Badge from '@mui/material/Badge';
 import MapOutlinedIcon from '@mui/icons-material/MapOutlined';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import SatelliteAltOutlinedIcon from '@mui/icons-material/SatelliteAltOutlined';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import MapIcon from '@mui/icons-material/Map';
+import PendingActionsIcon from '@mui/icons-material/PendingActions';
+import { getWildlifeRecords } from '../services/wildlifeRecords';
 
 export default function MainGrid() {
   // State to track selected map skin
   const [skin, setSkin] = useState<"streets" | "dark" | "satellite">("streets");
+  
+  // State for pending reports
+  const [pendingCount, setPendingCount] = useState(0);
+  const [showPendingOnly, setShowPendingOnly] = useState(false);
+
+  // Load pending reports count
+  useEffect(() => {
+    const loadPendingCount = async () => {
+      try {
+        const records = await getWildlifeRecords();
+        const pendingRecords = records.filter(record => 
+          record.approval_status === 'pending' && record.user_id === null
+        );
+        setPendingCount(pendingRecords.length);
+      } catch (error) {
+        console.error('Error loading pending count:', error);
+      }
+    };
+
+    loadPendingCount();
+    // Refresh every 30 seconds
+    const interval = setInterval(loadPendingCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Function to scroll to record list section
   const scrollToRecordList = () => {
+    setShowPendingOnly(false); // Reset filter
+    const recordListElement = document.querySelector('[data-record-list]');
+    if (recordListElement) {
+      recordListElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    } else {
+      // Fallback: scroll to bottom of page
+      window.scrollTo({ 
+        top: document.body.scrollHeight, 
+        behavior: 'smooth' 
+      });
+    }
+  };
+
+  // Function to scroll to record list and show only pending reports
+  const scrollToPendingReports = () => {
+    setShowPendingOnly(true); // Set filter to show only pending
     const recordListElement = document.querySelector('[data-record-list]');
     if (recordListElement) {
       recordListElement.scrollIntoView({ 
@@ -149,6 +195,32 @@ export default function MainGrid() {
           View Record List
         </Button>
 
+        {/* Pending Reports Button */}
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={
+            <Badge badgeContent={pendingCount} color="error" max={99}>
+              <PendingActionsIcon />
+            </Badge>
+          }
+          onClick={scrollToPendingReports}
+          sx={{
+            ml: 1,
+            textTransform: 'none',
+            fontWeight: 500,
+            borderColor: pendingCount > 0 ? 'warning.main' : 'text.secondary',
+            color: pendingCount > 0 ? 'warning.main' : 'text.secondary',
+            '&:hover': {
+              backgroundColor: pendingCount > 0 ? 'warning.main' : 'action.hover',
+              color: pendingCount > 0 ? 'white' : 'text.primary',
+              borderColor: pendingCount > 0 ? 'warning.main' : 'text.secondary',
+            }
+          }}
+        >
+          Pending Reports
+        </Button>
+
       </Stack>
 
       {/* Map Container */}
@@ -166,7 +238,7 @@ export default function MainGrid() {
       
         {/* Wildlife Rescue Statistics Component */}
         <Box data-record-list sx={{ mt: 3, mb: 2 }}>
-          <WildlifeRescueStatistics />
+          <WildlifeRescueStatistics {...(showPendingOnly && { showPendingOnly })} />
         </Box>
       </Box>
     </MapNavigationProvider>

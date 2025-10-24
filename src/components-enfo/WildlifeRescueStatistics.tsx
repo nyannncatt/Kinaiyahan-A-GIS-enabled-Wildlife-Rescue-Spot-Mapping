@@ -42,11 +42,17 @@ import {
   Clear as ClearIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
+  CheckCircle,
+  Close,
 } from '@mui/icons-material';
-import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
+import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
 import { useMapNavigation } from '../context/MapNavigationContext';
 
-export default function WildlifeRescueStatistics() {
+interface WildlifeRescueStatisticsProps {
+  showPendingOnly?: boolean;
+}
+
+const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ showPendingOnly = false }) => {
   const theme = useTheme();
   const { navigateToLocation, refreshRecordsVersion } = useMapNavigation();
   const [wildlifeRecords, setWildlifeRecords] = useState<WildlifeRecord[]>([]);
@@ -59,6 +65,7 @@ export default function WildlifeRescueStatistics() {
   const [searchQuery, setSearchQuery] = useState('');
   const [speciesFilter, setSpeciesFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [approvalFilter, setApprovalFilter] = useState<string>('');
   const [locationFilter, setLocationFilter] = useState('');
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
@@ -98,6 +105,13 @@ export default function WildlifeRescueStatistics() {
     loadRecords();
     return () => { isCancelled = true; };
   }, [refreshRecordsVersion]);
+
+  // Auto-set approval filter when showPendingOnly is true
+  useEffect(() => {
+    if (showPendingOnly) {
+      setApprovalFilter('pending');
+    }
+  }, [showPendingOnly]);
 
   // Handle location click - navigate to map location and scroll to map
   const handleLocationClick = (record: WildlifeRecord) => {
@@ -183,6 +197,48 @@ export default function WildlifeRescueStatistics() {
     setEditingRecord(null);
     setEditFormData({});
     setEditError(null);
+  };
+
+  // Handle approve record
+  const handleApproveRecord = async (id: string) => {
+    try {
+      const updatedRecord = await approveWildlifeRecord(id);
+      setWildlifeRecords(prev => 
+        prev.map(record => record.id === id ? updatedRecord : record)
+      );
+      setSuccessSnackbar({
+        open: true,
+        message: 'Wildlife record has been approved successfully!',
+      });
+    } catch (error) {
+      console.error('Error approving wildlife record:', error);
+      setSuccessSnackbar({
+        open: true,
+        message: 'Failed to approve wildlife record',
+      });
+    }
+  };
+
+  // Handle reject record
+  const handleRejectRecord = async (id: string) => {
+    if (window.confirm('Are you sure you want to reject this wildlife record?')) {
+      try {
+        const updatedRecord = await rejectWildlifeRecord(id);
+        setWildlifeRecords(prev => 
+          prev.map(record => record.id === id ? updatedRecord : record)
+        );
+        setSuccessSnackbar({
+          open: true,
+          message: 'Wildlife record has been rejected successfully!',
+        });
+      } catch (error) {
+        console.error('Error rejecting wildlife record:', error);
+        setSuccessSnackbar({
+          open: true,
+          message: 'Failed to reject wildlife record',
+        });
+      }
+    }
   };
 
   // Handle print
@@ -480,6 +536,7 @@ export default function WildlifeRescueStatistics() {
     setSearchQuery('');
     setSpeciesFilter('');
     setStatusFilter('');
+    setApprovalFilter('');
     setLocationFilter('');
     setDateFromFilter('');
     setDateToFilter('');
@@ -487,7 +544,7 @@ export default function WildlifeRescueStatistics() {
   };
 
   // Check if any filters are active
-  const hasActiveFilters = searchQuery || speciesFilter || statusFilter || locationFilter || dateFromFilter || dateToFilter;
+  const hasActiveFilters = searchQuery || speciesFilter || statusFilter || approvalFilter || locationFilter || dateFromFilter || dateToFilter;
 
   // Filter records based on search and filter criteria
   const filteredRecords = useMemo(() => {
@@ -506,6 +563,9 @@ export default function WildlifeRescueStatistics() {
       // Status filter
       const statusMatch = !statusFilter || record.status === statusFilter;
 
+      // Approval status filter
+      const approvalMatch = !approvalFilter || record.approval_status === approvalFilter;
+
       // Location filter (searches in barangay and municipality)
       const locationMatch = !locationFilter || 
         (record.barangay && record.barangay.toLowerCase().includes(locationFilter.toLowerCase())) ||
@@ -519,9 +579,9 @@ export default function WildlifeRescueStatistics() {
       const dateMatch = (!fromDate || recordDate >= fromDate) && 
                        (!toDate || recordDate <= toDate);
 
-      return searchMatch && speciesMatch && statusMatch && locationMatch && dateMatch;
+      return searchMatch && speciesMatch && statusMatch && approvalMatch && locationMatch && dateMatch;
     });
-  }, [wildlifeRecords, searchQuery, speciesFilter, statusFilter, locationFilter, dateFromFilter, dateToFilter]);
+  }, [wildlifeRecords, searchQuery, speciesFilter, statusFilter, approvalFilter, locationFilter, dateFromFilter, dateToFilter]);
 
   const paginatedRecords = filteredRecords.slice(
     page * rowsPerPage,
@@ -663,6 +723,26 @@ export default function WildlifeRescueStatistics() {
                 </Box>
                 
                 <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Approval Status</InputLabel>
+                    <Select
+                      value={approvalFilter}
+                      onChange={(e) => {
+                        setApprovalFilter(e.target.value);
+                        setPage(0);
+                      }}
+                      label="Approval Status"
+                      sx={{ minWidth: 200 }}
+                    >
+                      <MenuItem value="">All Approval Statuses</MenuItem>
+                      <MenuItem value="pending">Pending</MenuItem>
+                      <MenuItem value="approved">Approved</MenuItem>
+                      <MenuItem value="rejected">Rejected</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
+                
+                <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
                   <TextField
                     fullWidth
                     label="Location"
@@ -767,6 +847,14 @@ export default function WildlifeRescueStatistics() {
                 borderBottom: `1px solid ${theme.palette.divider}`,
                 py: 2
               }}>
+                Approval
+              </TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600, 
+                color: 'text.primary', 
+                borderBottom: `1px solid ${theme.palette.divider}`,
+                py: 2
+              }}>
                 Location
               </TableCell>
               <TableCell sx={{ 
@@ -834,6 +922,18 @@ export default function WildlifeRescueStatistics() {
                   >
                     {record.status}
                   </Typography>
+                </TableCell>
+                <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
+                  <Chip
+                    label={record.approval_status}
+                    size="small"
+                    color={
+                      record.approval_status === 'approved' ? 'success' :
+                      record.approval_status === 'rejected' ? 'error' : 'warning'
+                    }
+                    variant="outlined"
+                    sx={{ fontWeight: 600 }}
+                  />
                 </TableCell>
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
                   <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 500 }}>
@@ -923,6 +1023,50 @@ export default function WildlifeRescueStatistics() {
                     >
                       <PrintIcon fontSize="small" />
                     </IconButton>
+                    {record.approval_status === 'pending' && record.user_id === null && (
+                      <>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<CheckCircle fontSize="small" />}
+                          onClick={() => handleApproveRecord(record.id)}
+                          sx={{ 
+                            color: '#4caf50',
+                            borderColor: '#4caf50',
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            '&:hover': { 
+                              bgcolor: theme.palette.mode === 'dark' 
+                                ? 'rgba(76, 175, 80, 0.1)' 
+                                : 'rgba(76, 175, 80, 0.04)',
+                              borderColor: '#4caf50'
+                            }
+                          }}
+                        >
+                          Approved
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<Close fontSize="small" />}
+                          onClick={() => handleRejectRecord(record.id)}
+                          sx={{ 
+                            color: theme.palette.error.main,
+                            borderColor: theme.palette.error.main,
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            '&:hover': { 
+                              bgcolor: theme.palette.mode === 'dark' 
+                                ? 'rgba(239, 68, 68, 0.1)' 
+                                : 'rgba(239, 68, 68, 0.04)',
+                              borderColor: theme.palette.error.main
+                            }
+                          }}
+                        >
+                          Rejected
+                        </Button>
+                      </>
+                    )}
                     <IconButton
                       size="small"
                       onClick={() => handleDeleteRecord(record.id)}
@@ -1071,4 +1215,6 @@ export default function WildlifeRescueStatistics() {
        </Snackbar>
      </Box>
    );
- }
+ };
+
+export default WildlifeRescueStatistics;
