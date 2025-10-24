@@ -149,6 +149,12 @@ export default function PublicReport() {
   };
 
   const handleNext = () => {
+    // Check if photo is required for step 0 (Wildlife Information)
+    if (activeStep === 0 && !photoFile) {
+      setError('⚠️ Please upload or take a photo before proceeding to the next step.');
+      return;
+    }
+    
     setStepTransition(true);
     setTimeout(() => {
       setActiveStep((prevActiveStep) => prevActiveStep + 1);
