@@ -260,6 +260,8 @@ interface PendingMarker {
   photo: string | null;
   reporterName: string;
   contactNumber: string;
+  phoneNumber: string;
+  countryCode: string;
   barangay: string;
   municipality: string;
   address?: AddressInfo;
@@ -316,7 +318,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     if (!pm) return false;
     const hasSpecies = Boolean(pm.speciesName && pm.speciesName.trim());
     const hasReporter = Boolean(pm.reporterName && pm.reporterName.trim());
-    const hasContact = Boolean(pm.contactNumber && pm.contactNumber.trim());
+    const hasContact = Boolean(pm.phoneNumber && pm.phoneNumber.trim());
     return hasSpecies && hasReporter && hasContact;
   };
 
@@ -920,6 +922,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
           photo: null,
           reporterName: "",
           contactNumber: "",
+          phoneNumber: "",
+          countryCode: "+63",
           barangay: "",
           municipality: "",
         });
@@ -1413,20 +1417,58 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   inputRef={(el) => { pendingReporterRef.current = el; }}
                 />
                 <TextField
-                  placeholder="Contact number"
+                  placeholder="Phone number"
                   size="small"
                   variant="outlined"
                   fullWidth
                   margin="dense"
-                  value={pendingMarker.contactNumber || ""}
-                  onChange={(e) => setPendingMarker((p) => {
-                    const next = p ? { ...p, contactNumber: e.target.value } : p;
-                    if (next && isPendingComplete(next)) setPendingWarning(null);
-                    return next as PendingMarker;
-                  })}
+                  value={pendingMarker.phoneNumber || ""}
+                  onChange={(e) => {
+                    const phoneNumber = e.target.value;
+                    const countryCode = pendingMarker.countryCode || '+63';
+                    const fullNumber = countryCode + phoneNumber;
+                    setPendingMarker((p) => {
+                      const next = p ? { ...p, phoneNumber, contactNumber: fullNumber } : p;
+                      if (next && isPendingComplete(next)) setPendingWarning(null);
+                      return next as PendingMarker;
+                    });
+                  }}
                   required
-                  error={Boolean(pendingWarning) && !(pendingMarker.contactNumber || '').trim()}
+                  error={Boolean(pendingWarning) && !(pendingMarker.phoneNumber || '').trim()}
                   inputRef={(el) => { pendingContactRef.current = el; }}
+                  InputProps={{
+                    startAdornment: (
+                      <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                        <FormControl size="small" sx={{ minWidth: 80 }}>
+                          <Select
+                            value={pendingMarker.countryCode || '+63'}
+                            onChange={(e) => setPendingMarker((p) => p ? { ...p, countryCode: e.target.value } : p)}
+                            variant="standard"
+                            sx={{ 
+                              '&:before': { borderBottom: 'none' },
+                              '&:after': { borderBottom: 'none' },
+                              '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                              '& .MuiSelect-select': { 
+                                padding: '0',
+                                fontSize: '14px',
+                                fontWeight: 500,
+                                minHeight: 'auto'
+                              }
+                            }}
+                          >
+                            <MenuItem value="+63">🇵🇭 +63</MenuItem>
+                            <MenuItem value="+1">🇺🇸 +1</MenuItem>
+                            <MenuItem value="+44">🇬🇧 +44</MenuItem>
+                            <MenuItem value="+81">🇯🇵 +81</MenuItem>
+                            <MenuItem value="+86">🇨🇳 +86</MenuItem>
+                            <MenuItem value="+82">🇰🇷 +82</MenuItem>
+                            <MenuItem value="+65">🇸🇬 +65</MenuItem>
+                            <MenuItem value="+60">🇲🇾 +60</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    )
+                  }}
                 />
 
                 {/* Upload photo */}
@@ -1486,7 +1528,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           const missing = [
                             { ok: Boolean((pendingMarker?.speciesName || '').trim()), ref: pendingSpeciesRef },
                             { ok: Boolean((pendingMarker?.reporterName || '').trim()), ref: pendingReporterRef },
-                            { ok: Boolean((pendingMarker?.contactNumber || '').trim()), ref: pendingContactRef },
+                            { ok: Boolean((pendingMarker?.phoneNumber || '').trim()), ref: pendingContactRef },
                           ];
                           const firstMissing = missing.find((m) => !m.ok)?.ref?.current;
                           try { firstMissing?.focus(); } catch {}
@@ -1785,20 +1827,74 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   margin="dense"
                   fullWidth
                   size="small"
-                      value={editDrafts[m.id]?.contact_number ?? m.contact_number ?? ""}
-                  onChange={(e) =>
+                  placeholder="Phone number"
+                  value={editDrafts[m.id]?.phone_number ?? ""}
+                  onChange={(e) => {
+                    const phoneNumber = e.target.value;
+                    const countryCode = editDrafts[m.id]?.country_code ?? '+63';
+                    const fullNumber = countryCode + phoneNumber;
                     setEditDrafts((prev) => ({
                       ...prev,
-                          [m.id]: {
-                            ...prev[m.id],
-                            contact_number: e.target.value,
-                            species_name: prev[m.id]?.species_name ?? m.species_name,
-                            status: prev[m.id]?.status ?? m.status,
-                            photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                            reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
+                      [m.id]: {
+                        ...prev[m.id],
+                        phone_number: phoneNumber,
+                        contact_number: fullNumber,
+                        species_name: prev[m.id]?.species_name ?? m.species_name,
+                        status: prev[m.id]?.status ?? m.status,
+                        photo_url: prev[m.id]?.photo_url ?? m.photo_url,
+                        reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
                       },
-                    }))
-                  }
+                    }));
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                        <FormControl size="small" sx={{ minWidth: 80 }}>
+                          <Select
+                            value={editDrafts[m.id]?.country_code ?? '+63'}
+                            onChange={(e) => {
+                              const countryCode = e.target.value;
+                              const phoneNumber = editDrafts[m.id]?.phone_number ?? '';
+                              const fullNumber = countryCode + phoneNumber;
+                              setEditDrafts((prev) => ({
+                                ...prev,
+                                [m.id]: {
+                                  ...prev[m.id],
+                                  country_code: countryCode,
+                                  contact_number: fullNumber,
+                                  species_name: prev[m.id]?.species_name ?? m.species_name,
+                                  status: prev[m.id]?.status ?? m.status,
+                                  photo_url: prev[m.id]?.photo_url ?? m.photo_url,
+                                  reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
+                                },
+                              }));
+                            }}
+                            variant="standard"
+                            sx={{ 
+                              '&:before': { borderBottom: 'none' },
+                              '&:after': { borderBottom: 'none' },
+                              '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                              '& .MuiSelect-select': { 
+                                padding: '0',
+                                fontSize: '14px',
+                                fontWeight: 500,
+                                minHeight: 'auto'
+                              }
+                            }}
+                          >
+                            <MenuItem value="+63">🇵🇭 +63</MenuItem>
+                            <MenuItem value="+1">🇺🇸 +1</MenuItem>
+                            <MenuItem value="+44">🇬🇧 +44</MenuItem>
+                            <MenuItem value="+81">🇯🇵 +81</MenuItem>
+                            <MenuItem value="+86">🇨🇳 +86</MenuItem>
+                            <MenuItem value="+82">🇰🇷 +82</MenuItem>
+                            <MenuItem value="+65">🇸🇬 +65</MenuItem>
+                            <MenuItem value="+60">🇲🇾 +60</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    )
+                  }}
                 />
 
                 {/* Edit photo */}

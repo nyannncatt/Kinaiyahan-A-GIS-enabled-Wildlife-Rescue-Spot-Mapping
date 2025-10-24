@@ -1,6 +1,6 @@
 import { MapContainer, TileLayer, useMap, GeoJSON, Marker, Popup, useMapEvents } from "react-leaflet";
 import { useEffect, useRef, useState } from "react";
-import { Box, Tooltip, IconButton, Button, TextField, MenuItem, ToggleButtonGroup, ToggleButton, Stack } from "@mui/material";
+import { Box, Tooltip, IconButton, Button, TextField, MenuItem, ToggleButtonGroup, ToggleButton, Stack, FormControl, Select } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import AddLocationAltOutlinedIcon from "@mui/icons-material/AddLocationAltOutlined";
 import L from "leaflet";
@@ -1133,20 +1133,74 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                       margin="dense"
                       fullWidth
                       size="small"
-                      value={editDrafts[m.id]?.contactNumber ?? m.contactNumber ?? ""}
-                      onChange={(e) =>
+                      placeholder="Phone number"
+                      value={(editDrafts[m.id] as any)?.phoneNumber ?? ""}
+                      onChange={(e) => {
+                        const phoneNumber = e.target.value;
+                        const countryCode = (editDrafts[m.id] as any)?.countryCode ?? '+63';
+                        const fullNumber = countryCode + phoneNumber;
                         setEditDrafts((prev) => ({
                           ...prev,
                           [m.id]: {
                             ...prev[m.id],
-                            contactNumber: e.target.value,
+                            phoneNumber: phoneNumber,
+                            contactNumber: fullNumber,
                             speciesName: prev[m.id]?.speciesName ?? m.speciesName,
                             status: prev[m.id]?.status ?? m.status,
                             photo: prev[m.id]?.photo ?? m.photo,
                             reporterName: prev[m.id]?.reporterName ?? m.reporterName,
                           },
-                        }))
-                      }
+                        }));
+                      }}
+                      InputProps={{
+                        startAdornment: (
+                          <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                            <FormControl size="small" sx={{ minWidth: 80 }}>
+                              <Select
+                                value={(editDrafts[m.id] as any)?.countryCode ?? '+63'}
+                                onChange={(e) => {
+                                  const countryCode = e.target.value;
+                                  const phoneNumber = (editDrafts[m.id] as any)?.phoneNumber ?? '';
+                                  const fullNumber = countryCode + phoneNumber;
+                                  setEditDrafts((prev) => ({
+                                    ...prev,
+                                    [m.id]: {
+                                      ...prev[m.id],
+                                      countryCode: countryCode,
+                                      contactNumber: fullNumber,
+                                      speciesName: prev[m.id]?.speciesName ?? m.speciesName,
+                                      status: prev[m.id]?.status ?? m.status,
+                                      photo: prev[m.id]?.photo ?? m.photo,
+                                      reporterName: prev[m.id]?.reporterName ?? m.reporterName,
+                                    },
+                                  }));
+                                }}
+                                variant="standard"
+                                sx={{ 
+                                  '&:before': { borderBottom: 'none' },
+                                  '&:after': { borderBottom: 'none' },
+                                  '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                                  '& .MuiSelect-select': { 
+                                    padding: '0',
+                                    fontSize: '14px',
+                                    fontWeight: 500,
+                                    minHeight: 'auto'
+                                  }
+                                }}
+                              >
+                                <MenuItem value="+63">🇵🇭 +63</MenuItem>
+                                <MenuItem value="+1">🇺🇸 +1</MenuItem>
+                                <MenuItem value="+44">🇬🇧 +44</MenuItem>
+                                <MenuItem value="+81">🇯🇵 +81</MenuItem>
+                                <MenuItem value="+86">🇨🇳 +86</MenuItem>
+                                <MenuItem value="+82">🇰🇷 +82</MenuItem>
+                                <MenuItem value="+65">🇸🇬 +65</MenuItem>
+                                <MenuItem value="+60">🇲🇾 +60</MenuItem>
+                              </Select>
+                            </FormControl>
+                          </Box>
+                        )
+                      }}
                     />
 
                     {/* Edit photo */}

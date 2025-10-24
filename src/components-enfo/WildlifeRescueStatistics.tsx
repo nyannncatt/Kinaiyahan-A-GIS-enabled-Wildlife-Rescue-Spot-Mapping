@@ -1250,10 +1250,61 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             />
             
             <TextField
-              label="Contact Number"
-              value={editFormData.contact_number || ''}
-              onChange={(e) => setEditFormData(prev => ({ ...prev, contact_number: e.target.value }))}
+              label="Phone Number"
+              value={editFormData.phone_number || ''}
+              onChange={(e) => {
+                const phoneNumber = e.target.value;
+                const countryCode = editFormData.country_code || '+63';
+                const fullNumber = countryCode + phoneNumber;
+                setEditFormData(prev => ({ 
+                  ...prev, 
+                  phone_number: phoneNumber,
+                  contact_number: fullNumber 
+                }));
+              }}
               fullWidth
+              InputProps={{
+                startAdornment: (
+                  <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                    <FormControl sx={{ minWidth: 80 }}>
+                      <Select
+                        value={editFormData.country_code || '+63'}
+                        onChange={(e) => {
+                          const countryCode = e.target.value;
+                          const phoneNumber = editFormData.phone_number || '';
+                          const fullNumber = countryCode + phoneNumber;
+                          setEditFormData(prev => ({ 
+                            ...prev, 
+                            country_code: countryCode,
+                            contact_number: fullNumber 
+                          }));
+                        }}
+                        variant="standard"
+                        sx={{ 
+                          '&:before': { borderBottom: 'none' },
+                          '&:after': { borderBottom: 'none' },
+                          '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                          '& .MuiSelect-select': { 
+                            padding: '0',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            minHeight: 'auto'
+                          }
+                        }}
+                      >
+                        <MenuItem value="+63">🇵🇭 +63</MenuItem>
+                        <MenuItem value="+1">🇺🇸 +1</MenuItem>
+                        <MenuItem value="+44">🇬🇧 +44</MenuItem>
+                        <MenuItem value="+81">🇯🇵 +81</MenuItem>
+                        <MenuItem value="+86">🇨🇳 +86</MenuItem>
+                        <MenuItem value="+82">🇰🇷 +82</MenuItem>
+                        <MenuItem value="+65">🇸🇬 +65</MenuItem>
+                        <MenuItem value="+60">🇲🇾 +60</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Box>
+                )
+              }}
             />
           </Box>
         </DialogContent>
