@@ -42,6 +42,8 @@ export interface UpdateWildlifeRecord {
   municipality?: string;
   reporter_name?: string;
   contact_number?: string;
+  phone_number?: string;
+  country_code?: string;
   photo_url?: string;
   timestamp_captured?: string;
 }
