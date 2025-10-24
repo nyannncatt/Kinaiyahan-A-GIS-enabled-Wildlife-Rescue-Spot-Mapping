@@ -85,7 +85,7 @@ export default function PublicReport() {
   const navigate = useNavigate();
   
   const [barangay, setBarangay] = useState('');
-  const [municipality, setMunicipality] = useState('');
+  const [municipality, setMunicipality] = useState('Manolo Fortich');
   const [speciesName, setSpeciesName] = useState('');
   const [reporterName, setReporterName] = useState('');
   const [contactNumber, setContactNumber] = useState('');
@@ -743,33 +743,35 @@ export default function PublicReport() {
                 }}>
                   <FormControl fullWidth variant="outlined">
                     <InputLabel htmlFor="municipality">Municipality</InputLabel>
-                     <OutlinedInput
-                       id="municipality"
-                       value={municipality}
-                       onChange={(e) => setMunicipality(e.target.value)}
-                       startAdornment={
-                         <InputAdornment position="start">
-                           <LocationOn color="action" />
-                         </InputAdornment>
-                       }
-                       label="Municipality"
-                       sx={{
-                         borderRadius: 2,
-                         '& .MuiOutlinedInput-root': {
-                           fontSize: isMobile ? '0.875rem' : '1rem',
-                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                             borderColor: '#4caf50',
-                             borderWidth: 2
-                           },
-                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                             borderColor: '#66bb6a'
-                           }
-                         },
-                         '& .MuiInputLabel-root.Mui-focused': {
-                           color: '#2e7d32'
-                         }
-                       }}
-                     />
+                    <Select
+                      id="municipality"
+                      value={municipality}
+                      onChange={(e) => setMunicipality(e.target.value)}
+                      label="Municipality"
+                      startAdornment={
+                        <InputAdornment position="start">
+                          <LocationOn color="action" />
+                        </InputAdornment>
+                      }
+                      sx={{
+                        borderRadius: 2,
+                        '& .MuiOutlinedInput-root': {
+                          fontSize: isMobile ? '0.875rem' : '1rem',
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#4caf50',
+                            borderWidth: 2
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#66bb6a'
+                          }
+                        },
+                        '& .MuiInputLabel-root.Mui-focused': {
+                          color: '#2e7d32'
+                        }
+                      }}
+                    >
+                      <MenuItem value="Manolo Fortich">Manolo Fortich</MenuItem>
+                    </Select>
                   </FormControl>
                 </Box>
                 <Box sx={{ 
