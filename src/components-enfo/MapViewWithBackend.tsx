@@ -304,6 +304,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [editDrafts, setEditDrafts] = useState<Record<string, any>>({});
   const [relocatingMarkerId, setRelocatingMarkerId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [editSpeciesOptions, setEditSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
+  const [editSpeciesLoading, setEditSpeciesLoading] = useState(false);
   const [hasLoadedRecords, setHasLoadedRecords] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [visibilityBump, setVisibilityBump] = useState(0);
@@ -619,6 +621,39 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       controller.abort();
     };
   }, [pendingMarker?.speciesName]);
+
+  // Species autocomplete for edit mode
+  useEffect(() => {
+    const currentDraft = editingMarkerId ? editDrafts[editingMarkerId] : null;
+    const query = currentDraft?.species_name?.trim() || "";
+    if (!editingMarkerId || query.length < 2) {
+      setEditSpeciesOptions([]);
+      setEditSpeciesLoading(false);
+      return;
+    }
+    setEditSpeciesLoading(true);
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const url = `https://api.inaturalist.org/v1/taxa/autocomplete?q=${encodeURIComponent(query)}&per_page=8`;
+        const res = await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
+        if (!res.ok) throw new Error("inat autocomplete failed");
+        const data = await res.json();
+        const options = (data?.results || [])
+          .map((r: any) => ({ label: r?.name || "", common: r?.preferred_common_name || undefined }))
+          .filter((o: any) => o.label);
+        setEditSpeciesOptions(options);
+      } catch {
+        // ignore errors
+      } finally {
+        setEditSpeciesLoading(false);
+      }
+    }, 350);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [editDrafts, editingMarkerId]);
 
   // Debounced place search
   useEffect(() => {
@@ -1483,20 +1518,62 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             <Popup className="themed-popup">
               <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
-                <TextField
-                  variant="outlined"
-                  margin="dense"
-                  fullWidth
-                  size="small"
-                  value={editDrafts[editingMarker.id]?.species_name || editingMarker.species_name}
-                  onChange={(e) =>
-                    setEditDrafts((prev) => ({
-                      ...prev,
-                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: e.target.value, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
-                    }))
-                  }
-                  inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
-                />
+                <Box sx={{ position: 'relative' }}>
+                  <TextField
+                    variant="outlined"
+                    margin="dense"
+                    fullWidth
+                    size="small"
+                    value={editDrafts[editingMarker.id]?.species_name || editingMarker.species_name}
+                    onChange={(e) =>
+                      setEditDrafts((prev) => ({
+                        ...prev,
+                        [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: e.target.value, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
+                      }))
+                    }
+                    inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
+                  />
+                  <Box sx={{ 
+                    position: 'absolute', 
+                    top: '100%', 
+                    left: 0, 
+                    right: 0, 
+                    zIndex: 1000,
+                    mt: 0.5, 
+                    border: "1px solid", 
+                    borderColor: "divider", 
+                    borderRadius: 1, 
+                    height: 128, 
+                    overflow: "auto",
+                    bgcolor: 'background.paper',
+                    boxShadow: 2
+                  }}>
+                    {editSpeciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
+                    {!editSpeciesLoading && editSpeciesOptions.length === 0 && editDrafts[editingMarker.id]?.species_name && editDrafts[editingMarker.id].species_name.length >= 2 && (
+                      <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
+                    )}
+                    {!editSpeciesLoading && editSpeciesOptions.length > 0 && (
+                      <Box>
+                        {editSpeciesOptions.map((opt) => (
+                          <Box
+                            key={`${opt.label}-${opt.common || ""}`}
+                            sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                            onClick={() => {
+                              setEditDrafts((prev) => ({
+                                ...prev,
+                                [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: opt.label, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
+                              }));
+                              setEditSpeciesOptions([]);
+                            }}
+                          >
+                            {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                            <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Status</Box>
                 <TextField
                   select

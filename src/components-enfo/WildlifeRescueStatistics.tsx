@@ -77,6 +77,8 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const [editFormData, setEditFormData] = useState<UpdateWildlifeRecord>({});
   const [editError, setEditError] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
+  const [speciesOptions, setSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
+  const [speciesLoading, setSpeciesLoading] = useState(false);
   
   // Success notification state
   const [successSnackbar, setSuccessSnackbar] = useState<{
@@ -197,7 +199,40 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     setEditingRecord(null);
     setEditFormData({});
     setEditError(null);
+    setSpeciesOptions([]);
   };
+
+  // Species autocomplete for edit mode
+  useEffect(() => {
+    const query = editFormData.species_name?.trim() || "";
+    if (!editDialogOpen || query.length < 2) {
+      setSpeciesOptions([]);
+      setSpeciesLoading(false);
+      return;
+    }
+    setSpeciesLoading(true);
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const url = `https://api.inaturalist.org/v1/taxa/autocomplete?q=${encodeURIComponent(query)}&per_page=8`;
+        const res = await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
+        if (!res.ok) throw new Error("inat autocomplete failed");
+        const data = await res.json();
+        const options = (data?.results || [])
+          .map((r: any) => ({ label: r?.name || "", common: r?.preferred_common_name || undefined }))
+          .filter((o: any) => o.label);
+        setSpeciesOptions(options);
+      } catch {
+        // ignore errors
+      } finally {
+        setSpeciesLoading(false);
+      }
+    }, 350);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [editFormData.species_name, editDialogOpen]);
 
   // Handle approve record
   const handleApproveRecord = async (id: string) => {
@@ -1132,13 +1167,52 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
           )}
           
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <TextField
-              label="Species Name"
-              value={editFormData.species_name || ''}
-              onChange={(e) => setEditFormData(prev => ({ ...prev, species_name: e.target.value }))}
-              fullWidth
-              required
-            />
+            <Box sx={{ position: 'relative' }}>
+              <TextField
+                label="Species Name"
+                value={editFormData.species_name || ''}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, species_name: e.target.value }))}
+                fullWidth
+                required
+              />
+              <Box sx={{ 
+                position: 'absolute', 
+                top: '100%', 
+                left: 0, 
+                right: 0, 
+                zIndex: 1000,
+                mt: 0.5, 
+                border: "1px solid", 
+                borderColor: "divider", 
+                borderRadius: 1, 
+                height: 128, 
+                overflow: "auto",
+                bgcolor: 'background.paper',
+                boxShadow: 2
+              }}>
+                {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
+                {!speciesLoading && speciesOptions.length === 0 && editFormData.species_name && editFormData.species_name.length >= 2 && (
+                  <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
+                )}
+                {!speciesLoading && speciesOptions.length > 0 && (
+                  <Box>
+                    {speciesOptions.map((opt) => (
+                      <Box
+                        key={`${opt.label}-${opt.common || ""}`}
+                        sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                        onClick={() => {
+                          setEditFormData(prev => ({ ...prev, species_name: opt.label }));
+                          setSpeciesOptions([]);
+                        }}
+                      >
+                        {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                        <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+            </Box>
             
             <FormControl fullWidth>
               <InputLabel>Status</InputLabel>
