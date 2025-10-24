@@ -794,8 +794,8 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                             setPendingMarker((p) => (p ? { ...p, speciesName: opt.label } : p))
                           }
                         >
-                          <Box sx={{ fontSize: 14 }}>{opt.label}</Box>
-                          {opt.common && <Box sx={{ fontSize: 12, opacity: 0.7 }}>{opt.common}</Box>}
+                          {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                          <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
                         </Box>
                       ))}
                     </Box>
