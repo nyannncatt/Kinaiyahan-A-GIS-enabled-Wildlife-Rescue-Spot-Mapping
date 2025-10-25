@@ -1202,82 +1202,175 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         </Box>
       </Box>
 
-      {/* Status filter toggles */}
-      <Box sx={{ position: 'absolute', top: 10, right: 10, zIndex: 1100 }}>
-        <ToggleButtonGroup
-          value={enabledStatuses}
-          onChange={(e, val) => {
-            if (Array.isArray(val)) {
-              setEnabledStatuses(val);
-            }
-          }}
-          aria-label="filter markers by status"
-        >
-          <ToggleButton
-            value="reported"
-            aria-label="reported"
-            sx={(theme) => ({
-              borderColor: 'divider',
-              color: enabledStatuses.includes('reported') ? '#e53935' : theme.palette.text.primary,
-              '&.Mui-selected': {
-                backgroundColor: alpha('#e53935', 0.15),
-                borderColor: '#e53935',
-                color: '#e53935',
+      {/* Enhanced Status Filter */}
+      <Box sx={{ 
+        position: 'absolute', 
+        top: 10, 
+        right: 10, 
+        zIndex: 1100,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1,
+        maxWidth: { xs: 'calc(100vw - 20px)', sm: '280px' },
+        width: { xs: 'calc(100vw - 20px)', sm: 'auto' }
+      }}>
+        {/* Filter Header */}
+        <Box sx={{
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: 2,
+          px: { xs: 1.5, sm: 2 },
+          py: 1,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          maxHeight: { xs: '70vh', sm: 'auto' },
+          overflow: { xs: 'auto', sm: 'visible' }
+        }}>
+          <Typography variant="subtitle2" sx={{ 
+            fontWeight: 600, 
+            color: 'text.primary',
+            textAlign: 'center',
+            mb: 1
+          }}>
+            Filter by Status
+          </Typography>
+          
+          {/* Status Filter Buttons */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            {[
+              { 
+                value: 'reported', 
+                label: 'Reported', 
+                color: '#e53935', 
+                icon: '🚨',
+                count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'reported' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
-              '&.Mui-selected:hover': { backgroundColor: alpha('#e53935', 0.25) },
-            })}
-          >
-            Reported
-          </ToggleButton>
-          <ToggleButton
-            value="rescued"
-            aria-label="rescued"
-            sx={(theme) => ({
-              borderColor: 'divider',
-              color: enabledStatuses.includes('rescued') ? '#1e88e5' : theme.palette.text.primary,
-              '&.Mui-selected': {
-                backgroundColor: alpha('#1e88e5', 0.15),
-                borderColor: '#1e88e5',
-                color: '#1e88e5',
+              { 
+                value: 'rescued', 
+                label: 'Rescued', 
+                color: '#1e88e5', 
+                icon: '🚑',
+                count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'rescued' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
-              '&.Mui-selected:hover': { backgroundColor: alpha('#1e88e5', 0.25) },
-            })}
-          >
-            Rescued
-          </ToggleButton>
-          <ToggleButton
-            value="turned over"
-            aria-label="turned over"
-            sx={(theme) => ({
-              borderColor: 'divider',
-              color: enabledStatuses.includes('turned over') ? '#fdd835' : theme.palette.text.primary,
-              '&.Mui-selected': {
-                backgroundColor: alpha('#fdd835', 0.20),
-                borderColor: '#fdd835',
-                color: '#fdd835',
+              { 
+                value: 'turned over', 
+                label: 'Turned Over', 
+                color: '#fdd835', 
+                icon: '🤝',
+                count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'turned over' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
-              '&.Mui-selected:hover': { backgroundColor: alpha('#fdd835', 0.28) },
+              { 
+                value: 'released', 
+                label: 'Released', 
+                color: '#43a047', 
+                icon: '🆓',
+                count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'released' && (r.approval_status === 'approved' || r.user_id !== null)).length
+              }
+            ].map((status) => {
+              const isSelected = enabledStatuses.includes(status.value);
+              return (
+                <Box
+                  key={status.value}
+                  onClick={() => {
+                    if (isSelected) {
+                      setEnabledStatuses(prev => prev.filter(s => s !== status.value));
+                    } else {
+                      setEnabledStatuses(prev => [...prev, status.value]);
+                    }
+                  }}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    p: { xs: 1, sm: 1.5 },
+                    borderRadius: 1.5,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease-in-out',
+                    backgroundColor: isSelected ? alpha(status.color, 0.15) : 'transparent',
+                    border: `2px solid ${isSelected ? status.color : 'transparent'}`,
+                    minHeight: { xs: 44, sm: 'auto' },
+                    '&:hover': {
+                      backgroundColor: isSelected ? alpha(status.color, 0.25) : alpha(status.color, 0.08),
+                      transform: { xs: 'none', sm: 'translateX(2px)' },
+                      boxShadow: isSelected ? `0 4px 12px ${alpha(status.color, 0.3)}` : '0 2px 8px rgba(0,0,0,0.1)'
+                    },
+                    '&:active': {
+                      transform: 'scale(0.98)'
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
+                    <Typography sx={{ fontSize: { xs: '1.1rem', sm: '1.2rem' } }}>{status.icon}</Typography>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        fontWeight: isSelected ? 600 : 500,
+                        color: isSelected ? status.color : 'text.primary',
+                        transition: 'all 0.2s ease-in-out',
+                        fontSize: { xs: '0.875rem', sm: '0.875rem' }
+                      }}
+                    >
+                      {status.label}
+                    </Typography>
+                  </Box>
+                  
+                  {/* Count Badge */}
+                  <Chip
+                    label={status.count}
+                    size="small"
+                    sx={{
+                      backgroundColor: isSelected ? status.color : alpha(status.color, 0.2),
+                      color: isSelected ? 'white' : status.color,
+                      fontWeight: 600,
+                      minWidth: { xs: 20, sm: 24 },
+                      height: { xs: 20, sm: 24 },
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                      transition: 'all 0.2s ease-in-out'
+                    }}
+                  />
+                </Box>
+              );
             })}
-          >
-            Turned over
-          </ToggleButton>
-          <ToggleButton
-            value="released"
-            aria-label="released"
-            sx={(theme) => ({
-              borderColor: 'divider',
-              color: enabledStatuses.includes('released') ? '#43a047' : theme.palette.text.primary,
-              '&.Mui-selected': {
-                backgroundColor: alpha('#43a047', 0.15),
-                borderColor: '#43a047',
-                color: '#43a047',
-              },
-              '&.Mui-selected:hover': { backgroundColor: alpha('#43a047', 0.25) },
-            })}
-          >
-            Released
-          </ToggleButton>
-        </ToggleButtonGroup>
+          </Box>
+          
+          {/* Clear All / Select All */}
+          <Box sx={{ 
+            display: 'flex', 
+            gap: { xs: 0.5, sm: 1 }, 
+            mt: 1,
+            justifyContent: 'center',
+            flexDirection: { xs: 'column', sm: 'row' }
+          }}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setEnabledStatuses([])}
+              sx={{ 
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                py: { xs: 0.75, sm: 0.5 },
+                px: { xs: 1, sm: 1.5 },
+                minWidth: 'auto',
+                flex: { xs: 1, sm: 'none' }
+              }}
+            >
+              Clear All
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setEnabledStatuses([...ALL_STATUSES])}
+              sx={{ 
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                py: { xs: 0.75, sm: 0.5 },
+                px: { xs: 1, sm: 1.5 },
+                minWidth: 'auto',
+                flex: { xs: 1, sm: 'none' }
+              }}
+            >
+              Select All
+            </Button>
+          </Box>
+        </Box>
       </Box>
 
       {/* Themed styles for Leaflet popups to adapt to MUI color scheme */}
