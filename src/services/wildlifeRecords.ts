@@ -5,6 +5,7 @@ export interface WildlifeRecord {
   user_id: string;
   species_name: string;
   status: 'reported' | 'rescued' | 'turned over' | 'released';
+  approval_status: 'pending' | 'approved' | 'rejected';
   latitude: number;
   longitude: number;
   barangay?: string;
@@ -12,6 +13,7 @@ export interface WildlifeRecord {
   reporter_name?: string;
   contact_number?: string;
   photo_url?: string;
+  has_exif_gps?: boolean;
   timestamp_captured: string;
   created_at: string;
   updated_at: string;
@@ -20,6 +22,7 @@ export interface WildlifeRecord {
 export interface CreateWildlifeRecord {
   species_name: string;
   status: 'reported' | 'rescued' | 'turned over' | 'released';
+  approval_status?: 'pending' | 'approved' | 'rejected';
   latitude: number;
   longitude: number;
   barangay?: string;
@@ -27,17 +30,24 @@ export interface CreateWildlifeRecord {
   reporter_name?: string;
   contact_number?: string;
   photo_url?: string;
+  has_exif_gps?: boolean;
   timestamp_captured: string;
 }
 
 export interface UpdateWildlifeRecord {
   species_name?: string;
   status?: 'reported' | 'rescued' | 'turned over' | 'released';
+  approval_status?: 'pending' | 'approved' | 'rejected';
+  latitude?: number;
+  longitude?: number;
   barangay?: string;
   municipality?: string;
   reporter_name?: string;
   contact_number?: string;
+  phone_number?: string;
+  country_code?: string;
   photo_url?: string;
+  has_exif_gps?: boolean;
   timestamp_captured?: string;
 }
 
@@ -86,6 +96,7 @@ export async function createWildlifeRecord(record: CreateWildlifeRecord): Promis
     .insert([{
       ...record,
       user_id: user.id,
+      approval_status: 'approved', // Authenticated users are always auto-approved
     }])
     .select()
     .single();
@@ -107,6 +118,7 @@ export async function createWildlifeRecordPublic(record: PublicWildlifeReport): 
   const recordWithStatus = {
     ...record,
     status: 'reported' as const,
+    approval_status: 'pending' as const, // Public reports need approval
     user_id: null
   };
   
@@ -154,30 +166,74 @@ export async function deleteWildlifeRecord(id: string): Promise<void> {
   }
 }
 
-// Get user role
-export async function getUserRole(): Promise<string | null> {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const user = sessionData?.session?.user;
-  
-  if (!user) {
-    return null;
-  }
-
+// Approve a wildlife record
+export async function approveWildlifeRecord(id: string): Promise<WildlifeRecord> {
   const { data, error } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
+    .from('wildlife_records')
+    .update({ approval_status: 'approved' })
+    .eq('id', id)
+    .select()
     .single();
 
   if (error) {
-    console.error('Error fetching user role:', error);
-    return null;
+    console.error('Error approving wildlife record:', error);
+    throw error;
   }
 
-  return data?.role || null;
+  return data;
 }
 
-// Upload photo to storage
+// Reject a wildlife record
+export async function rejectWildlifeRecord(id: string): Promise<WildlifeRecord> {
+  const { data, error } = await supabase
+    .from('wildlife_records')
+    .update({ approval_status: 'rejected' })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error rejecting wildlife record:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+// Get user role
+export async function getUserRole(): Promise<string | null> {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData?.session?.user;
+    
+    if (!user) {
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching user role:', error);
+      // If there's a policy error, return a default role to prevent infinite loops
+      if (error.code === '42P17' || error.message.includes('infinite recursion')) {
+        console.warn('Users table policy error detected, using default role');
+        return 'user'; // Default role
+      }
+      return null;
+    }
+
+    return data?.role || null;
+  } catch (error) {
+    console.error('Unexpected error fetching user role:', error);
+    return null;
+  }
+}
+
+// Upload photo to storage (requires authentication)
 export async function uploadWildlifePhoto(file: File, recordId: string): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();
   const user = sessionData?.session?.user;
@@ -196,6 +252,36 @@ export async function uploadWildlifePhoto(file: File, recordId: string): Promise
 
   if (error) {
     console.error('Error uploading photo:', error);
+    throw error;
+  }
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from('wildlife-photos')
+    .getPublicUrl(filePath);
+
+  return urlData.publicUrl;
+}
+
+// Upload photo to storage (public - no authentication required)
+export async function uploadWildlifePhotoPublic(file: File): Promise<string> {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `public-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+  const filePath = `public/${fileName}`;
+
+  // Try to upload to the existing wildlife-photos bucket
+  const { data, error } = await supabase.storage
+    .from('wildlife-photos')
+    .upload(filePath, file);
+
+  if (error) {
+    console.error('Error uploading public photo:', error);
+    
+    // If the bucket doesn't allow public uploads, we need to handle this differently
+    if (error.message.includes('Bucket not found') || error.message.includes('permission')) {
+      throw new Error('Photo upload is currently unavailable. Please try again later or contact support.');
+    }
+    
     throw error;
   }
 

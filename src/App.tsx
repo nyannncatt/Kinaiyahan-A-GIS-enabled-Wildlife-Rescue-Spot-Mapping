@@ -25,7 +25,7 @@ function App() {
 
   // Loading-aware auth guard
   const RequireAuth = ({ children }: { children: ReactElement }) => {
-    const { user, loading } = useAuth();
+    const { user, loading, session } = useAuth();
 
     if (loading) {
       return (
@@ -35,7 +35,8 @@ function App() {
       );
     }
 
-    if (!user && !isRecovery) {
+    // Check if user exists and session is valid
+    if (!user || !session) {
       return <Navigate to="/login" state={{ from: location }} replace />;
     }
 

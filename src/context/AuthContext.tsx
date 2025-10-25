@@ -55,19 +55,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       setLoading(true);
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { session },
+          error
+        } = await supabase.auth.getSession();
 
-      if (session?.user) {
-        setSession(session);
-        setUser(session.user);
-      } else {
+        if (error) {
+          console.error('Error getting session:', error);
+          setSession(null);
+          setUser(null);
+        } else if (session?.user) {
+          setSession(session);
+          setUser(session.user);
+        } else {
+          setSession(null);
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
         setSession(null);
         setUser(null);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     initAuth();
@@ -75,13 +86,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 🔑 Listen to auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      // ✅ Only update if the session actually changed
+    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      console.log('Auth state change:', event, newSession?.user?.id);
+      
       setLoading(true);
-      const isDifferent =
-        JSON.stringify(newSession) !== JSON.stringify(session);
-
-      if (isDifferent) {
+      
+      try {
         if (newSession?.user) {
           setSession(newSession);
           setUser(newSession.user);
@@ -89,13 +99,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(null);
           setUser(null);
         }
+      } catch (error) {
+        console.error('Error handling auth state change:', error);
+        setSession(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Logout

@@ -9,6 +9,8 @@ import FetchingModal from './FetchingModal';
 import { alpha } from '@mui/material/styles';
 import AddLocationAltOutlinedIcon from '@mui/icons-material/AddLocationAltOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import { useAuth } from '../context/AuthContext';
 import { useMapNavigation } from '../context/MapNavigationContext';
 import { 
@@ -165,9 +167,31 @@ function BoundaryGuide() {
 
     const fetchFrom = async (endpoint: string) => {
       const url = `${endpoint}?data=${encodeURIComponent(query)}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Overpass ${endpoint} status ${res.status}`);
-      return res.json();
+      
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      try {
+        const res = await fetch(url, { 
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'Wildlife-GIS/1.0'
+          }
+        });
+        clearTimeout(timeoutId);
+        
+        if (!res.ok) {
+          throw new Error(`Overpass ${endpoint} status ${res.status}`);
+        }
+        return res.json();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new Error('Request timeout');
+        }
+        throw error;
+      }
     };
 
     (async () => {
@@ -238,6 +262,8 @@ interface PendingMarker {
   photo: string | null;
   reporterName: string;
   contactNumber: string;
+  phoneNumber: string;
+  countryCode: string;
   barangay: string;
   municipality: string;
   address?: AddressInfo;
@@ -280,7 +306,10 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [pendingMarker, setPendingMarker] = useState<PendingMarker | null>(null);
   const [editingMarkerId, setEditingMarkerId] = useState<string | null>(null);
   const [editDrafts, setEditDrafts] = useState<Record<string, any>>({});
+  const [relocatingMarkerId, setRelocatingMarkerId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [editSpeciesOptions, setEditSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
+  const [editSpeciesLoading, setEditSpeciesLoading] = useState(false);
   const [hasLoadedRecords, setHasLoadedRecords] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [visibilityBump, setVisibilityBump] = useState(0);
@@ -291,7 +320,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     if (!pm) return false;
     const hasSpecies = Boolean(pm.speciesName && pm.speciesName.trim());
     const hasReporter = Boolean(pm.reporterName && pm.reporterName.trim());
-    const hasContact = Boolean(pm.contactNumber && pm.contactNumber.trim());
+    const hasContact = Boolean(pm.phoneNumber && pm.phoneNumber.trim());
     return hasSpecies && hasReporter && hasContact;
   };
 
@@ -597,6 +626,39 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     };
   }, [pendingMarker?.speciesName]);
 
+  // Species autocomplete for edit mode
+  useEffect(() => {
+    const currentDraft = editingMarkerId ? editDrafts[editingMarkerId] : null;
+    const query = currentDraft?.species_name?.trim() || "";
+    if (!editingMarkerId || query.length < 2) {
+      setEditSpeciesOptions([]);
+      setEditSpeciesLoading(false);
+      return;
+    }
+    setEditSpeciesLoading(true);
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const url = `https://api.inaturalist.org/v1/taxa/autocomplete?q=${encodeURIComponent(query)}&per_page=8`;
+        const res = await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
+        if (!res.ok) throw new Error("inat autocomplete failed");
+        const data = await res.json();
+        const options = (data?.results || [])
+          .map((r: any) => ({ label: r?.name || "", common: r?.preferred_common_name || undefined }))
+          .filter((o: any) => o.label);
+        setEditSpeciesOptions(options);
+      } catch {
+        // ignore errors
+      } finally {
+        setEditSpeciesLoading(false);
+      }
+    }, 350);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [editDrafts, editingMarkerId]);
+
   // Debounced place search
   useEffect(() => {
     const q = searchQuery.trim();
@@ -800,6 +862,150 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     }
   };
 
+  // Get barangay from coordinates using reverse geocoding API
+  const getBarangayFromCoordinates = async (lat: number, lng: number) => {
+    try {
+      console.log('Reverse geocoding coordinates:', { lat, lng });
+      
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+      );
+      const data = await response.json();
+      
+      console.log('Reverse geocoding response:', data);
+      
+      if (data && data.address) {
+        const address = data.address;
+        
+        // Extract barangay from various address fields
+        let extractedBarangay = '';
+        
+        if (address.suburb) {
+          extractedBarangay = address.suburb;
+        } else if (address.village) {
+          extractedBarangay = address.village;
+        } else if (address.hamlet) {
+          extractedBarangay = address.hamlet;
+        } else if (address.neighbourhood) {
+          extractedBarangay = address.neighbourhood;
+        } else if (address.quarter) {
+          extractedBarangay = address.quarter;
+        }
+        
+        // Check if we found a barangay and match it to our predefined list
+        if (extractedBarangay) {
+          const predefinedBarangays = [
+            'Agusan Canyon', 'Alae', 'Dahilayan', 'Dalirig', 'Damilag', 'Diclum',
+            'Guilang-guilang', 'Kalugmanan', 'Lindaban', 'Lingion', 'Lunocan',
+            'Maluko', 'Mambatangan', 'Mampayag', 'Minsuro', 'Mantibugao',
+            'Tankulan (Pob.)', 'San Miguel', 'Sankanan', 'Santiago', 'Santo Niño', 'Ticala'
+          ];
+          
+          // Try exact match first
+          let matchedBarangay = predefinedBarangays.find(barangay => 
+            barangay.toLowerCase() === extractedBarangay.toLowerCase()
+          );
+          
+          // If no exact match, try partial matching
+          if (!matchedBarangay) {
+            matchedBarangay = predefinedBarangays.find(barangay => 
+              barangay.toLowerCase().includes(extractedBarangay.toLowerCase()) ||
+              extractedBarangay.toLowerCase().includes(barangay.toLowerCase()) ||
+              barangay.toLowerCase().replace(/\s+/g, '').includes(extractedBarangay.toLowerCase().replace(/\s+/g, ''))
+            );
+          }
+          
+          if (matchedBarangay) {
+            console.log(`Matched barangay: ${matchedBarangay} for coordinates ${lat}, ${lng}`);
+            return matchedBarangay;
+          }
+        }
+        
+        // If no match found, try to find the closest barangay based on distance
+        const barangayCenters = [
+          { name: 'Tankulan (Pob.)', lat: 8.356, lng: 124.864 },
+          { name: 'Agusan Canyon', lat: 8.45, lng: 124.85 },
+          { name: 'Alae', lat: 8.40, lng: 124.95 },
+          { name: 'Dahilayan', lat: 8.50, lng: 124.85 },
+          { name: 'Dalirig', lat: 8.30, lng: 124.90 },
+          { name: 'Damilag', lat: 8.35, lng: 124.75 },
+          { name: 'Diclum', lat: 8.35, lng: 125.00 },
+          { name: 'Guilang-guilang', lat: 8.45, lng: 124.90 },
+          { name: 'Kalugmanan', lat: 8.25, lng: 124.85 },
+          { name: 'Lindaban', lat: 8.35, lng: 124.65 },
+          { name: 'Lingion', lat: 8.30, lng: 125.00 },
+          { name: 'Lunocan', lat: 8.50, lng: 124.90 },
+          { name: 'Maluko', lat: 8.25, lng: 124.90 },
+          { name: 'Mambatangan', lat: 8.35, lng: 124.55 },
+          { name: 'Mampayag', lat: 8.30, lng: 125.05 },
+          { name: 'Minsuro', lat: 8.55, lng: 124.85 },
+          { name: 'Mantibugao', lat: 8.20, lng: 124.85 },
+          { name: 'San Miguel', lat: 8.35, lng: 124.45 },
+          { name: 'Sankanan', lat: 8.30, lng: 125.10 },
+          { name: 'Santiago', lat: 8.50, lng: 124.95 },
+          { name: 'Santo Niño', lat: 8.20, lng: 124.90 },
+          { name: 'Ticala', lat: 8.35, lng: 124.35 }
+        ];
+        
+        let closestBarangay = '';
+        let minDistance = Infinity;
+        
+        for (const barangay of barangayCenters) {
+          const distance = Math.sqrt(Math.pow(lat - barangay.lat, 2) + Math.pow(lng - barangay.lng, 2));
+          
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestBarangay = barangay.name;
+          }
+        }
+        
+        console.log(`Using closest barangay: ${closestBarangay} (distance: ${minDistance})`);
+        return closestBarangay;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error reverse geocoding:', error);
+      return null;
+    }
+  };
+
+  // Handle relocating marker
+  const handleRelocateMarker = async (id: string, newLat: number, newLng: number) => {
+    try {
+      // Get the new barangay based on coordinates using reverse geocoding
+      const newBarangay = await getBarangayFromCoordinates(newLat, newLng);
+      
+      const updates = {
+        latitude: newLat,
+        longitude: newLng,
+        barangay: newBarangay || undefined
+      };
+      
+      const updatedRecord = await updateWildlifeRecord(id, updates);
+      setWildlifeRecords(prev => 
+        prev.map(record => record.id === id ? updatedRecord : record)
+      );
+      setRelocatingMarkerId(null);
+      try { triggerRecordsRefresh(); } catch {}
+      
+      // Show success modal
+      setSuccessModal({
+        open: true,
+        title: 'Success!',
+        message: `Wildlife record location has been updated successfully.${newBarangay ? ` New location: ${newBarangay}` : ''}`,
+      });
+      
+      // Refresh map data after successful update
+      setTimeout(() => {
+        refreshMapData();
+      }, 1000);
+    } catch (err) {
+      console.error('Error relocating wildlife record:', err);
+      setError(err instanceof Error ? err.message : 'Failed to relocate wildlife record');
+    }
+  };
+
   // Handle photo upload
   const handlePhotoUpload = async (file: File, recordId?: string) => {
     try {
@@ -814,6 +1020,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
 
   // Add marker on click component
   function AddMarkerOnClick({ enabled }: { enabled: boolean }) {
+    const map = useMap();
+    
     useMapEvents({
       click(e) {
         if (!enabled) return;
@@ -828,12 +1036,53 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
           photo: null,
           reporterName: "",
           contactNumber: "",
+          phoneNumber: "",
+          countryCode: "+63",
           barangay: "",
           municipality: "",
         });
         setIsAddingMarker(true);
       }
     });
+
+    // Change cursor when in add marker mode
+    useEffect(() => {
+      if (enabled) {
+        // Use a custom cursor with plus icon for adding markers
+        map.getContainer().style.cursor = 'url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyUzYuNDggMjIgMTIgMjJTMjIgMTcuNTIgMjIgMTJTMTcuNTIgMiAxMiAyWk0xNyAxM0gxM1YxN0gxMVYxM0g3VjExSDExVjdIMTNWMTFIMTdWMTNaIiBmaWxsPSIjRkY2MDAwIi8+Cjwvc3ZnPg==") 12 12, crosshair';
+        return () => {
+          map.getContainer().style.cursor = '';
+        };
+      }
+    }, [enabled, map]);
+
+    return null;
+  }
+
+  // Relocate marker on click component
+  function RelocateMarkerOnClick({ enabled, markerId }: { enabled: boolean; markerId: string | null }) {
+    const map = useMap();
+    
+    useMapEvents({
+      click(e) {
+        if (!enabled || !markerId) return;
+        const lat = Number(e.latlng.lat);
+        const lng = Number(e.latlng.lng);
+        handleRelocateMarker(markerId, lat, lng);
+      }
+    });
+
+    // Change cursor when in relocation mode
+    useEffect(() => {
+      if (enabled) {
+        // Use a custom cursor with location pin icon
+        map.getContainer().style.cursor = 'url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyUzYuNDggMjIgMTIgMjJTMjIgMTcuNTIgMjIgMTJTMTcuNTIgMiAxMiAyWk0xMiAxM0MxMC4zNCAxMyA5IDExLjY2IDkgMTBTMTAuMzQgNyAxMiA3UzE1IDguMzQgMTUgMTBTMTMuNjYgMTMgMTIgMTNaIiBmaWxsPSIjRkY2MDAwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjMiIGZpbGw9IiNGRkZGRkYiLz4KPC9zdmc+") 12 12, pointer';
+        return () => {
+          map.getContainer().style.cursor = '';
+        };
+      }
+    }, [enabled, map]);
+
     return null;
   }
 
@@ -849,23 +1098,48 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const filteredMarkers = wildlifeRecords.filter((m) => {
     const normalizedStatus = normalizeStatus(m.status);
     const isIncluded = enabledStatuses.includes(normalizedStatus);
+    // Show approved records OR records created by authenticated users (no approval needed)
+    const isApproved = m.approval_status === 'approved' || m.user_id !== null;
     // Debug logging (remove in production)
     if (process.env.NODE_ENV === 'development') {
-      console.log(`Marker ${m.id}: status="${m.status}" -> normalized="${normalizedStatus}" -> included=${isIncluded}`);
+      console.log(`Marker ${m.id}: status="${m.status}" -> normalized="${normalizedStatus}" -> included=${isIncluded}, approved=${isApproved}`);
       console.log('Enabled statuses:', enabledStatuses);
       console.log('Total wildlife records:', wildlifeRecords.length);
     }
-    return isIncluded;
+    return isIncluded && isApproved;
   });
 
   // Debug: Add test markers if no real data - REMOVED TO PREVENT RANDOM PINS
   const testMarkers: any[] = []; // Disabled test markers
+  
+  // Add a test marker to verify coordinate system (temporary debugging)
+  const debugTestMarker = {
+    id: 'debug-test',
+    species_name: 'Test Marker',
+    status: 'reported' as const,
+    latitude: 8.371964645263802, // Manolo Fortich center
+    longitude: 124.85604137091526,
+    barangay: 'Test Barangay',
+    municipality: 'Manolo Fortich',
+    reporter_name: 'Debug User',
+    contact_number: '000-000-0000',
+    photo_url: undefined,
+    timestamp_captured: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    user_id: 'debug'
+  };
+  
+  // Uncomment the line below to enable debug test marker
+  // testMarkers.push(debugTestMarker);
 
   const allMarkers = [...wildlifeRecords, ...testMarkers];
   const finalFilteredMarkers = allMarkers.filter((m) => {
     const normalizedStatus = normalizeStatus(m.status);
     const isIncluded = enabledStatuses.includes(normalizedStatus);
-    return isIncluded;
+    // Show approved records OR records created by authenticated users (no approval needed)
+    const isApproved = m.approval_status === 'approved' || m.user_id !== null;
+    return isIncluded && isApproved;
   });
   const editingMarker = editingMarkerId != null ? wildlifeRecords.find((m) => m.id === editingMarkerId) || null : null;
 
@@ -890,7 +1164,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   return (
     <Box sx={{ height: "100%", width: "100%", position: "relative" }}>
       {/* Search box */}
-      <Box sx={{ position: 'absolute', top: 10, left: 45, zIndex: 1100, width: 320 }}>
+      <Box sx={{ position: 'absolute', top: 10, left: 10, zIndex: 1100, width: 320 }}>
         <Box sx={{ position: 'relative' }}>
           <TextField
             size="small"
@@ -901,7 +1175,18 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             onChange={(e) => { setSearchQuery(e.target.value); setShowResults(true); }}
             onFocus={() => setShowResults(true)}
             InputProps={{
-              sx: { bgcolor: 'background.paper' },
+              sx: { 
+                bgcolor: 'background.paper',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                },
+                '&.Mui-focused': {
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+                }
+              },
             }}
           />
           {showResults && (searchLoading || searchResults.length > 0) && (
@@ -917,82 +1202,175 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         </Box>
       </Box>
 
-      {/* Status filter toggles */}
-      <Box sx={{ position: 'absolute', top: 10, right: 10, zIndex: 1100 }}>
-        <ToggleButtonGroup
-          value={enabledStatuses}
-          onChange={(e, val) => {
-            if (Array.isArray(val)) {
-              setEnabledStatuses(val);
-            }
-          }}
-          aria-label="filter markers by status"
-        >
-          <ToggleButton
-            value="reported"
-            aria-label="reported"
-            sx={(theme) => ({
-              borderColor: 'divider',
-              color: enabledStatuses.includes('reported') ? '#e53935' : theme.palette.text.primary,
-              '&.Mui-selected': {
-                backgroundColor: alpha('#e53935', 0.15),
-                borderColor: '#e53935',
-                color: '#e53935',
+      {/* Enhanced Status Filter */}
+      <Box sx={{ 
+        position: 'absolute', 
+        top: 10, 
+        right: 10, 
+        zIndex: 1100,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1,
+        maxWidth: { xs: 'calc(100vw - 20px)', sm: '280px' },
+        width: { xs: 'calc(100vw - 20px)', sm: 'auto' }
+      }}>
+        {/* Filter Header */}
+        <Box sx={{
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: 2,
+          px: { xs: 1.5, sm: 2 },
+          py: 1,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          maxHeight: { xs: '70vh', sm: 'auto' },
+          overflow: { xs: 'auto', sm: 'visible' }
+        }}>
+          <Typography variant="subtitle2" sx={{ 
+            fontWeight: 600, 
+            color: 'text.primary',
+            textAlign: 'center',
+            mb: 1
+          }}>
+            Filter by Status
+          </Typography>
+          
+          {/* Status Filter Buttons */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            {[
+              { 
+                value: 'reported', 
+                label: 'Reported', 
+                color: '#e53935', 
+                icon: '🚨',
+                count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'reported' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
-              '&.Mui-selected:hover': { backgroundColor: alpha('#e53935', 0.25) },
-            })}
-          >
-            Reported
-          </ToggleButton>
-          <ToggleButton
-            value="rescued"
-            aria-label="rescued"
-            sx={(theme) => ({
-              borderColor: 'divider',
-              color: enabledStatuses.includes('rescued') ? '#1e88e5' : theme.palette.text.primary,
-              '&.Mui-selected': {
-                backgroundColor: alpha('#1e88e5', 0.15),
-                borderColor: '#1e88e5',
-                color: '#1e88e5',
+              { 
+                value: 'rescued', 
+                label: 'Rescued', 
+                color: '#1e88e5', 
+                icon: '🚑',
+                count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'rescued' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
-              '&.Mui-selected:hover': { backgroundColor: alpha('#1e88e5', 0.25) },
-            })}
-          >
-            Rescued
-          </ToggleButton>
-          <ToggleButton
-            value="turned over"
-            aria-label="turned over"
-            sx={(theme) => ({
-              borderColor: 'divider',
-              color: enabledStatuses.includes('turned over') ? '#fdd835' : theme.palette.text.primary,
-              '&.Mui-selected': {
-                backgroundColor: alpha('#fdd835', 0.20),
-                borderColor: '#fdd835',
-                color: '#fdd835',
+              { 
+                value: 'turned over', 
+                label: 'Turned Over', 
+                color: '#fdd835', 
+                icon: '🤝',
+                count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'turned over' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
-              '&.Mui-selected:hover': { backgroundColor: alpha('#fdd835', 0.28) },
+              { 
+                value: 'released', 
+                label: 'Released', 
+                color: '#43a047', 
+                icon: '🆓',
+                count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'released' && (r.approval_status === 'approved' || r.user_id !== null)).length
+              }
+            ].map((status) => {
+              const isSelected = enabledStatuses.includes(status.value);
+              return (
+                <Box
+                  key={status.value}
+                  onClick={() => {
+                    if (isSelected) {
+                      setEnabledStatuses(prev => prev.filter(s => s !== status.value));
+                    } else {
+                      setEnabledStatuses(prev => [...prev, status.value]);
+                    }
+                  }}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    p: { xs: 1, sm: 1.5 },
+                    borderRadius: 1.5,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease-in-out',
+                    backgroundColor: isSelected ? alpha(status.color, 0.15) : 'transparent',
+                    border: `2px solid ${isSelected ? status.color : 'transparent'}`,
+                    minHeight: { xs: 44, sm: 'auto' },
+                    '&:hover': {
+                      backgroundColor: isSelected ? alpha(status.color, 0.25) : alpha(status.color, 0.08),
+                      transform: { xs: 'none', sm: 'translateX(2px)' },
+                      boxShadow: isSelected ? `0 4px 12px ${alpha(status.color, 0.3)}` : '0 2px 8px rgba(0,0,0,0.1)'
+                    },
+                    '&:active': {
+                      transform: 'scale(0.98)'
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
+                    <Typography sx={{ fontSize: { xs: '1.1rem', sm: '1.2rem' } }}>{status.icon}</Typography>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        fontWeight: isSelected ? 600 : 500,
+                        color: isSelected ? status.color : 'text.primary',
+                        transition: 'all 0.2s ease-in-out',
+                        fontSize: { xs: '0.875rem', sm: '0.875rem' }
+                      }}
+                    >
+                      {status.label}
+                    </Typography>
+                  </Box>
+                  
+                  {/* Count Badge */}
+                  <Chip
+                    label={status.count}
+                    size="small"
+                    sx={{
+                      backgroundColor: isSelected ? status.color : alpha(status.color, 0.2),
+                      color: isSelected ? 'white' : status.color,
+                      fontWeight: 600,
+                      minWidth: { xs: 20, sm: 24 },
+                      height: { xs: 20, sm: 24 },
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                      transition: 'all 0.2s ease-in-out'
+                    }}
+                  />
+                </Box>
+              );
             })}
-          >
-            Turned over
-          </ToggleButton>
-          <ToggleButton
-            value="released"
-            aria-label="released"
-            sx={(theme) => ({
-              borderColor: 'divider',
-              color: enabledStatuses.includes('released') ? '#43a047' : theme.palette.text.primary,
-              '&.Mui-selected': {
-                backgroundColor: alpha('#43a047', 0.15),
-                borderColor: '#43a047',
-                color: '#43a047',
-              },
-              '&.Mui-selected:hover': { backgroundColor: alpha('#43a047', 0.25) },
-            })}
-          >
-            Released
-          </ToggleButton>
-        </ToggleButtonGroup>
+          </Box>
+          
+          {/* Clear All / Select All */}
+          <Box sx={{ 
+            display: 'flex', 
+            gap: { xs: 0.5, sm: 1 }, 
+            mt: 1,
+            justifyContent: 'center',
+            flexDirection: { xs: 'column', sm: 'row' }
+          }}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setEnabledStatuses([])}
+              sx={{ 
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                py: { xs: 0.75, sm: 0.5 },
+                px: { xs: 1, sm: 1.5 },
+                minWidth: 'auto',
+                flex: { xs: 1, sm: 'none' }
+              }}
+            >
+              Clear All
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setEnabledStatuses([...ALL_STATUSES])}
+              sx={{ 
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                py: { xs: 0.75, sm: 0.5 },
+                px: { xs: 1, sm: 1.5 },
+                minWidth: 'auto',
+                flex: { xs: 1, sm: 'none' }
+              }}
+            >
+              Select All
+            </Button>
+          </Box>
+        </Box>
       </Box>
 
       {/* Themed styles for Leaflet popups to adapt to MUI color scheme */}
@@ -1097,29 +1475,142 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       `}</style>
 
       {/* Map control buttons */}
-      <Box sx={{ position: "absolute", top: 90, left: 10, zIndex: 1000, display: "flex", flexDirection: "column", gap: 1 }}>
-          <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
-            <IconButton
-              color={isAddingMarker ? "primary" : "default"}
-              size="small"
-              onClick={() => setIsAddingMarker((v) => !v)}
-              aria-pressed={isAddingMarker}
-            >
-              <AddLocationAltOutlinedIcon />
-            </IconButton>
-          </Tooltip>
-          
-          <Tooltip title="Refresh map data" enterDelay={500}>
-            <IconButton
-              color="default"
-              size="small"
-              onClick={refreshMapData}
-              disabled={fetchingModal.open}
-            >
-              <RefreshIcon />
-            </IconButton>
-          </Tooltip>
-          
+      <Box sx={{ position: "absolute", top: 60, left: 10, zIndex: 1000, display: "flex", flexDirection: "column", gap: 1 }}>
+        <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
+          <Button
+            variant={isAddingMarker ? "contained" : "outlined"}
+            color={isAddingMarker ? "primary" : "inherit"}
+            size="small"
+            onClick={() => setIsAddingMarker((v) => !v)}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: 1,
+              border: '1px solid black',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                backgroundColor: isAddingMarker ? 'primary.dark' : 'action.hover',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                borderColor: isAddingMarker ? 'primary.dark' : 'primary.main',
+                color: 'primary.main'
+              }
+            }}
+          >
+            <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
+            {isAddingMarker ? "Adding Marker" : "Add Marker"}
+          </Button>
+        </Tooltip>
+        
+        <Tooltip title="Refresh map data" enterDelay={500}>
+          <Button
+            variant="outlined"
+            color="inherit"
+            size="small"
+            onClick={refreshMapData}
+            disabled={fetchingModal.open}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: 1,
+              border: '1px solid black',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                backgroundColor: 'action.hover',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                borderColor: 'primary.main',
+                color: 'primary.main'
+              }
+            }}
+          >
+            <RefreshIcon sx={{ fontSize: 18 }} />
+            Refresh
+          </Button>
+        </Tooltip>
+        
+        <Tooltip title="Zoom in" enterDelay={500}>
+          <Button
+            variant="outlined"
+            color="inherit"
+            size="small"
+            onClick={() => {
+              if (mapInstance) {
+                const currentZoom = mapInstance.getZoom();
+                mapInstance.setZoom(currentZoom + 1);
+              }
+            }}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: 1,
+              border: '1px solid black',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                backgroundColor: 'action.hover',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                borderColor: 'primary.main',
+                color: 'primary.main'
+              }
+            }}
+          >
+            <ZoomInIcon sx={{ fontSize: 18 }} />
+            Zoom In
+          </Button>
+        </Tooltip>
+        
+        <Tooltip title="Zoom out" enterDelay={500}>
+          <Button
+            variant="outlined"
+            color="inherit"
+            size="small"
+            onClick={() => {
+              if (mapInstance) {
+                const currentZoom = mapInstance.getZoom();
+                mapInstance.setZoom(currentZoom - 1);
+              }
+            }}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: 1,
+              border: '1px solid black',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                backgroundColor: 'action.hover',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                borderColor: 'primary.main',
+                color: 'primary.main'
+              }
+            }}
+          >
+            <ZoomOutIcon sx={{ fontSize: 18 }} />
+            Zoom Out
+          </Button>
+        </Tooltip>
+        
       </Box>
 
       {error && (
@@ -1141,7 +1632,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
           borderRadius: "8px",
           border: "1px solid #e0e0e0",
         }}
-        zoomControl={true}
+        zoomControl={false}
         scrollWheelZoom={true}
         minZoom={12}
         maxZoom={18}
@@ -1154,6 +1645,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         <BoundaryGuide />
         <MapInstance />
         <AddMarkerOnClick enabled={isAddingMarker && role === 'enforcement'} />
+        <RelocateMarkerOnClick enabled={!!relocatingMarkerId} markerId={relocatingMarkerId} />
 
         {/* Pending marker with photo upload */}
         {pendingMarker && (
@@ -1204,8 +1696,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                             setPendingMarker((p) => (p ? { ...p, speciesName: opt.label } : p))
                           }
                         >
-                          <Box sx={{ fontSize: 14 }}>{opt.label}</Box>
-                          {opt.common && <Box sx={{ fontSize: 12, opacity: 0.7 }}>{opt.common}</Box>}
+                          {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                          <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
                         </Box>
                       ))}
                     </Box>
@@ -1256,20 +1748,58 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   inputRef={(el) => { pendingReporterRef.current = el; }}
                 />
                 <TextField
-                  placeholder="Contact number"
+                  placeholder="Phone number"
                   size="small"
                   variant="outlined"
                   fullWidth
                   margin="dense"
-                  value={pendingMarker.contactNumber || ""}
-                  onChange={(e) => setPendingMarker((p) => {
-                    const next = p ? { ...p, contactNumber: e.target.value } : p;
-                    if (next && isPendingComplete(next)) setPendingWarning(null);
-                    return next as PendingMarker;
-                  })}
+                  value={pendingMarker.phoneNumber || ""}
+                  onChange={(e) => {
+                    const phoneNumber = e.target.value;
+                    const countryCode = pendingMarker.countryCode || '+63';
+                    const fullNumber = countryCode + phoneNumber;
+                    setPendingMarker((p) => {
+                      const next = p ? { ...p, phoneNumber, contactNumber: fullNumber } : p;
+                      if (next && isPendingComplete(next)) setPendingWarning(null);
+                      return next as PendingMarker;
+                    });
+                  }}
                   required
-                  error={Boolean(pendingWarning) && !(pendingMarker.contactNumber || '').trim()}
+                  error={Boolean(pendingWarning) && !(pendingMarker.phoneNumber || '').trim()}
                   inputRef={(el) => { pendingContactRef.current = el; }}
+                  InputProps={{
+                    startAdornment: (
+                      <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                        <FormControl size="small" sx={{ minWidth: 80 }}>
+                          <Select
+                            value={pendingMarker.countryCode || '+63'}
+                            onChange={(e) => setPendingMarker((p) => p ? { ...p, countryCode: e.target.value } : p)}
+                            variant="standard"
+                            sx={{ 
+                              '&:before': { borderBottom: 'none' },
+                              '&:after': { borderBottom: 'none' },
+                              '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                              '& .MuiSelect-select': { 
+                                padding: '0',
+                                fontSize: '14px',
+                                fontWeight: 500,
+                                minHeight: 'auto'
+                              }
+                            }}
+                          >
+                            <MenuItem value="+63">🇵🇭 +63</MenuItem>
+                            <MenuItem value="+1">🇺🇸 +1</MenuItem>
+                            <MenuItem value="+44">🇬🇧 +44</MenuItem>
+                            <MenuItem value="+81">🇯🇵 +81</MenuItem>
+                            <MenuItem value="+86">🇨🇳 +86</MenuItem>
+                            <MenuItem value="+82">🇰🇷 +82</MenuItem>
+                            <MenuItem value="+65">🇸🇬 +65</MenuItem>
+                            <MenuItem value="+60">🇲🇾 +60</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    )
+                  }}
                 />
 
                 {/* Upload photo */}
@@ -1329,7 +1859,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           const missing = [
                             { ok: Boolean((pendingMarker?.speciesName || '').trim()), ref: pendingSpeciesRef },
                             { ok: Boolean((pendingMarker?.reporterName || '').trim()), ref: pendingReporterRef },
-                            { ok: Boolean((pendingMarker?.contactNumber || '').trim()), ref: pendingContactRef },
+                            { ok: Boolean((pendingMarker?.phoneNumber || '').trim()), ref: pendingContactRef },
                           ];
                           const firstMissing = missing.find((m) => !m.ok)?.ref?.current;
                           try { firstMissing?.focus(); } catch {}
@@ -1361,20 +1891,62 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             <Popup className="themed-popup">
               <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
-                <TextField
-                  variant="outlined"
-                  margin="dense"
-                  fullWidth
-                  size="small"
-                  value={editDrafts[editingMarker.id]?.species_name || editingMarker.species_name}
-                  onChange={(e) =>
-                    setEditDrafts((prev) => ({
-                      ...prev,
-                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: e.target.value, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url },
-                    }))
-                  }
-                  inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
-                />
+                <Box sx={{ position: 'relative' }}>
+                  <TextField
+                    variant="outlined"
+                    margin="dense"
+                    fullWidth
+                    size="small"
+                    value={editDrafts[editingMarker.id]?.species_name || editingMarker.species_name}
+                    onChange={(e) =>
+                      setEditDrafts((prev) => ({
+                        ...prev,
+                        [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: e.target.value, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
+                      }))
+                    }
+                    inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
+                  />
+                  <Box sx={{ 
+                    position: 'absolute', 
+                    top: '100%', 
+                    left: 0, 
+                    right: 0, 
+                    zIndex: 1000,
+                    mt: 0.5, 
+                    border: "1px solid", 
+                    borderColor: "divider", 
+                    borderRadius: 1, 
+                    height: 128, 
+                    overflow: "auto",
+                    bgcolor: 'background.paper',
+                    boxShadow: 2
+                  }}>
+                    {editSpeciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
+                    {!editSpeciesLoading && editSpeciesOptions.length === 0 && editDrafts[editingMarker.id]?.species_name && editDrafts[editingMarker.id].species_name.length >= 2 && (
+                      <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
+                    )}
+                    {!editSpeciesLoading && editSpeciesOptions.length > 0 && (
+                      <Box>
+                        {editSpeciesOptions.map((opt) => (
+                          <Box
+                            key={`${opt.label}-${opt.common || ""}`}
+                            sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                            onClick={() => {
+                              setEditDrafts((prev) => ({
+                                ...prev,
+                                [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: opt.label, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
+                              }));
+                              setEditSpeciesOptions([]);
+                            }}
+                          >
+                            {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                            <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Status</Box>
                 <TextField
                   select
@@ -1386,7 +1958,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   onChange={(e) =>
                     setEditDrafts((prev) => ({
                       ...prev,
-                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), status: String(e.target.value), species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url },
+                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), status: String(e.target.value), species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
                     }))
                   }
                 >
@@ -1395,10 +1967,36 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   <MenuItem value="turned over">Turned over</MenuItem>
                   <MenuItem value="released">Released</MenuItem>
                 </TextField>
+                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Barangay</Box>
+                <TextField
+                  variant="outlined"
+                  margin="dense"
+                  fullWidth
+                  size="small"
+                  value={editDrafts[editingMarker.id]?.barangay || editingMarker.barangay || ''}
+                  onChange={(e) =>
+                    setEditDrafts((prev) => ({
+                      ...prev,
+                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), barangay: e.target.value, species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
+                    }))
+                  }
+                />
+                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Municipality</Box>
+                <TextField
+                  variant="outlined"
+                  margin="dense"
+                  fullWidth
+                  size="small"
+                  value={editDrafts[editingMarker.id]?.municipality || editingMarker.municipality || ''}
+                  onChange={(e) =>
+                    setEditDrafts((prev) => ({
+                      ...prev,
+                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), municipality: e.target.value, species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay },
+                    }))
+                  }
+                />
                 <Box>
                   {editingMarker.timestamp_captured ? (<div>DateTime: {new Date(editingMarker.timestamp_captured).toLocaleString()}</div>) : null}
-                  <div>Barangay: {editingMarker.barangay || "N/A"}</div>
-                  <div>Municipality: {editingMarker.municipality || "N/A"}</div>
                   <div>Latitude: {editingMarker.latitude.toFixed(5)}</div>
                   <div>Longitude: {editingMarker.longitude.toFixed(5)}</div>
                 </Box>
@@ -1422,8 +2020,40 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
           </Marker>
         )}
 
+        {/* When relocating, render that marker outside the cluster */}
+        {relocatingMarkerId && (() => {
+          const relocatingMarker = finalFilteredMarkers.find(m => m.id === relocatingMarkerId);
+          return relocatingMarker ? (
+            <Marker
+              key={`relocating-${relocatingMarker.id}`}
+              position={[relocatingMarker.latitude, relocatingMarker.longitude]}
+              icon={createStatusIcon(relocatingMarker.status)}
+              ref={(ref) => { if (ref) markerRefs.current[relocatingMarker.id] = ref; }}
+            >
+              <Popup className="themed-popup">
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
+                    Relocating: {relocatingMarker.species_name}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    Click anywhere on the map to move this pin to the new location.
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setRelocatingMarkerId(null)}
+                    sx={{ mt: 1 }}
+                  >
+                    Cancel Relocation
+                  </Button>
+                </Box>
+              </Popup>
+            </Marker>
+          ) : null;
+        })()}
+
         {/* Saved user markers */}
-        {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId).length > 0 && (
+        {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId && m.id !== relocatingMarkerId).length > 0 && (
           <MarkerClusterGroup
             chunkedLoading
             iconCreateFunction={(cluster: any) => {
@@ -1441,13 +2071,16 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
               return L.divIcon({ html, className: "cluster-icon", iconSize: [32, 32] });
             }}
           >
-            {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId).map((m) => (
-            <Marker
-              key={m.id}
-              position={[m.latitude, m.longitude]}
-              icon={createStatusIcon(m.status)}
-              ref={(ref) => { markerRefs.current[m.id] = ref; }}
-            >
+            {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId).map((m) => {
+              console.log(`Marker ${m.id} coordinates:`, { lat: m.latitude, lng: m.longitude });
+              console.log(`Marker ${m.id} position array:`, [m.latitude, m.longitude]);
+              return (
+              <Marker
+                key={m.id}
+                position={[m.latitude, m.longitude]}
+                icon={createStatusIcon(m.status)}
+                ref={(ref) => { markerRefs.current[m.id] = ref; }}
+              >
               <Popup className="themed-popup">
                 {editingMarkerId === m.id ? (
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
@@ -1525,20 +2158,74 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   margin="dense"
                   fullWidth
                   size="small"
-                      value={editDrafts[m.id]?.contact_number ?? m.contact_number ?? ""}
-                  onChange={(e) =>
+                  placeholder="Phone number"
+                  value={editDrafts[m.id]?.phone_number ?? ""}
+                  onChange={(e) => {
+                    const phoneNumber = e.target.value;
+                    const countryCode = editDrafts[m.id]?.country_code ?? '+63';
+                    const fullNumber = countryCode + phoneNumber;
                     setEditDrafts((prev) => ({
                       ...prev,
-                          [m.id]: {
-                            ...prev[m.id],
-                            contact_number: e.target.value,
-                            species_name: prev[m.id]?.species_name ?? m.species_name,
-                            status: prev[m.id]?.status ?? m.status,
-                            photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                            reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
+                      [m.id]: {
+                        ...prev[m.id],
+                        phone_number: phoneNumber,
+                        contact_number: fullNumber,
+                        species_name: prev[m.id]?.species_name ?? m.species_name,
+                        status: prev[m.id]?.status ?? m.status,
+                        photo_url: prev[m.id]?.photo_url ?? m.photo_url,
+                        reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
                       },
-                    }))
-                  }
+                    }));
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                        <FormControl size="small" sx={{ minWidth: 80 }}>
+                          <Select
+                            value={editDrafts[m.id]?.country_code ?? '+63'}
+                            onChange={(e) => {
+                              const countryCode = e.target.value;
+                              const phoneNumber = editDrafts[m.id]?.phone_number ?? '';
+                              const fullNumber = countryCode + phoneNumber;
+                              setEditDrafts((prev) => ({
+                                ...prev,
+                                [m.id]: {
+                                  ...prev[m.id],
+                                  country_code: countryCode,
+                                  contact_number: fullNumber,
+                                  species_name: prev[m.id]?.species_name ?? m.species_name,
+                                  status: prev[m.id]?.status ?? m.status,
+                                  photo_url: prev[m.id]?.photo_url ?? m.photo_url,
+                                  reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
+                                },
+                              }));
+                            }}
+                            variant="standard"
+                            sx={{ 
+                              '&:before': { borderBottom: 'none' },
+                              '&:after': { borderBottom: 'none' },
+                              '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                              '& .MuiSelect-select': { 
+                                padding: '0',
+                                fontSize: '14px',
+                                fontWeight: 500,
+                                minHeight: 'auto'
+                              }
+                            }}
+                          >
+                            <MenuItem value="+63">🇵🇭 +63</MenuItem>
+                            <MenuItem value="+1">🇺🇸 +1</MenuItem>
+                            <MenuItem value="+44">🇬🇧 +44</MenuItem>
+                            <MenuItem value="+81">🇯🇵 +81</MenuItem>
+                            <MenuItem value="+86">🇨🇳 +86</MenuItem>
+                            <MenuItem value="+82">🇰🇷 +82</MenuItem>
+                            <MenuItem value="+65">🇸🇬 +65</MenuItem>
+                            <MenuItem value="+60">🇲🇾 +60</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    )
+                  }}
                 />
 
                 {/* Edit photo */}
@@ -1635,6 +2322,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                               species_name: m.species_name,
                               status: m.status,
                               photo_url: m.photo_url ?? null,
+                              barangay: m.barangay ?? null,
+                              municipality: m.municipality ?? null,
                               },
                             }));
                           setEditingMarkerId(m.id);
@@ -1646,6 +2335,19 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           }}
                         >
                           Edit
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="secondary"
+                          onClick={(e) => {
+                            try { e.preventDefault(); e.stopPropagation(); } catch {}
+                            setRelocatingMarkerId(m.id);
+                            // Close the popup to allow clicking on map
+                            try { markerRefs.current[m.id]?.closePopup?.(); } catch {}
+                          }}
+                        >
+                          Relocate Pin
                         </Button>
                         <Button
                           variant="outlined"
@@ -1663,7 +2365,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                 )}
               </Popup>
             </Marker>
-          ))}
+            );
+            })}
         </MarkerClusterGroup>
         )}
       </MapContainer>
@@ -1682,6 +2385,48 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         title={fetchingModal.title}
         message={fetchingModal.message}
       />
+
+      {/* Relocation Mode Indicator */}
+      {relocatingMarkerId && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 20,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1000,
+            bgcolor: 'warning.main',
+            color: 'warning.contrastText',
+            px: 2,
+            py: 1,
+            borderRadius: 1,
+            boxShadow: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            Click on the map to relocate the pin (cursor changed to location icon)
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            color="inherit"
+            onClick={() => setRelocatingMarkerId(null)}
+            sx={{ 
+              color: 'inherit',
+              borderColor: 'currentColor',
+              '&:hover': {
+                borderColor: 'currentColor',
+                bgcolor: 'rgba(255,255,255,0.1)'
+              }
+            }}
+          >
+            Cancel
+          </Button>
+        </Box>
+      )}
       
     </Box>
   );

@@ -1,8 +1,10 @@
 import { MapContainer, TileLayer, useMap, GeoJSON, Marker, Popup, useMapEvents } from "react-leaflet";
 import { useEffect, useRef, useState } from "react";
-import { Box, Tooltip, IconButton, Button, TextField, MenuItem, ToggleButtonGroup, ToggleButton, Stack } from "@mui/material";
+import { Box, Tooltip, IconButton, Button, TextField, MenuItem, ToggleButtonGroup, ToggleButton, Stack, FormControl, Select } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import AddLocationAltOutlinedIcon from "@mui/icons-material/AddLocationAltOutlined";
+import ZoomInIcon from "@mui/icons-material/ZoomIn";
+import ZoomOutIcon from "@mui/icons-material/ZoomOut";
 import L from "leaflet";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 // @ts-ignore - osmtogeojson has no official TypeScript types
@@ -373,6 +375,8 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
   }, [editingMarkerId, userMarkers]);
 
   function AddMarkerOnClick({ enabled }: { enabled: boolean }) {
+    const map = useMap();
+    
     useMapEvents({
       click(e) {
         if (!enabled) return;
@@ -390,6 +394,18 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
         });
       },
     });
+
+    // Change cursor when in add marker mode
+    useEffect(() => {
+      if (enabled) {
+        // Use a custom cursor with plus icon for adding markers
+        map.getContainer().style.cursor = 'url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyUzYuNDggMjIgMTIgMjJTMjIgMTcuNTIgMjIgMTJTMTcuNTIgMiAxMiAyWk0xNyAxM0gxM1YxN0gxMVYxM0g3VjExSDExVjdIMTNWMTFIMTdWMTNaIiBmaWxsPSIjRkY2MDAwIi8+Cjwvc3ZnPg==") 12 12, crosshair';
+        return () => {
+          map.getContainer().style.cursor = '';
+        };
+      }
+    }, [enabled, map]);
+
     return null;
   }
 
@@ -708,16 +724,108 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
           max-width: 320px; /* avoid overly wide popups at low zoom */
         }
       `}</style>
-      <Box sx={{ position: "absolute", top: 90, left: 10, zIndex: 1000 }}>
+      <Box sx={{ position: "absolute", top: 10, left: 10, zIndex: 1000, display: "flex", flexDirection: "column", gap: 1 }}>
         <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
-          <IconButton
-            color={isAddingMarker ? "primary" : "default"}
+          <Button
+            variant={isAddingMarker ? "contained" : "outlined"}
+            color={isAddingMarker ? "primary" : "inherit"}
             size="small"
             onClick={() => setIsAddingMarker((v) => !v)}
-            aria-pressed={isAddingMarker}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: 1,
+              border: '1px solid black',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                backgroundColor: isAddingMarker ? 'primary.dark' : 'action.hover',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                borderColor: isAddingMarker ? 'primary.dark' : 'primary.main',
+                color: 'primary.main'
+              }
+            }}
           >
-            <AddLocationAltOutlinedIcon />
-          </IconButton>
+            <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
+            {isAddingMarker ? "Adding Marker" : "Add Marker"}
+          </Button>
+        </Tooltip>
+        
+        <Tooltip title="Zoom in" enterDelay={500}>
+          <Button
+            variant="outlined"
+            color="inherit"
+            size="small"
+            onClick={() => {
+              if (mapInstance) {
+                const currentZoom = mapInstance.getZoom();
+                mapInstance.setZoom(currentZoom + 1);
+              }
+            }}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: 1,
+              border: '1px solid black',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                backgroundColor: 'action.hover',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                borderColor: 'primary.main',
+                color: 'primary.main'
+              }
+            }}
+          >
+            <ZoomInIcon sx={{ fontSize: 18 }} />
+            Zoom In
+          </Button>
+        </Tooltip>
+        
+        <Tooltip title="Zoom out" enterDelay={500}>
+          <Button
+            variant="outlined"
+            color="inherit"
+            size="small"
+            onClick={() => {
+              if (mapInstance) {
+                const currentZoom = mapInstance.getZoom();
+                mapInstance.setZoom(currentZoom - 1);
+              }
+            }}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: 1,
+              border: '1px solid black',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                backgroundColor: 'action.hover',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                borderColor: 'primary.main',
+                color: 'primary.main'
+              }
+            }}
+          >
+            <ZoomOutIcon sx={{ fontSize: 18 }} />
+            Zoom Out
+          </Button>
         </Tooltip>
       </Box>
     <MapContainer
@@ -729,7 +837,7 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
           borderRadius: "8px",
           border: "1px solid #e0e0e0",
         }}
-        zoomControl={true}
+        zoomControl={false}
         scrollWheelZoom={true}
         minZoom={12}
         maxZoom={18}
@@ -780,8 +888,8 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                             setPendingMarker((p) => (p ? { ...p, speciesName: opt.label } : p))
                           }
                         >
-                          <Box sx={{ fontSize: 14 }}>{opt.label}</Box>
-                          {opt.common && <Box sx={{ fontSize: 12, opacity: 0.7 }}>{opt.common}</Box>}
+                          {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                          <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
                         </Box>
                       ))}
                     </Box>
@@ -1119,20 +1227,74 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                       margin="dense"
                       fullWidth
                       size="small"
-                      value={editDrafts[m.id]?.contactNumber ?? m.contactNumber ?? ""}
-                      onChange={(e) =>
+                      placeholder="Phone number"
+                      value={(editDrafts[m.id] as any)?.phoneNumber ?? ""}
+                      onChange={(e) => {
+                        const phoneNumber = e.target.value;
+                        const countryCode = (editDrafts[m.id] as any)?.countryCode ?? '+63';
+                        const fullNumber = countryCode + phoneNumber;
                         setEditDrafts((prev) => ({
                           ...prev,
                           [m.id]: {
                             ...prev[m.id],
-                            contactNumber: e.target.value,
+                            phoneNumber: phoneNumber,
+                            contactNumber: fullNumber,
                             speciesName: prev[m.id]?.speciesName ?? m.speciesName,
                             status: prev[m.id]?.status ?? m.status,
                             photo: prev[m.id]?.photo ?? m.photo,
                             reporterName: prev[m.id]?.reporterName ?? m.reporterName,
                           },
-                        }))
-                      }
+                        }));
+                      }}
+                      InputProps={{
+                        startAdornment: (
+                          <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                            <FormControl size="small" sx={{ minWidth: 80 }}>
+                              <Select
+                                value={(editDrafts[m.id] as any)?.countryCode ?? '+63'}
+                                onChange={(e) => {
+                                  const countryCode = e.target.value;
+                                  const phoneNumber = (editDrafts[m.id] as any)?.phoneNumber ?? '';
+                                  const fullNumber = countryCode + phoneNumber;
+                                  setEditDrafts((prev) => ({
+                                    ...prev,
+                                    [m.id]: {
+                                      ...prev[m.id],
+                                      countryCode: countryCode,
+                                      contactNumber: fullNumber,
+                                      speciesName: prev[m.id]?.speciesName ?? m.speciesName,
+                                      status: prev[m.id]?.status ?? m.status,
+                                      photo: prev[m.id]?.photo ?? m.photo,
+                                      reporterName: prev[m.id]?.reporterName ?? m.reporterName,
+                                    },
+                                  }));
+                                }}
+                                variant="standard"
+                                sx={{ 
+                                  '&:before': { borderBottom: 'none' },
+                                  '&:after': { borderBottom: 'none' },
+                                  '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                                  '& .MuiSelect-select': { 
+                                    padding: '0',
+                                    fontSize: '14px',
+                                    fontWeight: 500,
+                                    minHeight: 'auto'
+                                  }
+                                }}
+                              >
+                                <MenuItem value="+63">🇵🇭 +63</MenuItem>
+                                <MenuItem value="+1">🇺🇸 +1</MenuItem>
+                                <MenuItem value="+44">🇬🇧 +44</MenuItem>
+                                <MenuItem value="+81">🇯🇵 +81</MenuItem>
+                                <MenuItem value="+86">🇨🇳 +86</MenuItem>
+                                <MenuItem value="+82">🇰🇷 +82</MenuItem>
+                                <MenuItem value="+65">🇸🇬 +65</MenuItem>
+                                <MenuItem value="+60">🇲🇾 +60</MenuItem>
+                              </Select>
+                            </FormControl>
+                          </Box>
+                        )
+                      }}
                     />
 
                     {/* Edit photo */}
