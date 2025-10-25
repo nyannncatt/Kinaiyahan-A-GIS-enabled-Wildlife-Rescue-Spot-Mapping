@@ -1175,7 +1175,18 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             onChange={(e) => { setSearchQuery(e.target.value); setShowResults(true); }}
             onFocus={() => setShowResults(true)}
             InputProps={{
-              sx: { bgcolor: 'background.paper' },
+              sx: { 
+                bgcolor: 'background.paper',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                },
+                '&.Mui-focused': {
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+                }
+              },
             }}
           />
           {showResults && (searchLoading || searchResults.length > 0) && (
@@ -1387,7 +1398,15 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
               alignItems: 'flex-start',
               justifyContent: 'flex-start',
               gap: 1,
-              border: '1px solid black'
+              border: '1px solid black',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                backgroundColor: isAddingMarker ? 'primary.dark' : 'action.hover',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                borderColor: isAddingMarker ? 'primary.dark' : 'primary.main',
+                color: 'primary.main'
+              }
             }}
           >
             <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
@@ -1411,7 +1430,15 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
               alignItems: 'flex-start',
               justifyContent: 'flex-start',
               gap: 1,
-              border: '1px solid black'
+              border: '1px solid black',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                backgroundColor: 'action.hover',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                borderColor: 'primary.main',
+                color: 'primary.main'
+              }
             }}
           >
             <RefreshIcon sx={{ fontSize: 18 }} />
@@ -1439,7 +1466,15 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
               alignItems: 'flex-start',
               justifyContent: 'flex-start',
               gap: 1,
-              border: '1px solid black'
+              border: '1px solid black',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                backgroundColor: 'action.hover',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                borderColor: 'primary.main',
+                color: 'primary.main'
+              }
             }}
           >
             <ZoomInIcon sx={{ fontSize: 18 }} />
@@ -1467,7 +1502,15 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
               alignItems: 'flex-start',
               justifyContent: 'flex-start',
               gap: 1,
-              border: '1px solid black'
+              border: '1px solid black',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                backgroundColor: 'action.hover',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                borderColor: 'primary.main',
+                color: 'primary.main'
+              }
             }}
           >
             <ZoomOutIcon sx={{ fontSize: 18 }} />
