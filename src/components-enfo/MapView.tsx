@@ -740,7 +740,15 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
               alignItems: 'flex-start',
               justifyContent: 'flex-start',
               gap: 1,
-              border: '1px solid black'
+              border: '1px solid black',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                backgroundColor: isAddingMarker ? 'primary.dark' : 'action.hover',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                borderColor: isAddingMarker ? 'primary.dark' : 'primary.main',
+                color: 'primary.main'
+              }
             }}
           >
             <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
@@ -768,7 +776,15 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
               alignItems: 'flex-start',
               justifyContent: 'flex-start',
               gap: 1,
-              border: '1px solid black'
+              border: '1px solid black',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                backgroundColor: 'action.hover',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                borderColor: 'primary.main',
+                color: 'primary.main'
+              }
             }}
           >
             <ZoomInIcon sx={{ fontSize: 18 }} />
@@ -796,7 +812,15 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
               alignItems: 'flex-start',
               justifyContent: 'flex-start',
               gap: 1,
-              border: '1px solid black'
+              border: '1px solid black',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                backgroundColor: 'action.hover',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                borderColor: 'primary.main',
+                color: 'primary.main'
+              }
             }}
           >
             <ZoomOutIcon sx={{ fontSize: 18 }} />
