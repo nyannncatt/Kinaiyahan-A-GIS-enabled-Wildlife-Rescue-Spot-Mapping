@@ -14,6 +14,7 @@ import { styled } from '@mui/material/styles';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 
@@ -124,6 +125,12 @@ const mainNavigationItems = [
 ];
 
 const utilityItems = [
+  { 
+    id: 'profile', 
+    text: 'My Profile', 
+    icon: <PersonRoundedIcon sx={{ fontSize: 20 }} />,
+    description: 'User profile and account'
+  },
   { 
     id: 'settings', 
     text: 'Settings', 
