@@ -100,6 +100,7 @@ export default function PublicReport() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [stepTransition, setStepTransition] = useState(false);
   const [extractedCoords, setExtractedCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [hasExifGps, setHasExifGps] = useState<boolean | null>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
@@ -123,71 +124,29 @@ export default function PublicReport() {
     // More accurate coordinate ranges for Manolo Fortich barangays
     // Based on actual geographic boundaries
     const barangayBounds = [
-      // Tankulan (Pob.) - Central area around coordinates 8.356, 124.864
-      { name: 'Tankulan (Pob.)', latMin: 8.35, latMax: 8.37, lngMin: 124.86, lngMax: 124.87 },
-      
-      // Agusan Canyon - Northern area
-      { name: 'Agusan Canyon', latMin: 8.40, latMax: 8.50, lngMin: 124.80, lngMax: 124.90 },
-      
-      // Alae - Eastern area
-      { name: 'Alae', latMin: 8.35, latMax: 8.45, lngMin: 124.90, lngMax: 125.00 },
-      
-      // Dahilayan - Northern area
-      { name: 'Dahilayan', latMin: 8.45, latMax: 8.55, lngMin: 124.80, lngMax: 124.90 },
-      
-      // Dalirig - Southern area
-      { name: 'Dalirig', latMin: 8.25, latMax: 8.35, lngMin: 124.85, lngMax: 124.95 },
-      
-      // Damilag - Western area
-      { name: 'Damilag', latMin: 8.30, latMax: 8.40, lngMin: 124.70, lngMax: 124.80 },
-      
-      // Diclum - Eastern area
-      { name: 'Diclum', latMin: 8.30, latMax: 8.40, lngMin: 124.95, lngMax: 125.05 },
-      
-      // Guilang-guilang - Northern area
-      { name: 'Guilang-guilang', latMin: 8.40, latMax: 8.50, lngMin: 124.85, lngMax: 124.95 },
-      
-      // Kalugmanan - Southern area
-      { name: 'Kalugmanan', latMin: 8.20, latMax: 8.30, lngMin: 124.80, lngMax: 124.90 },
-      
-      // Lindaban - Western area
-      { name: 'Lindaban', latMin: 8.30, latMax: 8.40, lngMin: 124.60, lngMax: 124.70 },
-      
-      // Lingion - Eastern area
-      { name: 'Lingion', latMin: 8.25, latMax: 8.35, lngMin: 124.95, lngMax: 125.05 },
-      
-      // Lunocan - Northern area
-      { name: 'Lunocan', latMin: 8.45, latMax: 8.55, lngMin: 124.85, lngMax: 124.95 },
-      
-      // Maluko - Southern area
-      { name: 'Maluko', latMin: 8.20, latMax: 8.30, lngMin: 124.85, lngMax: 124.95 },
-      
-      // Mambatangan - Western area
-      { name: 'Mambatangan', latMin: 8.30, latMax: 8.40, lngMin: 124.50, lngMax: 124.60 },
-      
-      // Mampayag - Eastern area
-      { name: 'Mampayag', latMin: 8.25, latMax: 8.35, lngMin: 125.00, lngMax: 125.10 },
-      
-      // Minsuro - Northern area
-      { name: 'Minsuro', latMin: 8.50, latMax: 8.60, lngMin: 124.80, lngMax: 124.90 },
-      
-      // Mantibugao - Southern area
-      { name: 'Mantibugao', latMin: 8.15, latMax: 8.25, lngMin: 124.80, lngMax: 124.90 },
-      
-      // San Miguel - Western area
-      { name: 'San Miguel', latMin: 8.30, latMax: 8.40, lngMin: 124.40, lngMax: 124.50 },
-      
-      // Sankanan - Eastern area
-      { name: 'Sankanan', latMin: 8.25, latMax: 8.35, lngMin: 125.05, lngMax: 125.15 },
-      
-      // Santiago - Northern area
-      { name: 'Santiago', latMin: 8.45, latMax: 8.55, lngMin: 124.90, lngMax: 125.00 },
-      
-      // Santo Niño - Southern area
-      { name: 'Santo Niño', latMin: 8.15, latMax: 8.25, lngMin: 124.85, lngMax: 124.95 },
-      
-      // Ticala - Western area
-      { name: 'Ticala', latMin: 8.30, latMax: 8.40, lngMin: 124.30, lngMax: 124.40 }
+      // Updated bounds based on accurate coordinates
+      { name: 'Agusan Canyon', latMin: 8.38, latMax: 8.40, lngMin: 124.88, lngMax: 124.89 },
+      { name: 'Alae', latMin: 8.42, latMax: 8.43, lngMin: 124.81, lngMax: 124.82 },
+      { name: 'Dahilayan', latMin: 8.21, latMax: 8.23, lngMin: 124.84, lngMax: 124.86 },
+      { name: 'Dalirig', latMin: 8.37, latMax: 8.38, lngMin: 124.90, lngMax: 124.91 },
+      { name: 'Damilag', latMin: 8.35, latMax: 8.36, lngMin: 124.81, lngMax: 124.82 },
+      { name: 'Diclum', latMin: 8.36, latMax: 8.37, lngMin: 124.85, lngMax: 124.86 },
+      { name: 'Guilang-guilang', latMin: 8.36, latMax: 8.37, lngMin: 124.86, lngMax: 124.87 },
+      { name: 'Kalugmanan', latMin: 8.27, latMax: 8.28, lngMin: 124.85, lngMax: 124.86 },
+      { name: 'Lindaban', latMin: 8.29, latMax: 8.30, lngMin: 124.84, lngMax: 124.85 },
+      { name: 'Lingion', latMin: 8.40, latMax: 8.41, lngMin: 124.88, lngMax: 124.89 },
+      { name: 'Lunocan', latMin: 8.41, latMax: 8.42, lngMin: 124.82, lngMax: 124.83 },
+      { name: 'Maluko', latMin: 8.37, latMax: 8.38, lngMin: 124.95, lngMax: 124.96 },
+      { name: 'Mambatangan', latMin: 8.43, latMax: 8.44, lngMin: 124.80, lngMax: 124.81 },
+      { name: 'Mampayag', latMin: 8.26, latMax: 8.27, lngMin: 124.82, lngMax: 124.83 },
+      { name: 'Minsuro', latMin: 8.51, latMax: 8.52, lngMin: 124.82, lngMax: 124.83 },
+      { name: 'Mantibugao', latMin: 8.45, latMax: 8.47, lngMin: 124.82, lngMax: 124.83 },
+      { name: 'Tankulan (Pob.)', latMin: 8.36, latMax: 8.37, lngMin: 124.86, lngMax: 124.87 },
+      { name: 'San Miguel', latMin: 8.38, latMax: 8.39, lngMin: 124.83, lngMax: 124.84 },
+      { name: 'Sankanan', latMin: 8.31, latMax: 8.32, lngMin: 124.85, lngMax: 124.86 },
+      { name: 'Santiago', latMin: 8.43, latMax: 8.44, lngMin: 124.99, lngMax: 125.00 },
+      { name: 'Santo Niño', latMin: 8.43, latMax: 8.44, lngMin: 124.86, lngMax: 124.87 },
+      { name: 'Ticala', latMin: 8.34, latMax: 8.35, lngMin: 124.89, lngMax: 124.90 }
     ];
 
     // Find the barangay that contains these coordinates
@@ -318,6 +277,37 @@ export default function PublicReport() {
     }
   };
 
+  // Get coordinates for a specific barangay (for manual selection)
+  // These are the accurate coordinates for each barangay in Manolo Fortich, Bukidnon
+  const getBarangayCoordinates = (barangayName: string): { lat: number; lng: number } | null => {
+    const barangayCenters = {
+      'Agusan Canyon': { lat: 8.390019, lng: 124.884487 },
+      'Alae': { lat: 8.424440, lng: 124.812780 },
+      'Dahilayan': { lat: 8.221500, lng: 124.849000 },
+      'Dalirig': { lat: 8.377220, lng: 124.901390 },
+      'Damilag': { lat: 8.354720, lng: 124.812220 },
+      'Diclum': { lat: 8.363745, lng: 124.850793 },
+      'Guilang-guilang': { lat: 8.369720, lng: 124.864440 },
+      'Kalugmanan': { lat: 8.277780, lng: 124.859720 },
+      'Lindaban': { lat: 8.291000, lng: 124.845500 },
+      'Lingion': { lat: 8.404000, lng: 124.887100 },
+      'Lunocan': { lat: 8.414300, lng: 124.823100 },
+      'Maluko': { lat: 8.373200, lng: 124.953800 },
+      'Mambatangan': { lat: 8.433330, lng: 124.805280 },
+      'Mampayag': { lat: 8.264440, lng: 124.828610 },
+      'Minsuro': { lat: 8.511200, lng: 124.829500 },
+      'Mantibugao': { lat: 8.459500, lng: 124.821900 },
+      'Tankulan (Pob.)': { lat: 8.368800, lng: 124.864100 },
+      'San Miguel': { lat: 8.389000, lng: 124.833200 },
+      'Sankanan': { lat: 8.316000, lng: 124.857900 },
+      'Santiago': { lat: 8.438600, lng: 124.993400 },
+      'Santo Niño': { lat: 8.431100, lng: 124.861500 },
+      'Ticala': { lat: 8.341200, lng: 124.891100 }
+    };
+
+    return barangayCenters[barangayName as keyof typeof barangayCenters] || null;
+  };
+
   const handlePhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -335,17 +325,20 @@ export default function PublicReport() {
         const coords = await extractLatLngFromExif(file);
         if (coords && coords.lat && coords.lng) {
           setExtractedCoords({ lat: coords.lat, lng: coords.lng });
+          setHasExifGps(true);
           console.log('GPS coordinates extracted:', coords);
           
           // Reverse geocode to get address information
           await reverseGeocode(coords.lat, coords.lng);
         } else {
           setExtractedCoords(null);
+          setHasExifGps(false);
           console.log('No GPS data found in photo');
         }
       } catch (error) {
         console.error('Error extracting GPS data:', error);
         setExtractedCoords(null);
+        setHasExifGps(false);
       }
     }
   };
@@ -550,10 +543,13 @@ export default function PublicReport() {
           // Set the extracted coordinates if we got GPS location
           if (photoLocation) {
             setExtractedCoords(photoLocation);
+            setHasExifGps(true);
             console.log('Using GPS location for captured photo:', photoLocation);
             
             // Reverse geocode to get address information
             await reverseGeocode(photoLocation.lat, photoLocation.lng);
+          } else {
+            setHasExifGps(false);
           }
           
           // Set the photo file and create preview
@@ -606,20 +602,31 @@ export default function PublicReport() {
       let lat: number | undefined;
       let lng: number | undefined;
       
-      // Use extracted coordinates if available
+      // Use extracted coordinates if available (from EXIF GPS data)
       if (extractedCoords) {
         lat = extractedCoords.lat;
         lng = extractedCoords.lng;
         console.log('Using extracted GPS coordinates:', { lat, lng });
         console.log('Coordinate validation - lat:', typeof lat, 'lng:', typeof lng);
         console.log('Coordinate values - lat:', lat, 'lng:', lng);
-      }
-
-      // Fallback to default location if no GPS data available
-      if (lat == null || lng == null) {
+      } else if (barangay.trim()) {
+        // Use barangay-specific coordinates if no GPS data but barangay is selected
+        const barangayCoords = getBarangayCoordinates(barangay);
+        if (barangayCoords) {
+          lat = barangayCoords.lat;
+          lng = barangayCoords.lng;
+          console.log('Using barangay-specific coordinates for', barangay, ':', { lat, lng });
+        } else {
+          // Fallback to default location if barangay not found
+          lat = 8.371964645263802; // Manolo Fortich center
+          lng = 124.85604137091526;
+          console.log('Barangay not found, using default coordinates (Manolo Fortich center):', { lat, lng });
+        }
+      } else {
+        // Fallback to default location if no GPS data and no barangay selected
         lat = 8.371964645263802; // Manolo Fortich center
         lng = 124.85604137091526;
-        console.log('Using default coordinates (Manolo Fortich center):', { lat, lng });
+        console.log('No GPS data and no barangay selected, using default coordinates (Manolo Fortich center):', { lat, lng });
       }
 
       console.log('Submitting record with coordinates:', { lat, lng });
@@ -648,6 +655,7 @@ export default function PublicReport() {
         reporter_name: reporterName || undefined,
         contact_number: contactNumber || undefined,
         photo_url: photoUrl,
+        has_exif_gps: hasExifGps || false,
         timestamp_captured: todayIso,
       });
       
@@ -882,6 +890,57 @@ export default function PublicReport() {
                             backgroundColor: '#f5f5f5'
                           }} 
                         />
+                        
+                        {/* EXIF GPS Data Indicator */}
+                        {hasExifGps === true && (
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              top: 8,
+                              left: 8,
+                              bgcolor: 'rgba(76, 175, 80, 0.9)',
+                              color: 'white',
+                              px: 1.5,
+                              py: 0.5,
+                              borderRadius: 1,
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              backdropFilter: 'blur(4px)',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                            }}
+                          >
+                            <LocationOn sx={{ fontSize: '0.875rem' }} />
+                            GPS Location Found
+                          </Box>
+                        )}
+                        
+                        {hasExifGps === false && (
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              top: 8,
+                              left: 8,
+                              bgcolor: 'rgba(255, 152, 0, 0.9)',
+                              color: 'white',
+                              px: 1.5,
+                              py: 0.5,
+                              borderRadius: 1,
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              backdropFilter: 'blur(4px)',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                            }}
+                          >
+                            <LocationOn sx={{ fontSize: '0.875rem' }} />
+                            No GPS Data
+                          </Box>
+                        )}
                         <Button
                           variant="contained"
                           color="error"
@@ -953,12 +1012,15 @@ export default function PublicReport() {
                   minWidth: isSmallMobile ? '100%' : 200 
                 }}>
                   <FormControl fullWidth variant="outlined">
-                    <InputLabel htmlFor="municipality">Municipality</InputLabel>
+                    <InputLabel htmlFor="municipality">
+                      {hasExifGps ? 'Municipality (from photo GPS)' : 'Municipality'}
+                    </InputLabel>
                     <Select
                       id="municipality"
                       value={municipality}
                       onChange={(e) => setMunicipality(e.target.value)}
-                      label="Municipality"
+                      label={hasExifGps ? 'Municipality (from photo GPS)' : 'Municipality'}
+                      disabled={hasExifGps === true}
                       startAdornment={
                         <InputAdornment position="start">
                           <LocationOn color="action" />
@@ -990,13 +1052,16 @@ export default function PublicReport() {
                   minWidth: isSmallMobile ? '100%' : 200 
                 }}>
                   <FormControl fullWidth variant="outlined">
-                    <InputLabel htmlFor="barangay">Barangay *</InputLabel>
+                    <InputLabel htmlFor="barangay">
+                      {hasExifGps ? 'Barangay (from photo GPS) *' : 'Barangay *'}
+                    </InputLabel>
                     <Select
                       id="barangay"
                       value={barangay}
                       onChange={(e) => setBarangay(e.target.value)}
-                      label="Barangay *"
+                      label={hasExifGps ? 'Barangay (from photo GPS) *' : 'Barangay *'}
                       required
+                      disabled={hasExifGps === true}
                       startAdornment={
                         <InputAdornment position="start">
                           <LocationOn color="action" />
@@ -1045,6 +1110,71 @@ export default function PublicReport() {
                   </FormControl>
                 </Box>
               </Box>
+              
+              {/* EXIF GPS Data Help Message */}
+              {hasExifGps === true && (
+                <Box sx={{ mt: 2 }}>
+                  <Alert 
+                    severity="info" 
+                    sx={{ 
+                      borderRadius: 2,
+                      '& .MuiAlert-message': {
+                        width: '100%'
+                      }
+                    }}
+                  >
+                    <Typography variant="body2">
+                      <strong>Location Auto-filled from Photo GPS:</strong> The municipality and barangay fields have been automatically filled using the GPS coordinates from your photo. These fields are disabled because the GPS data is more accurate than manual selection.
+                    </Typography>
+                  </Alert>
+                </Box>
+              )}
+              
+              {hasExifGps === false && (
+                <Box sx={{ mt: 2 }}>
+                  <Alert 
+                    severity="warning" 
+                    sx={{ 
+                      borderRadius: 2,
+                      '& .MuiAlert-message': {
+                        width: '100%'
+                      }
+                    }}
+                  >
+                    <Typography variant="body2">
+                      <strong>No GPS Data in Photo:</strong> Your photo doesn't contain GPS location data. Please manually select the municipality and barangay where the wildlife was found.
+                    </Typography>
+                  </Alert>
+                </Box>
+              )}
+              
+              {/* Barangay Location Preview */}
+              {hasExifGps === false && barangay && (
+                <Box sx={{ mt: 2 }}>
+                  <Alert 
+                    severity="success" 
+                    sx={{ 
+                      borderRadius: 2,
+                      '& .MuiAlert-message': {
+                        width: '100%'
+                      }
+                    }}
+                  >
+                    <Typography variant="body2">
+                      <strong>Selected Location:</strong> {barangay}, {municipality}
+                    </Typography>
+                    {(() => {
+                      const coords = getBarangayCoordinates(barangay);
+                      return coords ? (
+                        <Typography variant="body2" sx={{ mt: 1, fontFamily: 'monospace', bgcolor: 'rgba(0,0,0,0.05)', p: 1, borderRadius: 1 }}>
+                          <strong>Map Coordinates:</strong> {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
+                        </Typography>
+                      ) : null;
+                    })()}
+                  </Alert>
+                </Box>
+              )}
+              
               <Box>
                 {extractedCoords ? (
                   <Alert 
