@@ -111,16 +111,16 @@ const mainNavigationItems = [
     description: 'Wildlife mapping and tracking'
   },
   { 
-    id: 'analytics', 
-    text: 'Analytics', 
-    icon: <AnalyticsRoundedIcon sx={{ fontSize: 20 }} />,
-    description: 'Data analysis and reports'
-  },
-  { 
     id: 'records', 
     text: 'Records', 
     icon: <AssignmentRoundedIcon sx={{ fontSize: 20 }} />,
     description: 'Wildlife records management'
+  },
+  { 
+    id: 'analytics', 
+    text: 'Analytics', 
+    icon: <AnalyticsRoundedIcon sx={{ fontSize: 20 }} />,
+    description: 'Data analysis and reports'
   },
 ];
 
