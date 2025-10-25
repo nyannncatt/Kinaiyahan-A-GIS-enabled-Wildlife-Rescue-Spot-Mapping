@@ -179,7 +179,7 @@ export default function MenuContent() {
           mb: 0.5,
           fontSize: '18px'
         }}>
-          Wildlife GIS
+          Kinaiyahan
         </Typography>
         <Typography variant="body2" sx={{ 
           color: 'text.secondary',
@@ -190,7 +190,7 @@ export default function MenuContent() {
       </Box>
 
       {/* Main Navigation */}
-      <Box sx={{ flex: 1, px: 2, mt: 4 }}>
+      <Box sx={{ flex: 1, px: 2, mt: 5 }}>
         <SectionTitle>MAIN</SectionTitle>
         <List dense>
           {mainNavigationItems.map((item) => (
