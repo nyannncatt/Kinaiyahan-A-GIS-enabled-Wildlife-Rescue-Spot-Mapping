@@ -22,15 +22,8 @@ const NavigationContainer = styled(Box)(({ theme }) => ({
   height: '100%',
   display: 'flex',
   flexDirection: 'column',
-  padding: theme.spacing(2),
+  padding: 0,
   gap: theme.spacing(2),
-  backgroundColor: theme.vars 
-    ? `rgba(${theme.vars.palette.background.paperChannel} / 1)`
-    : theme.palette.background.paper,
-  borderRadius: '12px',
-  border: `1px solid ${theme.vars 
-    ? `rgba(${theme.vars.palette.dividerChannel} / 1)`
-    : theme.palette.divider}`,
   color: theme.vars 
     ? `rgba(${theme.vars.palette.text.primaryChannel} / 1)`
     : theme.palette.text.primary,
@@ -54,6 +47,7 @@ const TabButton = styled(ListItemButton, {
     : (theme.vars 
         ? `rgba(${theme.vars.palette.text.primaryChannel} / 1)`
         : theme.palette.text.primary),
+  border: 'none',
   transition: 'all 0.2s ease-in-out',
   '&:hover': {
     backgroundColor: active 
@@ -67,6 +61,12 @@ const TabButton = styled(ListItemButton, {
   },
   '&:active': {
     transform: 'translateX(0px)',
+  },
+  '&::before': {
+    display: 'none',
+  },
+  '&::after': {
+    display: 'none',
   },
 }));
 
@@ -172,7 +172,7 @@ export default function MenuContent() {
   return (
     <NavigationContainer>
       {/* Header */}
-      <Box sx={{ mb: 2, textAlign: 'center' }}>
+      <Box sx={{ mb: 2, textAlign: 'center', p: 2 }}>
         <Typography variant="h6" sx={{ 
           fontWeight: 700, 
           color: 'primary.main',
@@ -190,7 +190,7 @@ export default function MenuContent() {
       </Box>
 
       {/* Main Navigation */}
-      <Box sx={{ flex: 1 }}>
+      <Box sx={{ flex: 1, px: 2, mt: 4 }}>
         <SectionTitle>MAIN</SectionTitle>
         <List dense>
           {mainNavigationItems.map((item) => (
@@ -235,10 +235,8 @@ export default function MenuContent() {
         </List>
       </Box>
 
-      <Divider sx={{ my: 1 }} />
-
       {/* Utility Navigation */}
-      <Box>
+      <Box sx={{ px: 2, pb: 2 }}>
         <SectionTitle>UTILITY</SectionTitle>
         <List dense>
           {utilityItems.map((item) => (
