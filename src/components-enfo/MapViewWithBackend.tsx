@@ -9,6 +9,8 @@ import FetchingModal from './FetchingModal';
 import { alpha } from '@mui/material/styles';
 import AddLocationAltOutlinedIcon from '@mui/icons-material/AddLocationAltOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import { useAuth } from '../context/AuthContext';
 import { useMapNavigation } from '../context/MapNavigationContext';
 import { 
@@ -1162,7 +1164,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   return (
     <Box sx={{ height: "100%", width: "100%", position: "relative" }}>
       {/* Search box */}
-      <Box sx={{ position: 'absolute', top: 10, left: 45, zIndex: 1100, width: 320 }}>
+      <Box sx={{ position: 'absolute', top: 10, left: 10, zIndex: 1100, width: 320 }}>
         <Box sx={{ position: 'relative' }}>
           <TextField
             size="small"
@@ -1369,29 +1371,110 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       `}</style>
 
       {/* Map control buttons */}
-      <Box sx={{ position: "absolute", top: 90, left: 10, zIndex: 1000, display: "flex", flexDirection: "column", gap: 1 }}>
-          <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
-            <IconButton
-              color={isAddingMarker ? "primary" : "default"}
-              size="small"
-              onClick={() => setIsAddingMarker((v) => !v)}
-              aria-pressed={isAddingMarker}
-            >
-              <AddLocationAltOutlinedIcon />
-            </IconButton>
-          </Tooltip>
-          
-          <Tooltip title="Refresh map data" enterDelay={500}>
-            <IconButton
-              color="default"
-              size="small"
-              onClick={refreshMapData}
-              disabled={fetchingModal.open}
-            >
-              <RefreshIcon />
-            </IconButton>
-          </Tooltip>
-          
+      <Box sx={{ position: "absolute", top: 60, left: 10, zIndex: 1000, display: "flex", flexDirection: "column", gap: 1 }}>
+        <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
+          <Button
+            variant={isAddingMarker ? "contained" : "outlined"}
+            color={isAddingMarker ? "primary" : "inherit"}
+            size="small"
+            onClick={() => setIsAddingMarker((v) => !v)}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: 1,
+              border: '1px solid black'
+            }}
+          >
+            <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
+            {isAddingMarker ? "Adding Marker" : "Add Marker"}
+          </Button>
+        </Tooltip>
+        
+        <Tooltip title="Refresh map data" enterDelay={500}>
+          <Button
+            variant="outlined"
+            color="inherit"
+            size="small"
+            onClick={refreshMapData}
+            disabled={fetchingModal.open}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: 1,
+              border: '1px solid black'
+            }}
+          >
+            <RefreshIcon sx={{ fontSize: 18 }} />
+            Refresh
+          </Button>
+        </Tooltip>
+        
+        <Tooltip title="Zoom in" enterDelay={500}>
+          <Button
+            variant="outlined"
+            color="inherit"
+            size="small"
+            onClick={() => {
+              if (mapInstance) {
+                const currentZoom = mapInstance.getZoom();
+                mapInstance.setZoom(currentZoom + 1);
+              }
+            }}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: 1,
+              border: '1px solid black'
+            }}
+          >
+            <ZoomInIcon sx={{ fontSize: 18 }} />
+            Zoom In
+          </Button>
+        </Tooltip>
+        
+        <Tooltip title="Zoom out" enterDelay={500}>
+          <Button
+            variant="outlined"
+            color="inherit"
+            size="small"
+            onClick={() => {
+              if (mapInstance) {
+                const currentZoom = mapInstance.getZoom();
+                mapInstance.setZoom(currentZoom - 1);
+              }
+            }}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: 1,
+              border: '1px solid black'
+            }}
+          >
+            <ZoomOutIcon sx={{ fontSize: 18 }} />
+            Zoom Out
+          </Button>
+        </Tooltip>
+        
       </Box>
 
       {error && (
@@ -1413,7 +1496,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
           borderRadius: "8px",
           border: "1px solid #e0e0e0",
         }}
-        zoomControl={true}
+        zoomControl={false}
         scrollWheelZoom={true}
         minZoom={12}
         maxZoom={18}
