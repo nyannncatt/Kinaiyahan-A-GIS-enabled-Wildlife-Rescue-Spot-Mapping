@@ -367,6 +367,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   // Species autocomplete
   const [speciesOptions, setSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
   const [speciesLoading, setSpeciesLoading] = useState(false);
+  const [showSpeciesDropdown, setShowSpeciesDropdown] = useState(false);
   
   const markerRefs = useRef<Record<string, L.Marker | null>>({});
   const editInputRefs = useRef<Record<string, HTMLInputElement>>({});
@@ -595,15 +596,45 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     return () => controller.abort();
   }, [pendingMarker?.pos?.[0], pendingMarker?.pos?.[1]]);
 
+  // Load initial species suggestions when component mounts
+  useEffect(() => {
+    const loadInitialSpecies = async () => {
+      setSpeciesLoading(true);
+      try {
+        // Load popular wildlife species for the Philippines
+        const url = `https://api.inaturalist.org/v1/taxa/autocomplete?q=wildlife&per_page=12`;
+        const res = await fetch(url, { headers: { Accept: "application/json" } });
+        if (res.ok) {
+          const data = await res.json();
+          const options = (data?.results || [])
+            .map((r: any) => ({ label: r?.name || "", common: r?.preferred_common_name || undefined }))
+            .filter((o: any) => o.label);
+          setSpeciesOptions(options);
+          setShowSpeciesDropdown(true);
+        }
+      } catch (error) {
+        console.log('Failed to load initial species suggestions:', error);
+      } finally {
+        setSpeciesLoading(false);
+      }
+    };
+
+    // Load initial suggestions after a short delay to ensure component is ready
+    const timer = setTimeout(loadInitialSpecies, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Species autocomplete
   useEffect(() => {
     const query = pendingMarker?.speciesName?.trim() || "";
     if (!pendingMarker || query.length < 2) {
       setSpeciesOptions([]);
       setSpeciesLoading(false);
+      setShowSpeciesDropdown(false);
       return;
     }
     setSpeciesLoading(true);
+    setShowSpeciesDropdown(true);
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
@@ -1207,169 +1238,128 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         position: 'absolute', 
         top: 10, 
         right: 10, 
-        zIndex: 1100,
+        zIndex: 1500,
         display: 'flex',
         flexDirection: 'column',
         gap: 1,
-        maxWidth: { xs: 'calc(100vw - 20px)', sm: '280px' },
+        maxWidth: { xs: 'calc(100vw - 20px)', sm: 'auto' },
         width: { xs: 'calc(100vw - 20px)', sm: 'auto' }
       }}>
-        {/* Filter Header */}
-        <Box sx={{
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: 2,
-          px: { xs: 1.5, sm: 2 },
-          py: 1,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-          border: '1px solid rgba(255,255,255,0.2)',
-          maxHeight: { xs: '70vh', sm: 'auto' },
-          overflow: { xs: 'auto', sm: 'visible' }
+        {/* Status Filter Buttons */}
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' }, 
+          gap: { xs: 0.5, sm: 1 },
+          flexWrap: 'wrap',
+          justifyContent: 'center'
         }}>
-          <Typography variant="subtitle2" sx={{ 
-            fontWeight: 600, 
-            color: 'text.primary',
-            textAlign: 'center',
-            mb: 1
-          }}>
-            Filter by Status
-          </Typography>
-          
-          {/* Status Filter Buttons */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
             {[
               { 
                 value: 'reported', 
                 label: 'Reported', 
-                color: '#e53935', 
+                color: '#e53935',
                 icon: '🚨',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'reported' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
               { 
                 value: 'rescued', 
                 label: 'Rescued', 
-                color: '#1e88e5', 
+                color: '#1e88e5',
                 icon: '🚑',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'rescued' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
               { 
                 value: 'turned over', 
                 label: 'Turned Over', 
-                color: '#fdd835', 
+                color: '#fdd835',
                 icon: '🤝',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'turned over' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
               { 
                 value: 'released', 
                 label: 'Released', 
-                color: '#43a047', 
+                color: '#43a047',
                 icon: '🆓',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'released' && (r.approval_status === 'approved' || r.user_id !== null)).length
               }
             ].map((status) => {
               const isSelected = enabledStatuses.includes(status.value);
               return (
-                <Box
+                <Tooltip 
                   key={status.value}
-                  onClick={() => {
-                    if (isSelected) {
-                      setEnabledStatuses(prev => prev.filter(s => s !== status.value));
-                    } else {
-                      setEnabledStatuses(prev => [...prev, status.value]);
-                    }
-                  }}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    p: { xs: 1, sm: 1.5 },
-                    borderRadius: 1.5,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease-in-out',
-                    backgroundColor: isSelected ? alpha(status.color, 0.15) : 'transparent',
-                    border: `2px solid ${isSelected ? status.color : 'transparent'}`,
-                    minHeight: { xs: 44, sm: 'auto' },
-                    '&:hover': {
-                      backgroundColor: isSelected ? alpha(status.color, 0.25) : alpha(status.color, 0.08),
-                      transform: { xs: 'none', sm: 'translateX(2px)' },
-                      boxShadow: isSelected ? `0 4px 12px ${alpha(status.color, 0.3)}` : '0 2px 8px rgba(0,0,0,0.1)'
-                    },
-                    '&:active': {
-                      transform: 'scale(0.98)'
-                    }
+                  title={isSelected ? `Hide ${status.label} records` : `Show ${status.label} records`} 
+                  enterDelay={500}
+                  PopperProps={{
+                    style: { zIndex: 1500 }
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
-                    <Typography sx={{ fontSize: { xs: '1.1rem', sm: '1.2rem' } }}>{status.icon}</Typography>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        fontWeight: isSelected ? 600 : 500,
-                        color: isSelected ? status.color : 'text.primary',
-                        transition: 'all 0.2s ease-in-out',
-                        fontSize: { xs: '0.875rem', sm: '0.875rem' }
-                      }}
-                    >
-                      {status.label}
-                    </Typography>
-                  </Box>
-                  
-                  {/* Count Badge */}
-                  <Chip
-                    label={status.count}
+                  <Button
+                    variant={isSelected ? "contained" : "outlined"}
+                    color="inherit"
                     size="small"
-                    sx={{
-                      backgroundColor: isSelected ? status.color : alpha(status.color, 0.2),
-                      color: isSelected ? 'white' : status.color,
-                      fontWeight: 600,
-                      minWidth: { xs: 20, sm: 24 },
-                      height: { xs: 20, sm: 24 },
-                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                      transition: 'all 0.2s ease-in-out'
+                    onClick={() => {
+                      if (isSelected) {
+                        setEnabledStatuses(prev => prev.filter(s => s !== status.value));
+                      } else {
+                        setEnabledStatuses(prev => [...prev, status.value]);
+                      }
                     }}
-                  />
-                </Box>
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      minWidth: 'auto',
+                      px: 2,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'flex-start',
+                      gap: 1,
+                      border: '1px solid black',
+                      transition: 'all 0.2s ease-in-out',
+                      backgroundColor: isSelected ? status.color : 'rgba(255, 255, 255, 0.8)',
+                      color: isSelected ? 'white' : status.color,
+                      backdropFilter: 'blur(5px)',
+                      '&:hover': {
+                        backgroundColor: isSelected ? 'primary.dark' : 'action.hover',
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                        borderColor: 'primary.main',
+                        color: 'primary.main'
+                      }
+                    }}
+                  >
+                    <Typography sx={{ fontSize: '1.1rem' }}>{status.icon}</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          fontWeight: 600,
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        {status.label}
+                      </Typography>
+                      <Chip
+                        label={status.count}
+                        size="small"
+                        sx={{
+                          backgroundColor: isSelected ? 'rgba(255,255,255,0.9)' : alpha(status.color, 0.2),
+                          color: isSelected ? status.color : status.color,
+                          fontWeight: 600,
+                          minWidth: 20,
+                          height: 20,
+                          fontSize: '0.7rem',
+                          transition: 'all 0.2s ease-in-out',
+                          border: `1px solid ${isSelected ? status.color : 'transparent'}`,
+                          '& .MuiChip-label': {
+                            px: 0.5
+                          }
+                        }}
+                      />
+                    </Box>
+                  </Button>
+                </Tooltip>
               );
             })}
-          </Box>
-          
-          {/* Clear All / Select All */}
-          <Box sx={{ 
-            display: 'flex', 
-            gap: { xs: 0.5, sm: 1 }, 
-            mt: 1,
-            justifyContent: 'center',
-            flexDirection: { xs: 'column', sm: 'row' }
-          }}>
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => setEnabledStatuses([])}
-              sx={{ 
-                fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                py: { xs: 0.75, sm: 0.5 },
-                px: { xs: 1, sm: 1.5 },
-                minWidth: 'auto',
-                flex: { xs: 1, sm: 'none' }
-              }}
-            >
-              Clear All
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => setEnabledStatuses([...ALL_STATUSES])}
-              sx={{ 
-                fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                py: { xs: 0.75, sm: 0.5 },
-                px: { xs: 1, sm: 1.5 },
-                minWidth: 'auto',
-                flex: { xs: 1, sm: 'none' }
-              }}
-            >
-              Select All
-            </Button>
-          </Box>
         </Box>
       </Box>
 
@@ -1476,12 +1466,12 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
 
       {/* Map control buttons */}
       <Box sx={{ position: "absolute", top: 60, left: 10, zIndex: 1000, display: "flex", flexDirection: "column", gap: 1 }}>
-        <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
+          <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
           <Button
             variant={isAddingMarker ? "contained" : "outlined"}
             color={isAddingMarker ? "primary" : "inherit"}
-            size="small"
-            onClick={() => setIsAddingMarker((v) => !v)}
+              size="small"
+              onClick={() => setIsAddingMarker((v) => !v)}
             sx={{ 
               textTransform: 'none',
               fontWeight: 600,
@@ -1505,15 +1495,15 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
             {isAddingMarker ? "Adding Marker" : "Add Marker"}
           </Button>
-        </Tooltip>
-        
-        <Tooltip title="Refresh map data" enterDelay={500}>
+          </Tooltip>
+          
+          <Tooltip title="Refresh map data" enterDelay={500}>
           <Button
             variant="outlined"
             color="inherit"
-            size="small"
-            onClick={refreshMapData}
-            disabled={fetchingModal.open}
+              size="small"
+              onClick={refreshMapData}
+              disabled={fetchingModal.open}
             sx={{ 
               textTransform: 'none',
               fontWeight: 600,
@@ -1609,8 +1599,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             <ZoomOutIcon sx={{ fontSize: 18 }} />
             Zoom Out
           </Button>
-        </Tooltip>
-        
+          </Tooltip>
+          
       </Box>
 
       {error && (
@@ -1677,32 +1667,44 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                       return next as PendingMarker;
                     })
                   }
+                  onFocus={() => {
+                    if (speciesOptions.length > 0) {
+                      setShowSpeciesDropdown(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    // Delay hiding to allow click on dropdown items
+                    setTimeout(() => setShowSpeciesDropdown(false), 200);
+                  }}
                   required
                   error={Boolean(pendingWarning) && !(pendingMarker.speciesName || '').trim()}
                   inputRef={(el) => { pendingSpeciesRef.current = el; }}
                 />
-                <Box sx={{ mt: 0.5, border: "1px solid", borderColor: "divider", borderRadius: 1, height: 128, overflow: "auto" }}>
-                  {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
-                  {!speciesLoading && speciesOptions.length === 0 && (
-                    <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
-                  )}
-                  {!speciesLoading && speciesOptions.length > 0 && (
-                    <Box>
-                      {speciesOptions.map((opt) => (
-                        <Box
-                          key={`${opt.label}-${opt.common || ""}`}
-                          sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
-                          onClick={() =>
-                            setPendingMarker((p) => (p ? { ...p, speciesName: opt.label } : p))
-                          }
-                        >
-                          {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
-                          <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-                </Box>
+                {showSpeciesDropdown && (
+                  <Box sx={{ mt: 0.5, border: "1px solid", borderColor: "divider", borderRadius: 1, height: 128, overflow: "auto" }}>
+                    {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
+                    {!speciesLoading && speciesOptions.length === 0 && (
+                      <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
+                    )}
+                    {!speciesLoading && speciesOptions.length > 0 && (
+                      <Box>
+                        {speciesOptions.map((opt) => (
+                          <Box
+                            key={`${opt.label}-${opt.common || ""}`}
+                            sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                            onClick={() => {
+                              setPendingMarker((p) => (p ? { ...p, speciesName: opt.label } : p));
+                              setShowSpeciesDropdown(false);
+                            }}
+                          >
+                            {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                            <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                )}
                 <TextField
                   select
                   size="small"
@@ -1760,8 +1762,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                     const fullNumber = countryCode + phoneNumber;
                     setPendingMarker((p) => {
                       const next = p ? { ...p, phoneNumber, contactNumber: fullNumber } : p;
-                      if (next && isPendingComplete(next)) setPendingWarning(null);
-                      return next as PendingMarker;
+                    if (next && isPendingComplete(next)) setPendingWarning(null);
+                    return next as PendingMarker;
                     });
                   }}
                   required
@@ -1892,20 +1894,20 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
               <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
                 <Box sx={{ position: 'relative' }}>
-                  <TextField
-                    variant="outlined"
-                    margin="dense"
-                    fullWidth
-                    size="small"
-                    value={editDrafts[editingMarker.id]?.species_name || editingMarker.species_name}
-                    onChange={(e) =>
-                      setEditDrafts((prev) => ({
-                        ...prev,
-                        [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: e.target.value, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
-                      }))
-                    }
-                    inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
-                  />
+                <TextField
+                  variant="outlined"
+                  margin="dense"
+                  fullWidth
+                  size="small"
+                  value={editDrafts[editingMarker.id]?.species_name || editingMarker.species_name}
+                  onChange={(e) =>
+                    setEditDrafts((prev) => ({
+                      ...prev,
+                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: e.target.value, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
+                    }))
+                  }
+                  inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
+                />
                   <Box sx={{ 
                     position: 'absolute', 
                     top: '100%', 
@@ -2166,14 +2168,14 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                     const fullNumber = countryCode + phoneNumber;
                     setEditDrafts((prev) => ({
                       ...prev,
-                      [m.id]: {
-                        ...prev[m.id],
+                          [m.id]: {
+                            ...prev[m.id],
                         phone_number: phoneNumber,
                         contact_number: fullNumber,
-                        species_name: prev[m.id]?.species_name ?? m.species_name,
-                        status: prev[m.id]?.status ?? m.status,
-                        photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                        reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
+                            species_name: prev[m.id]?.species_name ?? m.species_name,
+                            status: prev[m.id]?.status ?? m.status,
+                            photo_url: prev[m.id]?.photo_url ?? m.photo_url,
+                            reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
                       },
                     }));
                   }}
