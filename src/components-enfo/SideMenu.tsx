@@ -52,7 +52,6 @@ export default function SideMenu() {
       >
        
       </Box>
-      <Divider />
       <Box
         sx={{
           overflow: 'auto',
