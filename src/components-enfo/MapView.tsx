@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { Box, Tooltip, IconButton, Button, TextField, MenuItem, ToggleButtonGroup, ToggleButton, Stack, FormControl, Select } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import AddLocationAltOutlinedIcon from "@mui/icons-material/AddLocationAltOutlined";
+import ZoomInIcon from "@mui/icons-material/ZoomIn";
+import ZoomOutIcon from "@mui/icons-material/ZoomOut";
 import L from "leaflet";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 // @ts-ignore - osmtogeojson has no official TypeScript types
@@ -722,16 +724,84 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
           max-width: 320px; /* avoid overly wide popups at low zoom */
         }
       `}</style>
-      <Box sx={{ position: "absolute", top: 90, left: 10, zIndex: 1000 }}>
+      <Box sx={{ position: "absolute", top: 10, left: 10, zIndex: 1000, display: "flex", flexDirection: "column", gap: 1 }}>
         <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
-          <IconButton
-            color={isAddingMarker ? "primary" : "default"}
+          <Button
+            variant={isAddingMarker ? "contained" : "outlined"}
+            color={isAddingMarker ? "primary" : "inherit"}
             size="small"
             onClick={() => setIsAddingMarker((v) => !v)}
-            aria-pressed={isAddingMarker}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: 1,
+              border: '1px solid black'
+            }}
           >
-            <AddLocationAltOutlinedIcon />
-          </IconButton>
+            <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
+            {isAddingMarker ? "Adding Marker" : "Add Marker"}
+          </Button>
+        </Tooltip>
+        
+        <Tooltip title="Zoom in" enterDelay={500}>
+          <Button
+            variant="outlined"
+            color="inherit"
+            size="small"
+            onClick={() => {
+              if (mapInstance) {
+                const currentZoom = mapInstance.getZoom();
+                mapInstance.setZoom(currentZoom + 1);
+              }
+            }}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: 1,
+              border: '1px solid black'
+            }}
+          >
+            <ZoomInIcon sx={{ fontSize: 18 }} />
+            Zoom In
+          </Button>
+        </Tooltip>
+        
+        <Tooltip title="Zoom out" enterDelay={500}>
+          <Button
+            variant="outlined"
+            color="inherit"
+            size="small"
+            onClick={() => {
+              if (mapInstance) {
+                const currentZoom = mapInstance.getZoom();
+                mapInstance.setZoom(currentZoom - 1);
+              }
+            }}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: 1,
+              border: '1px solid black'
+            }}
+          >
+            <ZoomOutIcon sx={{ fontSize: 18 }} />
+            Zoom Out
+          </Button>
         </Tooltip>
       </Box>
     <MapContainer
@@ -743,7 +813,7 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
           borderRadius: "8px",
           border: "1px solid #e0e0e0",
         }}
-        zoomControl={true}
+        zoomControl={false}
         scrollWheelZoom={true}
         minZoom={12}
         maxZoom={18}
