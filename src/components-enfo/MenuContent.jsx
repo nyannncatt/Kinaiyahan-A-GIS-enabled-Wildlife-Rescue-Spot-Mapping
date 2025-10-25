@@ -14,6 +14,7 @@ import {
 import { styled } from '@mui/material/styles';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
+import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 
@@ -141,6 +142,13 @@ const mainNavigationItems = [
     status: 'Available',
     description: 'Data analysis and reports'
   },
+  { 
+    id: 'records', 
+    text: 'Records', 
+    icon: <AssignmentRoundedIcon sx={{ fontSize: 20 }} />,
+    status: 'Available',
+    description: 'Wildlife records management'
+  },
 ];
 
 const utilityItems = [
@@ -166,7 +174,41 @@ export default function MenuContent() {
   const handleTabClick = (tabId) => {
     console.log('Tab clicked:', tabId);
     setActiveTab(tabId);
-    // TODO: Implement section switching logic here
+    
+    // Handle Records tab - scroll to record list section
+    if (tabId === 'records') {
+      scrollToRecordList();
+    }
+    
+    // Handle Mapping tab - scroll to top
+    if (tabId === 'mapping') {
+      scrollToTop();
+    }
+  };
+
+  // Function to scroll to record list section
+  const scrollToRecordList = () => {
+    const recordListElement = document.querySelector('[data-record-list]');
+    if (recordListElement) {
+      recordListElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    } else {
+      // Fallback: scroll to bottom of page
+      window.scrollTo({ 
+        top: document.body.scrollHeight, 
+        behavior: 'smooth' 
+      });
+    }
+  };
+
+  // Function to scroll to top
+  const scrollToTop = () => {
+    window.scrollTo({ 
+      top: 0, 
+      behavior: 'smooth' 
+    });
   };
 
   return (
