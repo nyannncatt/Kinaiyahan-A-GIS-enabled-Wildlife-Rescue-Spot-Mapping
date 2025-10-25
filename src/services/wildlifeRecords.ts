@@ -13,6 +13,7 @@ export interface WildlifeRecord {
   reporter_name?: string;
   contact_number?: string;
   photo_url?: string;
+  has_exif_gps?: boolean;
   timestamp_captured: string;
   created_at: string;
   updated_at: string;
@@ -29,6 +30,7 @@ export interface CreateWildlifeRecord {
   reporter_name?: string;
   contact_number?: string;
   photo_url?: string;
+  has_exif_gps?: boolean;
   timestamp_captured: string;
 }
 
@@ -45,6 +47,7 @@ export interface UpdateWildlifeRecord {
   phone_number?: string;
   country_code?: string;
   photo_url?: string;
+  has_exif_gps?: boolean;
   timestamp_captured?: string;
 }
 

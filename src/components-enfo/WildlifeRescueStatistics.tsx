@@ -75,6 +75,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<WildlifeRecord | null>(null);
   const [editFormData, setEditFormData] = useState<UpdateWildlifeRecord>({});
+  
   const [editError, setEditError] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
   const [speciesOptions, setSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
@@ -243,11 +244,16 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       );
       setSuccessSnackbar({
         open: true,
-        message: 'Wildlife record has been approved successfully!',
+        message: 'Wildlife record has been approved successfully! Refreshing data...',
       });
+      
+      // Refresh the entire site after successful approval
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } catch (error) {
       console.error('Error approving wildlife record:', error);
-      setSuccessSnackbar({
+      setErrorSnackbar({
         open: true,
         message: 'Failed to approve wildlife record',
       });
@@ -264,17 +270,24 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
         );
         setSuccessSnackbar({
           open: true,
-          message: 'Wildlife record has been rejected successfully!',
+          message: 'Wildlife record has been rejected successfully! Refreshing data...',
         });
+        
+        // Refresh the entire site after successful rejection
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       } catch (error) {
         console.error('Error rejecting wildlife record:', error);
-        setSuccessSnackbar({
+        setErrorSnackbar({
           open: true,
           message: 'Failed to reject wildlife record',
         });
       }
     }
   };
+
+
 
   // Handle print
   const handlePrint = () => {
@@ -959,16 +972,32 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   </Typography>
                 </TableCell>
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
-                  <Chip
-                    label={record.approval_status}
-                    size="small"
-                    color={
-                      record.approval_status === 'approved' ? 'success' :
-                      record.approval_status === 'rejected' ? 'error' : 'warning'
-                    }
-                    variant="outlined"
-                    sx={{ fontWeight: 600 }}
-                  />
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    <Chip
+                      label={record.approval_status}
+                      size="small"
+                      color={
+                        record.approval_status === 'approved' ? 'success' :
+                        record.approval_status === 'rejected' ? 'error' : 'warning'
+                      }
+                      variant="outlined"
+                      sx={{ fontWeight: 600 }}
+                    />
+                    {record.approval_status === 'pending' && record.user_id === null && record.has_exif_gps === false && (
+                      <Chip
+                        label="no exif gps data"
+                        size="small"
+                        color="error"
+                        variant="filled"
+                        sx={{ 
+                          fontWeight: 500,
+                          fontSize: '0.7rem',
+                          height: 20,
+                          mt: 0.5
+                        }}
+                      />
+                    )}
+                  </Box>
                 </TableCell>
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
                   <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 500 }}>
