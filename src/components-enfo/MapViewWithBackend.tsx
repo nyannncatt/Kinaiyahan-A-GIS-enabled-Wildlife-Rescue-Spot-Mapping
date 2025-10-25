@@ -310,6 +310,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [role, setRole] = useState<string | null>(null);
   const [editSpeciesOptions, setEditSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
   const [editSpeciesLoading, setEditSpeciesLoading] = useState(false);
+  const [showEditSpeciesDropdown, setShowEditSpeciesDropdown] = useState(false);
   const [hasLoadedRecords, setHasLoadedRecords] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [visibilityBump, setVisibilityBump] = useState(0);
@@ -661,9 +662,10 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   useEffect(() => {
     const currentDraft = editingMarkerId ? editDrafts[editingMarkerId] : null;
     const query = currentDraft?.species_name?.trim() || "";
-    if (!editingMarkerId || query.length < 2) {
+    if (!editingMarkerId || query.length < 2 || !showEditSpeciesDropdown) {
       setEditSpeciesOptions([]);
       setEditSpeciesLoading(false);
+      setShowEditSpeciesDropdown(false);
       return;
     }
     setEditSpeciesLoading(true);
@@ -688,7 +690,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [editDrafts, editingMarkerId]);
+  }, [editDrafts, editingMarkerId, showEditSpeciesDropdown]);
 
   // Debounced place search
   useEffect(() => {
@@ -1906,48 +1908,59 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                       [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: e.target.value, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
                     }))
                   }
+                  onFocus={() => {
+                    setShowEditSpeciesDropdown(true);
+                  }}
+                  onBlur={() => {
+                    // Delay hiding to allow click on dropdown items
+                    setTimeout(() => setShowEditSpeciesDropdown(false), 200);
+                  }}
                   inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
                 />
-                  <Box sx={{ 
-                    position: 'absolute', 
-                    top: '100%', 
-                    left: 0, 
-                    right: 0, 
-                    zIndex: 1000,
-                    mt: 0.5, 
-                    border: "1px solid", 
-                    borderColor: "divider", 
-                    borderRadius: 1, 
-                    height: 128, 
-                    overflow: "auto",
-                    bgcolor: 'background.paper',
-                    boxShadow: 2
-                  }}>
-                    {editSpeciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
-                    {!editSpeciesLoading && editSpeciesOptions.length === 0 && editDrafts[editingMarker.id]?.species_name && editDrafts[editingMarker.id].species_name.length >= 2 && (
-                      <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
-                    )}
-                    {!editSpeciesLoading && editSpeciesOptions.length > 0 && (
-                      <Box>
-                        {editSpeciesOptions.map((opt) => (
-                          <Box
-                            key={`${opt.label}-${opt.common || ""}`}
-                            sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
-                            onClick={() => {
-                              setEditDrafts((prev) => ({
-                                ...prev,
-                                [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: opt.label, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
-                              }));
-                              setEditSpeciesOptions([]);
-                            }}
-                          >
-                            {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
-                            <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
-                          </Box>
-                        ))}
-                      </Box>
-                    )}
-                  </Box>
+                  {showEditSpeciesDropdown && (
+                    <Box sx={{ 
+                      position: 'absolute', 
+                      top: '100%', 
+                      left: 0, 
+                      right: 0, 
+                      zIndex: 1000,
+                      mt: 0.5, 
+                      border: "1px solid", 
+                      borderColor: "divider", 
+                      borderRadius: 1, 
+                      maxHeight: 200, 
+                      overflow: "auto",
+                      bgcolor: 'background.paper',
+                      boxShadow: 2
+                    }}>
+                      {editSpeciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
+                      {!editSpeciesLoading && editSpeciesOptions.length === 0 && editDrafts[editingMarker.id]?.species_name && editDrafts[editingMarker.id].species_name.length >= 2 && (
+                        <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
+                      )}
+                      {!editSpeciesLoading && editSpeciesOptions.length > 0 && (
+                        <Box>
+                          {editSpeciesOptions.map((opt) => (
+                            <Box
+                              key={`${opt.label}-${opt.common || ""}`}
+                              sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                              onMouseDown={(e) => {
+                                e.preventDefault(); // Prevent input blur
+                                setEditDrafts((prev) => ({
+                                  ...prev,
+                                  [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: opt.label, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
+                                }));
+                                setShowEditSpeciesDropdown(false);
+                                setEditSpeciesOptions([]);
+                              }}
+                            >
+                              {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                              <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
+                  )}
                 </Box>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Status</Box>
                 <TextField

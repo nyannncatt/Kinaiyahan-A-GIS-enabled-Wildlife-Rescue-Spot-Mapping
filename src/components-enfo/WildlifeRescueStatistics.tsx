@@ -217,14 +217,13 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   // Species autocomplete for edit mode
   useEffect(() => {
     const query = editFormData.species_name?.trim() || "";
-    if (!editDialogOpen || query.length < 2) {
+    if (!editDialogOpen || query.length < 2 || !showSpeciesDropdown) {
       setSpeciesOptions([]);
       setSpeciesLoading(false);
       setShowSpeciesDropdown(false);
       return;
     }
     setSpeciesLoading(true);
-    setShowSpeciesDropdown(true);
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
@@ -246,7 +245,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       clearTimeout(timer);
       controller.abort();
     };
-  }, [editFormData.species_name, editDialogOpen]);
+  }, [editFormData.species_name, editDialogOpen, showSpeciesDropdown]);
 
   // Handle approve record
   const handleApproveRecord = async (id: string) => {
@@ -1215,9 +1214,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                 value={editFormData.species_name || ''}
                 onChange={(e) => setEditFormData(prev => ({ ...prev, species_name: e.target.value }))}
                 onFocus={() => {
-                  if (editFormData.species_name && editFormData.species_name.length >= 2) {
-                    setShowSpeciesDropdown(true);
-                  }
+                  setShowSpeciesDropdown(true);
                 }}
                 onBlur={() => {
                   // Delay hiding to allow click on dropdown items
