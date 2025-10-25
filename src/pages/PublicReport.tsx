@@ -96,6 +96,9 @@ export default function PublicReport() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [phoneWarning, setPhoneWarning] = useState<string | null>(null);
+  const [nameWarning, setNameWarning] = useState<string | null>(null);
+  const [showFullscreenPhoto, setShowFullscreenPhoto] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [stepTransition, setStepTransition] = useState(false);
@@ -344,10 +347,36 @@ export default function PublicReport() {
   };
 
   const handleNext = () => {
-    // Check if photo is required for step 0 (Wildlife Information)
-    if (activeStep === 0 && !photoFile && !photoPreview) {
-      setError('⚠️ Please upload or take a photo before proceeding to the next step.');
-      return;
+    // Step 0: Wildlife Information - Check species name and photo
+    if (activeStep === 0) {
+      if (!speciesName.trim()) {
+        setError('⚠️ Please enter the species name before proceeding.');
+        return;
+      }
+      if (!photoFile && !photoPreview) {
+        setError('⚠️ Please upload or take a photo before proceeding to the next step.');
+        return;
+      }
+    }
+    
+    // Step 1: Location Information - Check barangay if no EXIF GPS
+    if (activeStep === 1) {
+      if (!hasExifGps && !barangay.trim()) {
+        setError('⚠️ Please select a barangay since your photo does not contain GPS location data.');
+        return;
+      }
+    }
+    
+    // Step 2: Contact Information - Check contact details
+    if (activeStep === 2) {
+      if (!reporterName.trim()) {
+        setError('⚠️ Please enter your name before proceeding.');
+        return;
+      }
+      if (!phoneNumber.trim()) {
+        setError('⚠️ Please enter your contact number before proceeding.');
+        return;
+      }
     }
     
     setStepTransition(true);
@@ -573,11 +602,19 @@ export default function PublicReport() {
       case 0:
         return speciesName.trim() !== '' && (photoFile !== null || photoPreview !== null);
       case 1:
-        return barangay.trim() !== '' || photoFile !== null || extractedCoords !== null;
+        // If no EXIF GPS, require barangay selection
+        if (!hasExifGps) {
+          return barangay.trim() !== '';
+        }
+        // If has EXIF GPS, no additional validation needed
+        return true;
       case 2:
-        return true; // Contact info is optional
+        return reporterName.trim() !== '' && phoneNumber.trim() !== '';
       case 3:
-        return speciesName.trim() !== '' && (barangay.trim() !== '' || photoFile !== null || extractedCoords !== null);
+        return speciesName.trim() !== '' && 
+               (hasExifGps || barangay.trim() !== '') && 
+               reporterName.trim() !== '' && 
+               phoneNumber.trim() !== '';
       default:
         return false;
     }
@@ -1239,7 +1276,22 @@ export default function PublicReport() {
                      <OutlinedInput
                        id="reporter-name"
                        value={reporterName}
-                       onChange={(e) => setReporterName(e.target.value)}
+                       onChange={(e) => {
+                         const inputValue = e.target.value;
+                         // Only allow letters, spaces, and common name characters (hyphens, apostrophes)
+                         const nameValue = inputValue.replace(/[^a-zA-Z\s\-']/g, '');
+                         
+                         // Show warning if numbers or special characters were removed
+                         if (inputValue !== nameValue) {
+                           setNameWarning('⚠️ Only letters are allowed in name field');
+                           // Clear warning after 3 seconds
+                           setTimeout(() => setNameWarning(null), 3000);
+                         } else {
+                           setNameWarning(null);
+                         }
+                         
+                         setReporterName(nameValue);
+                       }}
                        startAdornment={
                          <InputAdornment position="start">
                            <Person color="action" />
@@ -1264,6 +1316,20 @@ export default function PublicReport() {
                        }}
                      />
                   </FormControl>
+                  
+                  {/* Name warning */}
+                  {nameWarning && (
+                    <Alert 
+                      severity="warning"
+                      sx={{ 
+                        mt: 1,
+                        borderRadius: 2,
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      {nameWarning}
+                    </Alert>
+                  )}
                 </Box>
                 <Box sx={{ 
                   flex: 1, 
@@ -1275,8 +1341,18 @@ export default function PublicReport() {
                        id="contact-number"
                        value={phoneNumber}
                        onChange={(e) => {
-                         // Only allow numbers
-                         const phoneNumberValue = e.target.value.replace(/[^0-9]/g, '');
+                         const inputValue = e.target.value;
+                         const phoneNumberValue = inputValue.replace(/[^0-9]/g, '');
+                         
+                         // Show warning if non-numeric characters were removed
+                         if (inputValue !== phoneNumberValue) {
+                           setPhoneWarning('⚠️ Only numbers are allowed in phone number');
+                           // Clear warning after 3 seconds
+                           setTimeout(() => setPhoneWarning(null), 3000);
+                         } else {
+                           setPhoneWarning(null);
+                         }
+                         
                          const fullNumber = countryCode + phoneNumberValue;
                          setPhoneNumber(phoneNumberValue);
                          setContactNumber(fullNumber);
@@ -1339,6 +1415,20 @@ export default function PublicReport() {
                        }}
                      />
                   </FormControl>
+                  
+                  {/* Phone number warning */}
+                  {phoneWarning && (
+                    <Alert 
+                      severity="warning"
+                      sx={{ 
+                        mt: 1,
+                        borderRadius: 2,
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      {phoneWarning}
+                    </Alert>
+                  )}
                 </Box>
               </Box>
               <Box>
@@ -1476,15 +1566,55 @@ export default function PublicReport() {
                   <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
                     Photo
                   </Typography>
-                  <Typography 
-                    variant="body1" 
-                    sx={{ 
-                      fontWeight: 'medium',
-                      fontSize: isMobile ? '0.875rem' : '1rem'
-                    }}
-                  >
-                    {photoFile ? photoFile.name : 'No photo uploaded'}
-                  </Typography>
+                  {photoPreview ? (
+                    <Box 
+                      sx={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: 1,
+                        alignItems: 'flex-start'
+                      }}
+                    >
+                      <Box
+                        component="img"
+                        src={photoPreview}
+                        alt="Wildlife photo preview"
+                        sx={{
+                          width: '200px',
+                          height: '150px',
+                          objectFit: 'cover',
+                          borderRadius: 2,
+                          border: '2px solid #e0e0e0',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease-in-out',
+                          '&:hover': {
+                            transform: 'scale(1.02)',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            borderColor: '#4caf50'
+                          }
+                        }}
+                        onClick={() => setShowFullscreenPhoto(true)}
+                      />
+                      <Typography 
+                        variant="caption" 
+                        color="text.secondary"
+                        sx={{ fontSize: '0.75rem' }}
+                      >
+                        Click to view full size
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Typography 
+                      variant="body1" 
+                      sx={{ 
+                        fontWeight: 'medium',
+                        fontSize: isMobile ? '0.875rem' : '1rem',
+                        color: 'text.secondary'
+                      }}
+                    >
+                      No photo uploaded
+                    </Typography>
+                  )}
                 </Box>
               </Box>
             </Paper>
@@ -2114,6 +2244,67 @@ export default function PublicReport() {
                 </Box>
               )}
             </Box>
+          </Box>
+        </Fade>
+      </Modal>
+      {/* Fullscreen Photo Modal */}
+      <Modal
+        open={showFullscreenPhoto}
+        onClose={() => setShowFullscreenPhoto(false)}
+        closeAfterTransition
+        BackdropComponent={Backdrop}
+        BackdropProps={{
+          timeout: 500,
+          sx: { backgroundColor: 'rgba(0,0,0,0.9)' }
+        }}
+      >
+        <Fade in={showFullscreenPhoto}>
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '90vw',
+              height: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              outline: 'none'
+            }}
+          >
+            {photoPreview && (
+              <Box
+                component="img"
+                src={photoPreview}
+                alt="Wildlife photo full size"
+                sx={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  objectFit: 'contain',
+                  borderRadius: 2,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+                }}
+              />
+            )}
+            <Button
+              onClick={() => setShowFullscreenPhoto(false)}
+              variant="outlined"
+              sx={{
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                color: 'white',
+                borderColor: 'white',
+                '&:hover': {
+                  borderColor: '#ffebee',
+                  background: 'rgba(255,255,255,0.1)'
+                }
+              }}
+            >
+              Close
+            </Button>
           </Box>
         </Fade>
       </Modal>
