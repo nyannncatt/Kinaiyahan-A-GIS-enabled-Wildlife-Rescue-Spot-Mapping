@@ -90,6 +90,15 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     message: '',
   });
 
+  // Error notification state
+  const [errorSnackbar, setErrorSnackbar] = useState<{
+    open: boolean;
+    message: string;
+  }>({
+    open: false,
+    message: '',
+  });
+
   // Load wildlife records (initial + on refresh signal)
   useEffect(() => {
     let isCancelled = false;
@@ -1365,6 +1374,23 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
            sx={{ width: '100%' }}
          >
            {successSnackbar.message}
+         </Alert>
+       </Snackbar>
+
+       {/* Error Snackbar */}
+       <Snackbar
+         open={errorSnackbar.open}
+         autoHideDuration={4000}
+         onClose={() => setErrorSnackbar(prev => ({ ...prev, open: false }))}
+         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+       >
+         <Alert
+           onClose={() => setErrorSnackbar(prev => ({ ...prev, open: false }))}
+           severity="error"
+           variant="filled"
+           sx={{ width: '100%' }}
+         >
+           {errorSnackbar.message}
          </Alert>
        </Snackbar>
      </Box>
