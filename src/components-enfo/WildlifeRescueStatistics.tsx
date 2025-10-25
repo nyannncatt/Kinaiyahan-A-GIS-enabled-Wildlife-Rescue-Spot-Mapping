@@ -80,6 +80,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const [editLoading, setEditLoading] = useState(false);
   const [speciesOptions, setSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
   const [speciesLoading, setSpeciesLoading] = useState(false);
+  const [showSpeciesDropdown, setShowSpeciesDropdown] = useState(false);
   
   // Success notification state
   const [successSnackbar, setSuccessSnackbar] = useState<{
@@ -210,6 +211,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     setEditFormData({});
     setEditError(null);
     setSpeciesOptions([]);
+    setShowSpeciesDropdown(false);
   };
 
   // Species autocomplete for edit mode
@@ -218,9 +220,11 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     if (!editDialogOpen || query.length < 2) {
       setSpeciesOptions([]);
       setSpeciesLoading(false);
+      setShowSpeciesDropdown(false);
       return;
     }
     setSpeciesLoading(true);
+    setShowSpeciesDropdown(true);
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
@@ -1210,46 +1214,59 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                 label="Species Name"
                 value={editFormData.species_name || ''}
                 onChange={(e) => setEditFormData(prev => ({ ...prev, species_name: e.target.value }))}
+                onFocus={() => {
+                  if (editFormData.species_name && editFormData.species_name.length >= 2) {
+                    setShowSpeciesDropdown(true);
+                  }
+                }}
+                onBlur={() => {
+                  // Delay hiding to allow click on dropdown items
+                  setTimeout(() => setShowSpeciesDropdown(false), 200);
+                }}
                 fullWidth
                 required
               />
-              <Box sx={{ 
-                position: 'absolute', 
-                top: '100%', 
-                left: 0, 
-                right: 0, 
-                zIndex: 1000,
-                mt: 0.5, 
-                border: "1px solid", 
-                borderColor: "divider", 
-                borderRadius: 1, 
-                height: 128, 
-                overflow: "auto",
-                bgcolor: 'background.paper',
-                boxShadow: 2
-              }}>
-                {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
-                {!speciesLoading && speciesOptions.length === 0 && editFormData.species_name && editFormData.species_name.length >= 2 && (
-                  <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
-                )}
-                {!speciesLoading && speciesOptions.length > 0 && (
-                  <Box>
-                    {speciesOptions.map((opt) => (
-                      <Box
-                        key={`${opt.label}-${opt.common || ""}`}
-                        sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
-                        onClick={() => {
-                          setEditFormData(prev => ({ ...prev, species_name: opt.label }));
-                          setSpeciesOptions([]);
-                        }}
-                      >
-                        {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
-                        <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              </Box>
+              {showSpeciesDropdown && (
+                <Box sx={{ 
+                  position: 'absolute', 
+                  top: '100%', 
+                  left: 0, 
+                  right: 0, 
+                  zIndex: 1000,
+                  mt: 0.5, 
+                  border: "1px solid", 
+                  borderColor: "divider", 
+                  borderRadius: 1, 
+                  maxHeight: 200, 
+                  overflow: "auto",
+                  bgcolor: 'background.paper',
+                  boxShadow: 2
+                }}>
+                  {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
+                  {!speciesLoading && speciesOptions.length === 0 && editFormData.species_name && editFormData.species_name.length >= 2 && (
+                    <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
+                  )}
+                  {!speciesLoading && speciesOptions.length > 0 && (
+                    <Box>
+                      {speciesOptions.map((opt) => (
+                        <Box
+                          key={`${opt.label}-${opt.common || ""}`}
+                          sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                          onMouseDown={(e) => {
+                            e.preventDefault(); // Prevent input blur
+                            setEditFormData(prev => ({ ...prev, species_name: opt.label }));
+                            setShowSpeciesDropdown(false);
+                            setSpeciesOptions([]);
+                          }}
+                        >
+                          {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                          <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              )}
             </Box>
             
             <FormControl fullWidth>
