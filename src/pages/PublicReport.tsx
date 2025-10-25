@@ -345,7 +345,7 @@ export default function PublicReport() {
 
   const handleNext = () => {
     // Check if photo is required for step 0 (Wildlife Information)
-    if (activeStep === 0 && !photoFile) {
+    if (activeStep === 0 && !photoFile && !photoPreview) {
       setError('⚠️ Please upload or take a photo before proceeding to the next step.');
       return;
     }
@@ -571,7 +571,7 @@ export default function PublicReport() {
   const isStepValid = (step: number) => {
     switch (step) {
       case 0:
-        return speciesName.trim() !== '';
+        return speciesName.trim() !== '' && (photoFile !== null || photoPreview !== null);
       case 1:
         return barangay.trim() !== '' || photoFile !== null || extractedCoords !== null;
       case 2:
@@ -1275,7 +1275,8 @@ export default function PublicReport() {
                        id="contact-number"
                        value={phoneNumber}
                        onChange={(e) => {
-                         const phoneNumberValue = e.target.value;
+                         // Only allow numbers
+                         const phoneNumberValue = e.target.value.replace(/[^0-9]/g, '');
                          const fullNumber = countryCode + phoneNumberValue;
                          setPhoneNumber(phoneNumberValue);
                          setContactNumber(fullNumber);
