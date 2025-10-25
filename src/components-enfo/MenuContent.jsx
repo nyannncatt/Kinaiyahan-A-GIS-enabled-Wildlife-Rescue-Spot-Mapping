@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -7,7 +7,6 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Chip,
   Divider,
   useTheme
 } from '@mui/material';
@@ -89,30 +88,6 @@ const IconWrapper = styled(Box, {
   transition: 'color 0.2s ease-in-out',
 }));
 
-const StatusChip = styled(Chip, {
-  shouldForwardProp: (prop) => prop !== 'active',
-})(({ theme, active }) => ({
-  height: '20px',
-  fontSize: '10px',
-  fontWeight: 600,
-  backgroundColor: active 
-    ? (theme.vars 
-        ? `rgba(${theme.vars.palette.primary.mainChannel} / 1)`
-        : theme.palette.primary.main)
-    : (theme.vars 
-        ? `rgba(${theme.vars.palette.action.disabledChannel} / 1)`
-        : theme.palette.action.disabled),
-  color: active 
-    ? (theme.vars 
-        ? `rgba(${theme.vars.palette.primary.contrastTextChannel} / 1)`
-        : theme.palette.primary.contrastText)
-    : (theme.vars 
-        ? `rgba(${theme.vars.palette.text.disabledChannel} / 1)`
-        : theme.palette.text.disabled),
-  '& .MuiChip-label': {
-    padding: '0 6px',
-  },
-}));
 
 const SectionTitle = styled(Typography)(({ theme }) => ({
   color: theme.vars 
@@ -132,21 +107,18 @@ const mainNavigationItems = [
     id: 'mapping', 
     text: 'Mapping', 
     icon: <HomeRoundedIcon sx={{ fontSize: 20 }} />,
-    status: 'Active',
     description: 'Wildlife mapping and tracking'
   },
   { 
     id: 'analytics', 
     text: 'Analytics', 
     icon: <AnalyticsRoundedIcon sx={{ fontSize: 20 }} />,
-    status: 'Available',
     description: 'Data analysis and reports'
   },
   { 
     id: 'records', 
     text: 'Records', 
     icon: <AssignmentRoundedIcon sx={{ fontSize: 20 }} />,
-    status: 'Available',
     description: 'Wildlife records management'
   },
 ];
@@ -170,6 +142,42 @@ const utilityItems = [
 export default function MenuContent() {
   const [activeTab, setActiveTab] = useState('mapping');
   const theme = useTheme();
+
+  // Track scroll position to update active tab
+  useEffect(() => {
+    const handleScroll = () => {
+      const mapContainer = document.querySelector('[data-map-container]');
+      const recordListElement = document.querySelector('[data-record-list]');
+      
+      if (!mapContainer || !recordListElement) return;
+      
+      const mapRect = mapContainer.getBoundingClientRect();
+      const recordRect = recordListElement.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      
+      // Check if map is in view (top portion of screen)
+      const mapInView = mapRect.top < windowHeight * 0.5 && mapRect.bottom > 0;
+      
+      // Check if record list is in view (top portion of screen)
+      const recordInView = recordRect.top < windowHeight * 0.5 && recordRect.bottom > 0;
+      
+      if (recordInView && !mapInView) {
+        setActiveTab('records');
+      } else if (mapInView) {
+        setActiveTab('mapping');
+      }
+    };
+
+    // Add scroll listener
+    window.addEventListener('scroll', handleScroll);
+    
+    // Initial check
+    handleScroll();
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   const handleTabClick = (tabId) => {
     console.log('Tab clicked:', tabId);
@@ -248,26 +256,19 @@ export default function MenuContent() {
                 </ListItemIcon>
                 <ListItemText 
                   primary={
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Box>
-                        <Typography variant="body2" sx={{ 
-                          fontWeight: activeTab === item.id ? 600 : 500,
-                          fontSize: '14px'
-                        }}>
-                          {item.text}
-                        </Typography>
-                        <Typography variant="caption" sx={{ 
-                          color: 'text.secondary',
-                          fontSize: '11px'
-                        }}>
-                          {item.description}
-                        </Typography>
-                      </Box>
-                      <StatusChip 
-                        label={item.status} 
-                        size="small"
-                        active={activeTab === item.id}
-                      />
+                    <Box>
+                      <Typography variant="body2" sx={{ 
+                        fontWeight: activeTab === item.id ? 600 : 500,
+                        fontSize: '14px'
+                      }}>
+                        {item.text}
+                      </Typography>
+                      <Typography variant="caption" sx={{ 
+                        color: 'text.secondary',
+                        fontSize: '11px'
+                      }}>
+                        {item.description}
+                      </Typography>
                     </Box>
                   }
                 />
