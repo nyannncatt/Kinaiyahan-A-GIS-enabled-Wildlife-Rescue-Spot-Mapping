@@ -122,6 +122,7 @@ const SectionTitle = styled(Typography)(({ theme }) => ({
   letterSpacing: '1px',
   marginBottom: theme.spacing(1),
   textTransform: 'uppercase',
+  textAlign: 'center',
 }));
 
 // Navigation items configuration
@@ -171,7 +172,7 @@ export default function MenuContent() {
   return (
     <NavigationContainer>
       {/* Header */}
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ mb: 2, textAlign: 'center' }}>
         <Typography variant="h6" sx={{ 
           fontWeight: 700, 
           color: 'primary.main',
