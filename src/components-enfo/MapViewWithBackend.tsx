@@ -1464,6 +1464,32 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
           max-width: 320px; /* avoid overly wide popups at low zoom */
         }
         
+        /* Auto-adjust popup position to prevent overflow at map edges */
+        .themed-popup {
+          position: absolute;
+        }
+        
+        .themed-popup .leaflet-popup-content-wrapper {
+          max-width: min(90vw, 400px); /* Responsive width */
+        }
+        
+        /* Ensure popup always stays within viewport */
+        .leaflet-popup-container {
+          max-width: 100vw;
+        }
+        
+        .themed-popup .leaflet-popup-content img {
+          max-width: 100%;
+          height: auto;
+          object-fit: contain;
+        }
+        
+        /* Lock popup size when editing to prevent resizing */
+        .themed-popup.lock-size .leaflet-popup-content-wrapper {
+          width: auto !important;
+          max-width: min(90vw, 400px) !important;
+        }
+        
       `}</style>
 
       {/* Map control buttons */}
@@ -1892,7 +1918,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             icon={createStatusIcon(editingMarker.status)}
             ref={(ref) => { if (ref) markerRefs.current[editingMarker.id] = ref; }}
           >
-            <Popup className="themed-popup">
+            <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]} maxWidth="90vw">
               <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
                 <Box sx={{ position: 'relative' }}>
@@ -2045,7 +2071,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
               icon={createStatusIcon(relocatingMarker.status)}
               ref={(ref) => { if (ref) markerRefs.current[relocatingMarker.id] = ref; }}
             >
-              <Popup className="themed-popup">
+              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]} maxWidth="90vw">
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                   <Typography variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
                     Relocating: {relocatingMarker.species_name}
@@ -2096,7 +2122,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                 icon={createStatusIcon(m.status)}
                 ref={(ref) => { markerRefs.current[m.id] = ref; }}
               >
-              <Popup className="themed-popup">
+              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]} maxWidth="90vw">
                 {editingMarkerId === m.id ? (
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                     <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
@@ -2329,6 +2355,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                         <Button
                           variant="outlined"
                           size="small"
+                          sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
                           onClick={(e) => {
                             try { e.preventDefault(); e.stopPropagation(); } catch {}
                             setEditDrafts((prev) => ({
@@ -2355,6 +2382,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           variant="outlined"
                           size="small"
                           color="secondary"
+                          sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
                           onClick={(e) => {
                             try { e.preventDefault(); e.stopPropagation(); } catch {}
                             setRelocatingMarkerId(m.id);
@@ -2368,6 +2396,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           variant="outlined"
                           size="small"
                           color="error"
+                          sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
                         onClick={(e) => {
                             try { e.preventDefault(); e.stopPropagation(); } catch {}
                           handleDeleteMarker(m.id);
