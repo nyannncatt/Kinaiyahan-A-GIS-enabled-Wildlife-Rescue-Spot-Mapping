@@ -106,6 +106,22 @@ function normalizeStatus(status: string | undefined): string {
   return v;
 }
 
+function formatStatusLabel(status: string | undefined): string {
+  const normalized = normalizeStatus(status);
+  switch (normalized) {
+    case "released":
+      return "Dispersed";
+    case "turned over":
+      return "Turned Over";
+    case "reported":
+      return "Reported";
+    case "rescued":
+      return "Rescued";
+    default:
+      return String(status || "");
+  }
+}
+
 function MapBoundsController() {
   const map = useMap();
 
@@ -1967,7 +1983,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   <MenuItem value="reported">Reported</MenuItem>
                   <MenuItem value="rescued">Rescued</MenuItem>
                   <MenuItem value="turned over">Turned over</MenuItem>
-                  <MenuItem value="released">Released</MenuItem>
+                  <MenuItem value="released">Dispersed</MenuItem>
                 </TextField>
 
                 {/* Reporter details */}
@@ -2216,7 +2232,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   <MenuItem value="reported">Reported</MenuItem>
                   <MenuItem value="rescued">Rescued</MenuItem>
                   <MenuItem value="turned over">Turned over</MenuItem>
-                  <MenuItem value="released">Released</MenuItem>
+                  <MenuItem value="released">Dispersed</MenuItem>
                 </TextField>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Barangay</Box>
                 <TextField
@@ -2687,7 +2703,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   <MenuItem value="reported">Reported</MenuItem>
                   <MenuItem value="rescued">Rescued</MenuItem>
                   <MenuItem value="turned over">Turned over</MenuItem>
-                  <MenuItem value="released">Released</MenuItem>
+                  <MenuItem value="released">Dispersed</MenuItem>
                 </TextField>
 
                 {/* Reporter details (editable) */}
@@ -2861,7 +2877,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                 ) : (
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
                     <div><strong>{m.species_name}</strong></div>
-                    <div>Status: {m.status}</div>
+                    <div>Status: {formatStatusLabel(m.status)}</div>
                     {/* Dispersal information */}
                     {(() => {
                       const trace = dispersalTraces.find(t => t.id === m.id);

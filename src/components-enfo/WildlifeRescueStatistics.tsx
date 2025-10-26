@@ -410,7 +410,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             <div class="detail-row">
               <div class="detail-label">Status:</div>
               <div class="detail-value">
-                <span class="status-${record.status.replace(' ', '-')}">${record.status.toUpperCase()}</span>
+                <span class="status-${record.status.replace(' ', '-')}">${formatStatusLabel(record.status).toUpperCase()}</span>
               </div>
             </div>
             
@@ -524,7 +524,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               ${filteredRecords.map(record => `
                 <tr>
                   <td>${record.species_name}</td>
-                  <td class="status-${record.status.replace(' ', '-')}">${record.status.toUpperCase()}</td>
+                  <td class="status-${record.status.replace(' ', '-')}">${formatStatusLabel(record.status).toUpperCase()}</td>
                   <td>${record.barangay || 'N/A'}, ${record.municipality || 'N/A'}</td>
                   <td>${record.reporter_name || 'N/A'}</td>
                   <td>${new Date(record.timestamp_captured).toLocaleDateString()}</td>
@@ -558,6 +558,22 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       case 'turned over': return '#ffc107'; // Yellow
       case 'released': return '#4caf50'; // Green
       default: return '#666';
+    }
+  };
+
+  // Format status label for display
+  const formatStatusLabel = (status: string): string => {
+    switch (status.toLowerCase()) {
+      case 'released':
+        return 'Dispersed';
+      case 'turned over':
+        return 'Turned Over';
+      case 'reported':
+        return 'Reported';
+      case 'rescued':
+        return 'Rescued';
+      default:
+        return status;
     }
   };
 
@@ -777,7 +793,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       <MenuItem value="reported">Reported</MenuItem>
                       <MenuItem value="rescued">Rescued</MenuItem>
                       <MenuItem value="turned over">Turned Over</MenuItem>
-                      <MenuItem value="released">Released</MenuItem>
+                      <MenuItem value="released">Dispersed</MenuItem>
                     </Select>
                   </FormControl>
                 </Box>
@@ -980,7 +996,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       textTransform: 'uppercase',
                     }}
                   >
-                    {record.status}
+                    {formatStatusLabel(record.status)}
                   </Typography>
                 </TableCell>
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
@@ -1276,7 +1292,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                 <MenuItem value="reported">Reported</MenuItem>
                 <MenuItem value="rescued">Rescued</MenuItem>
                 <MenuItem value="turned over">Turned Over</MenuItem>
-                <MenuItem value="released">Released</MenuItem>
+                <MenuItem value="released">Dispersed</MenuItem>
               </Select>
             </FormControl>
             
