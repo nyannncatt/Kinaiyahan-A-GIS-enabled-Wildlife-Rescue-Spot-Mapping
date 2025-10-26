@@ -1456,7 +1456,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
 
         /* Prevent tall popup from overflowing viewport: cap content and scroll inside */
         .themed-popup .leaflet-popup-content {
-          max-height: 320px;
+          max-height: 280px;
           overflow: auto;
           margin: 13px 19px; /* keep Leaflet default spacing */
         }
