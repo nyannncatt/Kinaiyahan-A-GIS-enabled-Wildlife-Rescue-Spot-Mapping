@@ -1918,7 +1918,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             icon={createStatusIcon(editingMarker.status)}
             ref={(ref) => { if (ref) markerRefs.current[editingMarker.id] = ref; }}
           >
-            <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]} maxWidth="90vw">
+            <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
                 <Box sx={{ position: 'relative' }}>
@@ -2071,7 +2071,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
               icon={createStatusIcon(relocatingMarker.status)}
               ref={(ref) => { if (ref) markerRefs.current[relocatingMarker.id] = ref; }}
             >
-              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]} maxWidth="90vw">
+              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                   <Typography variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
                     Relocating: {relocatingMarker.species_name}
@@ -2122,7 +2122,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                 icon={createStatusIcon(m.status)}
                 ref={(ref) => { markerRefs.current[m.id] = ref; }}
               >
-              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]} maxWidth="90vw">
+              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
                 {editingMarkerId === m.id ? (
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                     <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
