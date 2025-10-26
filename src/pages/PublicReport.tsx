@@ -832,13 +832,14 @@ export default function PublicReport() {
                     }
                   }}
                 >
-                  <input
+                  {/* Temporarily disabled upload photo feature */}
+                  {/* <input
                     accept="image/*"
                     style={{ display: 'none' }}
                     id="photo-upload"
                     type="file"
                     onChange={handlePhotoChange}
-                  />
+                  /> */}
                   
                   <Box sx={{ position: 'relative', zIndex: 1 }}>
                     {/* Single Camera Icon - More Clear */}
@@ -875,8 +876,9 @@ export default function PublicReport() {
                     </Box>
                     
                     {/* Action Buttons */}
-                    <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mb: 3 }}>
-                      <Button
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+                      {/* Temporarily disabled upload photo button */}
+                      {/* <Button
                         variant="contained"
                         component="label"
                         htmlFor="photo-upload"
@@ -896,7 +898,7 @@ export default function PublicReport() {
                         }}
                       >
                         Choose File
-                      </Button>
+                      </Button> */}
                       
                       <Button
                         variant="outlined"
