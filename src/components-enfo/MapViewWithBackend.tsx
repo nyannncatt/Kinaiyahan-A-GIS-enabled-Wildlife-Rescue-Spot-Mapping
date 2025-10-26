@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, GeoJSON } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, GeoJSON, Polyline } from 'react-leaflet';
 import { Icon, LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -293,7 +293,8 @@ const statusColors: Record<string, string> = {
   'reported': '#f44336', // Red
   'rescued': '#2196f3', // Blue
   'turned over': '#ffc107', // Yellow
-  'released': '#4caf50' // Green
+  'released': '#4caf50', // Green
+  'dispersed': '#ff9800' // Orange
 };
 
 export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
@@ -307,12 +308,43 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [editingMarkerId, setEditingMarkerId] = useState<string | null>(null);
   const [editDrafts, setEditDrafts] = useState<Record<string, any>>({});
   const [relocatingMarkerId, setRelocatingMarkerId] = useState<string | null>(null);
+  const [dispersingMarkerId, setDispersingMarkerId] = useState<string | null>(null);
+  const [originalLocation, setOriginalLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [cursorPosition, setCursorPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [relocationOriginalLocation, setRelocationOriginalLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [dispersalTraces, setDispersalTraces] = useState<Array<{
+    id: string;
+    originalLat: number;
+    originalLng: number;
+    originalBarangay?: string;
+    dispersedLat: number;
+    dispersedLng: number;
+    dispersedBarangay?: string;
+    speciesName: string;
+  }>>(() => {
+    // Load dispersal traces from localStorage on component mount
+    try {
+      const saved = localStorage.getItem('wildlife-dispersal-traces');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [role, setRole] = useState<string | null>(null);
   const [editSpeciesOptions, setEditSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
   const [editSpeciesLoading, setEditSpeciesLoading] = useState(false);
   const [showEditSpeciesDropdown, setShowEditSpeciesDropdown] = useState(false);
   const [hasLoadedRecords, setHasLoadedRecords] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Save dispersal traces to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('wildlife-dispersal-traces', JSON.stringify(dispersalTraces));
+    } catch (error) {
+      console.error('Failed to save dispersal traces to localStorage:', error);
+    }
+  }, [dispersalTraces]);
   const [visibilityBump, setVisibilityBump] = useState(0);
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
   const [pendingWarning, setPendingWarning] = useState<string | null>(null);
@@ -354,7 +386,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [showResults, setShowResults] = useState(false);
 
   // Status filters (multi-select)
-  const ALL_STATUSES = ["reported", "rescued", "turned over", "released"] as const;
+  const ALL_STATUSES = ["reported", "rescued", "turned over", "released", "dispersed"] as const;
   const [enabledStatuses, setEnabledStatuses] = useState<string[]>([...ALL_STATUSES]);
 
   // Debug logging for initial state
@@ -1039,6 +1071,135 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     }
   };
 
+  const handleUndispersed = async (dispersedRecordId: string) => {
+    try {
+      console.log('Starting undispersed for record:', dispersedRecordId);
+      
+      // Find the dispersal trace to get original location info
+      const trace = dispersalTraces.find(t => t.id === dispersedRecordId);
+      if (!trace) {
+        throw new Error('Dispersal trace not found');
+      }
+      
+      // Find the original marker
+      const originalMarker = wildlifeRecords.find(m => 
+        m.latitude === trace.originalLat && 
+        m.longitude === trace.originalLng &&
+        m.species_name === trace.speciesName
+      );
+      
+      if (!originalMarker) {
+        throw new Error('Original marker not found');
+      }
+      
+      // Delete the dispersed record
+      await deleteWildlifeRecord(dispersedRecordId);
+      
+      // Remove from dispersal traces
+      setDispersalTraces(prev => prev.filter(t => t.id !== dispersedRecordId));
+      
+      // Refresh records
+      try { triggerRecordsRefresh(); } catch {}
+      
+      // Show success modal
+      setSuccessModal({
+        open: true,
+        title: 'Success!',
+        message: `Dispersal has been undone. Wildlife record restored to original location.`,
+      });
+      
+      // Refresh map data
+      setTimeout(() => {
+        refreshMapData();
+      }, 1000);
+      
+    } catch (err) {
+      console.error('Error undoing dispersal:', err);
+      setError(err instanceof Error ? err.message : 'Failed to undo dispersal');
+    }
+  };
+
+  const handleDispersalMarker = async (id: string, newLat: number, newLng: number) => {
+    try {
+      console.log('Starting dispersal for marker:', id, 'to coordinates:', { lat: newLat, lng: newLng });
+      
+      // Get the original marker data
+      const originalMarker = wildlifeRecords.find(m => m.id === id);
+      if (!originalMarker) {
+        throw new Error('Original marker not found');
+      }
+      
+      // Get the new barangay based on coordinates using reverse geocoding
+      const newBarangay = await getBarangayFromCoordinates(newLat, newLng);
+      console.log('New barangay from coordinates:', newBarangay);
+      
+      // Create a new record for the dispersed location instead of updating the original
+      const dispersedRecord = {
+        species_name: originalMarker.species_name,
+        status: 'released' as const,
+        approval_status: 'approved' as const,
+        latitude: newLat,
+        longitude: newLng,
+        barangay: newBarangay || undefined,
+        municipality: originalMarker.municipality,
+        reporter_name: originalMarker.reporter_name,
+        contact_number: originalMarker.contact_number,
+        photo_url: originalMarker.photo_url,
+        has_exif_gps: originalMarker.has_exif_gps,
+        timestamp_captured: new Date().toISOString()
+        // Note: Dispersal tracking fields removed for now due to database schema limitations
+      };
+      
+      console.log('Creating dispersed record:', dispersedRecord);
+      const createdRecord = await createWildlifeRecord(dispersedRecord);
+      console.log('Created dispersed record:', createdRecord);
+      
+      // Store dispersal trace information in state
+      const traceInfo = {
+        id: createdRecord.id,
+        originalLat: originalMarker.latitude,
+        originalLng: originalMarker.longitude,
+        originalBarangay: originalMarker.barangay,
+        dispersedLat: newLat,
+        dispersedLng: newLng,
+        dispersedBarangay: newBarangay,
+        speciesName: originalMarker.species_name
+      };
+      
+      setDispersalTraces(prev => [...prev, traceInfo]);
+      setDispersingMarkerId(null);
+      setOriginalLocation(null);
+      try { triggerRecordsRefresh(); } catch {}
+      
+      // Show success modal
+      setSuccessModal({
+        open: true,
+        title: 'Success!',
+        message: `Wildlife record has been dispersed to new location. Original location preserved with trace line.${newBarangay ? ` New location: ${newBarangay}` : ''}`,
+      });
+      
+      // Refresh map data after successful creation
+      setTimeout(() => {
+        refreshMapData();
+      }, 1000);
+    } catch (err) {
+      console.error('Error dispersing wildlife record:', err);
+      
+      // Check if it's a database constraint error
+      if (err instanceof Error && err.message.includes('dispersed')) {
+        setError('The "dispersed" status is not supported by the database. Please contact the administrator to add this status.');
+      } else if (err instanceof Error && err.message.includes('constraint')) {
+        setError('Database constraint error. The dispersed status may not be allowed.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to disperse wildlife record');
+      }
+      
+      // Reset dispersal state on error
+      setDispersingMarkerId(null);
+      setOriginalLocation(null);
+    }
+  };
+
   // Handle photo upload
   const handlePhotoUpload = async (file: File, recordId?: string) => {
     try {
@@ -1102,10 +1263,58 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         const lat = Number(e.latlng.lat);
         const lng = Number(e.latlng.lng);
         handleRelocateMarker(markerId, lat, lng);
+      },
+      mousemove(e) {
+        if (!enabled) return;
+        const lat = Number(e.latlng.lat);
+        const lng = Number(e.latlng.lng);
+        setCursorPosition({ lat, lng });
+      },
+      mouseout() {
+        if (enabled) {
+          setCursorPosition(null);
+        }
       }
     });
 
     // Change cursor when in relocation mode
+    useEffect(() => {
+      if (enabled) {
+        // Use a custom cursor with location pin icon
+        map.getContainer().style.cursor = 'url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyUzYuNDggMjIgMTIgMjJTMjIgMTcuNTIgMjIgMTJTMTcuNTIgMiAxMiAyWk0xMiAxM0MxMC4zNCAxMyA5IDExLjY2IDkgMTBTMTAuMzQgNyAxMiA3UzE1IDguMzQgMTUgMTBTMTMuNjYgMTMgMTIgMTNaIiBmaWxsPSIjRkY2MDAwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjMiIGZpbGw9IiNGRkZGRkYiLz4KPC9zdmc+") 12 12, pointer';
+        return () => {
+          map.getContainer().style.cursor = '';
+        };
+      }
+    }, [enabled, map]);
+
+    return null;
+  }
+
+  function DispersalMarkerOnClick({ enabled, markerId }: { enabled: boolean; markerId: string | null }) {
+    const map = useMap();
+    
+    useMapEvents({
+      click(e) {
+        if (!enabled || !markerId) return;
+        const lat = Number(e.latlng.lat);
+        const lng = Number(e.latlng.lng);
+        handleDispersalMarker(markerId, lat, lng);
+      },
+      mousemove(e) {
+        if (!enabled) return;
+        const lat = Number(e.latlng.lat);
+        const lng = Number(e.latlng.lng);
+        setCursorPosition({ lat, lng });
+      },
+      mouseout() {
+        if (enabled) {
+          setCursorPosition(null);
+        }
+      }
+    });
+
+    // Change cursor when in dispersal mode
     useEffect(() => {
       if (enabled) {
         // Use a custom cursor with location pin icon
@@ -1279,11 +1488,11 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
               },
               { 
                 value: 'released', 
-                label: 'Released', 
+                label: 'Dispersed', 
                 color: '#43a047',
                 icon: '🆓',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'released' && (r.approval_status === 'approved' || r.user_id !== null)).length
-              }
+              },
             ].map((status) => {
               const isSelected = enabledStatuses.includes(status.value);
               return (
@@ -1664,6 +1873,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         <MapInstance />
         <AddMarkerOnClick enabled={isAddingMarker && role === 'enforcement'} />
         <RelocateMarkerOnClick enabled={!!relocatingMarkerId} markerId={relocatingMarkerId} />
+        <DispersalMarkerOnClick enabled={!!dispersingMarkerId} markerId={dispersingMarkerId} />
 
         {/* Pending marker with photo upload */}
         {pendingMarker && (
@@ -2093,8 +2303,317 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
           ) : null;
         })()}
 
+        {/* Dispersal marker and trace line */}
+        {dispersingMarkerId && (() => {
+          const dispersingMarker = finalFilteredMarkers.find(m => m.id === dispersingMarkerId);
+          return dispersingMarker ? (
+            <>
+              {/* Original location marker */}
+              <Marker
+                key={`original-${dispersingMarker.id}`}
+                position={[originalLocation?.lat || dispersingMarker.latitude, originalLocation?.lng || dispersingMarker.longitude]}
+                icon={createStatusIcon(dispersingMarker.status)}
+                ref={(ref) => { if (ref) markerRefs.current[`original-${dispersingMarker.id}`] = ref; }}
+              >
+                <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: 'info.main' }}>
+                      Original Location: {dispersingMarker.species_name}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      This is the original location before dispersal.
+                    </Typography>
+                  </Box>
+                </Popup>
+              </Marker>
+              
+              {/* Dispersal location marker (temporary) */}
+              <Marker
+                key={`dispersal-${dispersingMarker.id}`}
+                position={[dispersingMarker.latitude, dispersingMarker.longitude]}
+                icon={createStatusIcon('released')}
+                ref={(ref) => { if (ref) markerRefs.current[`dispersal-${dispersingMarker.id}`] = ref; }}
+              >
+                <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
+                      Dispersed: {dispersingMarker.species_name}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      Click anywhere on the map to set the new dispersal location.
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => {
+                        setDispersingMarkerId(null);
+                        setOriginalLocation(null);
+                      }}
+                      sx={{ mt: 1 }}
+                    >
+                      Cancel Dispersal
+                    </Button>
+                  </Box>
+                </Popup>
+              </Marker>
+              
+              {/* Trace line from original to dispersal location */}
+              <Polyline
+                positions={[
+                  [originalLocation?.lat || dispersingMarker.latitude, originalLocation?.lng || dispersingMarker.longitude],
+                  [dispersingMarker.latitude, dispersingMarker.longitude]
+                ]}
+                pathOptions={{
+                  color: '#ff9800',
+                  weight: 3,
+                  opacity: 0.8,
+                  dashArray: '10, 10'
+                }}
+              />
+            </>
+          ) : null;
+        })()}
+
+        {/* Dispersal trace lines with multiple curves */}
+        {dispersalTraces.map(trace => {
+          const startLat = trace.originalLat;
+          const startLng = trace.originalLng;
+          const endLat = trace.dispersedLat;
+          const endLng = trace.dispersedLng;
+          
+          // Calculate distance
+          const latDiff = endLat - startLat;
+          const lngDiff = endLng - startLng;
+          const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+          
+          // Determine number of curves based on distance
+          // Near: 3 curves, Far: more curves (up to 7)
+          const numCurves = distance < 0.01 ? 3 : Math.min(Math.floor(distance * 1000) + 3, 7);
+          
+          // Generate multiple curve segments
+          const allCurvePoints: [number, number][] = [];
+          
+          for (let curveIndex = 0; curveIndex < numCurves; curveIndex++) {
+            // Calculate segment start and end points
+            const segmentStart = curveIndex / numCurves;
+            const segmentEnd = (curveIndex + 1) / numCurves;
+            
+            const segStartLat = startLat + latDiff * segmentStart;
+            const segStartLng = startLng + lngDiff * segmentStart;
+            const segEndLat = startLat + latDiff * segmentEnd;
+            const segEndLng = startLng + lngDiff * segmentEnd;
+            
+            // Calculate segment midpoint
+            const segMidLat = (segStartLat + segEndLat) / 2;
+            const segMidLng = (segStartLng + segEndLng) / 2;
+            
+            // Calculate segment distance for curve offset
+            const segLatDiff = segEndLat - segStartLat;
+            const segLngDiff = segEndLng - segStartLng;
+            const segDistance = Math.sqrt(segLatDiff * segLatDiff + segLngDiff * segLngDiff);
+            
+            // Create alternating curve directions for wave-like effect
+            const curveDirection = curveIndex % 2 === 0 ? 1 : -1;
+            const curveOffset = Math.min(segDistance * 0.15, 0.008) * curveDirection;
+            
+            // Perpendicular offset for curve
+            const perpLat = -segLngDiff / segDistance * curveOffset;
+            const perpLng = segLatDiff / segDistance * curveOffset;
+            
+            // Control point for this segment
+            const controlLat = segMidLat + perpLat;
+            const controlLng = segMidLng + perpLng;
+            
+            // Generate curve points for this segment
+            const segmentPoints: [number, number][] = [];
+            const numPoints = Math.max(8, Math.floor(segDistance * 2000)); // More points for longer segments
+            
+            for (let i = 0; i <= numPoints; i++) {
+              const t = i / numPoints;
+              const lat = (1 - t) * (1 - t) * segStartLat + 2 * (1 - t) * t * controlLat + t * t * segEndLat;
+              const lng = (1 - t) * (1 - t) * segStartLng + 2 * (1 - t) * t * controlLng + t * t * segEndLng;
+              segmentPoints.push([lat, lng]);
+            }
+            
+            // Add segment points to overall curve (skip first point to avoid duplicates)
+            if (curveIndex === 0) {
+              allCurvePoints.push(...segmentPoints);
+            } else {
+              allCurvePoints.push(...segmentPoints.slice(1));
+            }
+          }
+          
+          return (
+            <Polyline
+              key={`trace-${trace.id}`}
+              positions={allCurvePoints}
+              pathOptions={{
+                color: '#4caf50',
+                weight: 4,
+                opacity: 0.9
+              }}
+            />
+          );
+        })}
+
+        {/* Dynamic trace line following cursor during relocation (red) */}
+        {relocatingMarkerId && cursorPosition && relocationOriginalLocation && (() => {
+          const startLat = relocationOriginalLocation.lat;
+          const startLng = relocationOriginalLocation.lng;
+          const endLat = cursorPosition.lat;
+          const endLng = cursorPosition.lng;
+          
+          // Calculate distance
+          const latDiff = endLat - startLat;
+          const lngDiff = endLng - startLng;
+          const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+          
+          // Determine number of curves based on distance
+          const numCurves = distance < 0.01 ? 3 : Math.min(Math.floor(distance * 1000) + 3, 7);
+          
+          // Generate multiple curve segments
+          const allCurvePoints: [number, number][] = [];
+          
+          for (let curveIndex = 0; curveIndex < numCurves; curveIndex++) {
+            const segmentStart = curveIndex / numCurves;
+            const segmentEnd = (curveIndex + 1) / numCurves;
+            
+            const segStartLat = startLat + latDiff * segmentStart;
+            const segStartLng = startLng + lngDiff * segmentStart;
+            const segEndLat = startLat + latDiff * segmentEnd;
+            const segEndLng = startLng + lngDiff * segmentEnd;
+            
+            const segMidLat = (segStartLat + segEndLat) / 2;
+            const segMidLng = (segStartLng + segEndLng) / 2;
+            
+            const segLatDiff = segEndLat - segStartLat;
+            const segLngDiff = segEndLng - segStartLng;
+            const segDistance = Math.sqrt(segLatDiff * segLatDiff + segLngDiff * segLngDiff);
+            
+            const curveDirection = curveIndex % 2 === 0 ? 1 : -1;
+            const curveOffset = Math.min(segDistance * 0.15, 0.008) * curveDirection;
+            
+            const perpLat = -segLngDiff / segDistance * curveOffset;
+            const perpLng = segLatDiff / segDistance * curveOffset;
+            
+            const controlLat = segMidLat + perpLat;
+            const controlLng = segMidLng + perpLng;
+            
+            const segmentPoints: [number, number][] = [];
+            const numPoints = Math.max(8, Math.floor(segDistance * 2000));
+            
+            for (let i = 0; i <= numPoints; i++) {
+              const t = i / numPoints;
+              const lat = (1 - t) * (1 - t) * segStartLat + 2 * (1 - t) * t * controlLat + t * t * segEndLat;
+              const lng = (1 - t) * (1 - t) * segStartLng + 2 * (1 - t) * t * controlLng + t * t * segEndLng;
+              segmentPoints.push([lat, lng]);
+            }
+            
+            if (curveIndex === 0) {
+              allCurvePoints.push(...segmentPoints);
+            } else {
+              allCurvePoints.push(...segmentPoints.slice(1));
+            }
+          }
+          
+          return (
+            <Polyline
+              key="dynamic-relocation-trace"
+              positions={allCurvePoints}
+              pathOptions={{
+                color: '#f44336',
+                weight: 3,
+                opacity: 0.6,
+                dashArray: '5, 5'
+              }}
+            />
+          );
+        })()}
+
+        {/* Dynamic trace line following cursor during dispersal (green) */}
+        {dispersingMarkerId && cursorPosition && originalLocation && (() => {
+          const startLat = originalLocation.lat;
+          const startLng = originalLocation.lng;
+          const endLat = cursorPosition.lat;
+          const endLng = cursorPosition.lng;
+          
+          // Calculate distance
+          const latDiff = endLat - startLat;
+          const lngDiff = endLng - startLng;
+          const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+          
+          // Determine number of curves based on distance
+          const numCurves = distance < 0.01 ? 3 : Math.min(Math.floor(distance * 1000) + 3, 7);
+          
+          // Generate multiple curve segments
+          const allCurvePoints: [number, number][] = [];
+          
+          for (let curveIndex = 0; curveIndex < numCurves; curveIndex++) {
+            // Calculate segment start and end points
+            const segmentStart = curveIndex / numCurves;
+            const segmentEnd = (curveIndex + 1) / numCurves;
+            
+            const segStartLat = startLat + latDiff * segmentStart;
+            const segStartLng = startLng + lngDiff * segmentStart;
+            const segEndLat = startLat + latDiff * segmentEnd;
+            const segEndLng = startLng + lngDiff * segmentEnd;
+            
+            // Calculate segment midpoint
+            const segMidLat = (segStartLat + segEndLat) / 2;
+            const segMidLng = (segStartLng + segEndLng) / 2;
+            
+            // Calculate segment distance for curve offset
+            const segLatDiff = segEndLat - segStartLat;
+            const segLngDiff = segEndLng - segStartLng;
+            const segDistance = Math.sqrt(segLatDiff * segLatDiff + segLngDiff * segLngDiff);
+            
+            // Create alternating curve directions for wave-like effect
+            const curveDirection = curveIndex % 2 === 0 ? 1 : -1;
+            const curveOffset = Math.min(segDistance * 0.15, 0.008) * curveDirection;
+            
+            // Perpendicular offset for curve
+            const perpLat = -segLngDiff / segDistance * curveOffset;
+            const perpLng = segLatDiff / segDistance * curveOffset;
+            
+            // Control point for this segment
+            const controlLat = segMidLat + perpLat;
+            const controlLng = segMidLng + perpLng;
+            
+            // Generate curve points for this segment
+            const segmentPoints: [number, number][] = [];
+            const numPoints = Math.max(8, Math.floor(segDistance * 2000));
+            
+            for (let i = 0; i <= numPoints; i++) {
+              const t = i / numPoints;
+              const lat = (1 - t) * (1 - t) * segStartLat + 2 * (1 - t) * t * controlLat + t * t * segEndLat;
+              const lng = (1 - t) * (1 - t) * segStartLng + 2 * (1 - t) * t * controlLng + t * t * segEndLng;
+              segmentPoints.push([lat, lng]);
+            }
+            
+            // Add segment points to overall curve
+            if (curveIndex === 0) {
+              allCurvePoints.push(...segmentPoints);
+            } else {
+              allCurvePoints.push(...segmentPoints.slice(1));
+            }
+          }
+          
+          return (
+            <Polyline
+              key="dynamic-dispersal-trace"
+              positions={allCurvePoints}
+              pathOptions={{
+                color: '#4caf50',
+                weight: 3,
+                opacity: 0.6,
+                dashArray: '5, 5'
+              }}
+            />
+          );
+        })()}
+
         {/* Saved user markers */}
-        {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId && m.id !== relocatingMarkerId).length > 0 && (
+        {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId && m.id !== relocatingMarkerId && m.id !== dispersingMarkerId).length > 0 && (
           <MarkerClusterGroup
             chunkedLoading
             iconCreateFunction={(cluster: any) => {
@@ -2343,6 +2862,51 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
                     <div><strong>{m.species_name}</strong></div>
                     <div>Status: {m.status}</div>
+                    {/* Dispersal information */}
+                    {(() => {
+                      const trace = dispersalTraces.find(t => t.id === m.id);
+                      return trace ? (
+                        <Box sx={{ 
+                          bgcolor: '#e8f5e8', 
+                          color: '#2e7d32', 
+                          p: 1, 
+                          borderRadius: 1, 
+                          fontSize: '0.875rem',
+                          border: '1px solid',
+                          borderColor: '#4caf50'
+                        }}>
+                          <div><strong>📍 Dispersed Location</strong></div>
+                          <div>Original: {trace.originalBarangay || 'Unknown'} ({trace.originalLat.toFixed(5)}, {trace.originalLng.toFixed(5)})</div>
+                          <div>Current: {trace.dispersedBarangay || 'Unknown'} ({trace.dispersedLat.toFixed(5)}, {trace.dispersedLng.toFixed(5)})</div>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            color="error"
+                            sx={{ 
+                              mt: 1,
+                              minWidth: 'fit-content',
+                              whiteSpace: 'nowrap',
+                              fontSize: '0.75rem',
+                              py: 0.5,
+                              px: 1,
+                              borderColor: '#d32f2f',
+                              color: '#d32f2f',
+                              '&:hover': {
+                                borderColor: '#b71c1c',
+                                color: '#b71c1c',
+                                bgcolor: 'rgba(211, 47, 47, 0.04)'
+                              }
+                            }}
+                            onClick={(e) => {
+                              try { e.preventDefault(); e.stopPropagation(); } catch {}
+                              handleUndispersed(m.id);
+                            }}
+                          >
+                            Undispersed
+                          </Button>
+                        </Box>
+                      ) : null;
+                    })()}
                     {m.photo_url && <img src={m.photo_url} alt="marker" style={{ width: "100%", borderRadius: 8 }} />}
                     <div>Date & Time Captured: {new Date(m.timestamp_captured).toLocaleString()}</div>
                     <div>Latitude: {m.latitude.toFixed(5)}</div>
@@ -2385,12 +2949,28 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
                           onClick={(e) => {
                             try { e.preventDefault(); e.stopPropagation(); } catch {}
+                            setRelocationOriginalLocation({ lat: m.latitude, lng: m.longitude });
                             setRelocatingMarkerId(m.id);
                             // Close the popup to allow clicking on map
                             try { markerRefs.current[m.id]?.closePopup?.(); } catch {}
                           }}
                         >
                           Relocate Pin
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="warning"
+                          sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
+                          onClick={(e) => {
+                            try { e.preventDefault(); e.stopPropagation(); } catch {}
+                            setOriginalLocation({ lat: m.latitude, lng: m.longitude });
+                            setDispersingMarkerId(m.id);
+                            // Close the popup to allow clicking on map
+                            try { markerRefs.current[m.id]?.closePopup?.(); } catch {}
+                          }}
+                        >
+                          Dispersal
                         </Button>
                         <Button
                           variant="outlined"
@@ -2458,6 +3038,51 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             variant="outlined"
             color="inherit"
             onClick={() => setRelocatingMarkerId(null)}
+            sx={{ 
+              color: 'inherit',
+              borderColor: 'currentColor',
+              '&:hover': {
+                borderColor: 'currentColor',
+                bgcolor: 'rgba(255,255,255,0.1)'
+              }
+            }}
+          >
+            Cancel
+          </Button>
+        </Box>
+      )}
+
+      {/* Dispersal Mode Indicator */}
+      {dispersingMarkerId && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 20,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1000,
+            bgcolor: 'warning.main',
+            color: 'warning.contrastText',
+            px: 2,
+            py: 1,
+            borderRadius: 1,
+            boxShadow: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            Click on the map to set dispersal location (cursor changed to location icon)
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            color="inherit"
+            onClick={() => {
+              setDispersingMarkerId(null);
+              setOriginalLocation(null);
+            }}
             sx={{ 
               color: 'inherit',
               borderColor: 'currentColor',

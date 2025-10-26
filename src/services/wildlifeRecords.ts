@@ -4,7 +4,7 @@ export interface WildlifeRecord {
   id: string;
   user_id: string;
   species_name: string;
-  status: 'reported' | 'rescued' | 'turned over' | 'released';
+  status: 'reported' | 'rescued' | 'turned over' | 'released' | 'dispersed';
   approval_status: 'pending' | 'approved' | 'rejected';
   latitude: number;
   longitude: number;
@@ -17,11 +17,16 @@ export interface WildlifeRecord {
   timestamp_captured: string;
   created_at: string;
   updated_at: string;
+  // Dispersal tracking fields - temporarily disabled due to database schema limitations
+  // original_latitude?: number;
+  // original_longitude?: number;
+  // original_barangay?: string;
+  // dispersal_trace?: boolean;
 }
 
 export interface CreateWildlifeRecord {
   species_name: string;
-  status: 'reported' | 'rescued' | 'turned over' | 'released';
+  status: 'reported' | 'rescued' | 'turned over' | 'released' | 'dispersed';
   approval_status?: 'pending' | 'approved' | 'rejected';
   latitude: number;
   longitude: number;
@@ -32,6 +37,11 @@ export interface CreateWildlifeRecord {
   photo_url?: string;
   has_exif_gps?: boolean;
   timestamp_captured: string;
+  // Dispersal tracking fields - temporarily disabled due to database schema limitations
+  // original_latitude?: number;
+  // original_longitude?: number;
+  // original_barangay?: string;
+  // dispersal_trace?: boolean;
 }
 
 export interface UpdateWildlifeRecord {

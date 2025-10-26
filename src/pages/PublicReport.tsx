@@ -2152,7 +2152,7 @@ export default function PublicReport() {
               </Alert>
             </Box>
 
-            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
               <Button
                 onClick={() => {
                   setShowSuccessModal(false);
@@ -2182,6 +2182,38 @@ export default function PublicReport() {
                 }}
               >
                 Submit Another Report
+              </Button>
+              
+              <Button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  navigate('/login');
+                }}
+                variant="outlined"
+                sx={{ 
+                  minWidth: 120,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  py: 1.5,
+                  color: '#2e7d32',
+                  borderColor: '#2e7d32',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: 'scale(1)',
+                  '&:hover': {
+                    borderColor: '#1b5e20',
+                    color: '#1b5e20',
+                    backgroundColor: 'rgba(46, 125, 50, 0.04)',
+                    transform: 'scale(1.05)',
+                    boxShadow: '0 8px 25px rgba(46, 125, 50, 0.2)'
+                  },
+                  '&:active': {
+                    transform: 'scale(0.95)',
+                    transition: 'transform 0.1s ease'
+                  }
+                }}
+              >
+                Go Back to Login
               </Button>
             </Box>
           </Box>
