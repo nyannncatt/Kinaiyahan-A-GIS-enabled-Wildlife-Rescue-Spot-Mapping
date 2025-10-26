@@ -1171,7 +1171,16 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       console.log('Created dispersed record:', createdRecord);
       
       // Store dispersal trace information in state
-      const traceInfo = {
+      const traceInfo: {
+        id: string;
+        originalLat: number;
+        originalLng: number;
+        originalBarangay?: string;
+        dispersedLat: number;
+        dispersedLng: number;
+        dispersedBarangay?: string;
+        speciesName: string;
+      } = {
         id: createdRecord.id,
         originalLat: originalMarker.latitude,
         originalLng: originalMarker.longitude,
