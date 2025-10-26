@@ -155,11 +155,13 @@ export default function MenuContent() {
     const handleScroll = () => {
       const mapContainer = document.querySelector('[data-map-container]');
       const recordListElement = document.querySelector('[data-record-list]');
+      const analyticsElement = document.querySelector('[data-analytics]');
       
-      if (!mapContainer || !recordListElement) return;
+      if (!mapContainer || !recordListElement || !analyticsElement) return;
       
       const mapRect = mapContainer.getBoundingClientRect();
       const recordRect = recordListElement.getBoundingClientRect();
+      const analyticsRect = analyticsElement.getBoundingClientRect();
       const windowHeight = window.innerHeight;
       
       // Check if map is in view (top portion of screen)
@@ -168,7 +170,12 @@ export default function MenuContent() {
       // Check if record list is in view (top portion of screen)
       const recordInView = recordRect.top < windowHeight * 0.5 && recordRect.bottom > 0;
       
-      if (recordInView && !mapInView) {
+      // Check if analytics is in view (top portion of screen)
+      const analyticsInView = analyticsRect.top < windowHeight * 0.5 && analyticsRect.bottom > 0;
+      
+      if (analyticsInView && !recordInView && !mapInView) {
+        setActiveTab('analytics');
+      } else if (recordInView && !mapInView && !analyticsInView) {
         setActiveTab('records');
       } else if (mapInView) {
         setActiveTab('mapping');
@@ -195,6 +202,11 @@ export default function MenuContent() {
       scrollToRecordList();
     }
     
+    // Handle Analytics tab - scroll to analytics section
+    if (tabId === 'analytics') {
+      scrollToAnalytics();
+    }
+    
     // Handle Mapping tab - scroll to top
     if (tabId === 'mapping') {
       scrollToTop();
@@ -205,9 +217,30 @@ export default function MenuContent() {
   const scrollToRecordList = () => {
     const recordListElement = document.querySelector('[data-record-list]');
     if (recordListElement) {
+      // Scroll to center the record list section in the viewport
       recordListElement.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'start' 
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest'
+      });
+    } else {
+      // Fallback: scroll to bottom of page
+      window.scrollTo({ 
+        top: document.body.scrollHeight, 
+        behavior: 'smooth' 
+      });
+    }
+  };
+
+  // Function to scroll to analytics section
+  const scrollToAnalytics = () => {
+    const analyticsElement = document.querySelector('[data-analytics]');
+    if (analyticsElement) {
+      // Scroll to center the analytics section in the viewport
+      analyticsElement.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest'
       });
     } else {
       // Fallback: scroll to bottom of page
