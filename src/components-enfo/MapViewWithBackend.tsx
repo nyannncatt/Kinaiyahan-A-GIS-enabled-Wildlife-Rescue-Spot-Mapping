@@ -1184,10 +1184,10 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         id: createdRecord.id,
         originalLat: originalMarker.latitude,
         originalLng: originalMarker.longitude,
-        originalBarangay: originalMarker.barangay,
+        originalBarangay: originalMarker.barangay || undefined,
         dispersedLat: newLat,
         dispersedLng: newLng,
-        dispersedBarangay: newBarangay,
+        dispersedBarangay: newBarangay || undefined,
         speciesName: originalMarker.species_name
       };
       
