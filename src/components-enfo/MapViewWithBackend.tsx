@@ -1485,28 +1485,28 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                 value: 'reported', 
                 label: 'Reported', 
                 color: '#e53935',
-                icon: '🚨',
+                icon: '🗒️',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'reported' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
               { 
                 value: 'rescued', 
                 label: 'Rescued', 
                 color: '#1e88e5',
-                icon: '🚑',
+                icon: '🤝',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'rescued' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
               { 
                 value: 'turned over', 
                 label: 'Turned Over', 
                 color: '#fdd835',
-                icon: '🤝',
+                icon: '🔄',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'turned over' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
               { 
                 value: 'released', 
                 label: 'Dispersed', 
                 color: '#43a047',
-                icon: '🆓',
+                icon: '🌀',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'released' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
             ].map((status) => {
@@ -1542,16 +1542,16 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                       gap: 1,
                       border: '1px solid black',
                       transition: 'all 0.2s ease-in-out',
-                      backgroundColor: isSelected ? status.color : 'rgba(255, 255, 255, 0.8)',
-                      color: isSelected ? 'white' : status.color,
-                      backdropFilter: 'blur(5px)',
                       '&:hover': {
-                        backgroundColor: isSelected ? 'primary.dark' : 'action.hover',
+                        backgroundColor: 'action.hover',
                         transform: 'translateY(-2px)',
                         boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
                         borderColor: 'primary.main',
                         color: 'primary.main'
-                      }
+                      },
+                      backgroundColor: isSelected ? status.color : 'rgba(255, 255, 255, 0.8)',
+                      color: isSelected ? 'white' : status.color,
+                      backdropFilter: 'blur(5px)'
                     }}
                   >
                     <Typography sx={{ fontSize: '1.1rem' }}>{status.icon}</Typography>
