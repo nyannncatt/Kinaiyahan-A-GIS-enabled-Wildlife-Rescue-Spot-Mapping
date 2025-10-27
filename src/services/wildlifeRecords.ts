@@ -12,6 +12,8 @@ export interface WildlifeRecord {
   municipality?: string;
   reporter_name?: string;
   contact_number?: string;
+  reporter_contact?: string;
+  notes?: string;
   photo_url?: string;
   has_exif_gps?: boolean;
   timestamp_captured: string;
@@ -34,6 +36,8 @@ export interface CreateWildlifeRecord {
   municipality?: string;
   reporter_name?: string;
   contact_number?: string;
+  reporter_contact?: string;
+  notes?: string;
   photo_url?: string;
   has_exif_gps?: boolean;
   timestamp_captured: string;
@@ -54,6 +58,8 @@ export interface UpdateWildlifeRecord {
   municipality?: string;
   reporter_name?: string;
   contact_number?: string;
+  reporter_contact?: string;
+  notes?: string;
   phone_number?: string;
   country_code?: string;
   photo_url?: string;
