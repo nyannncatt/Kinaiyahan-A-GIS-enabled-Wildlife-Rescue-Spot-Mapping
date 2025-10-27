@@ -272,12 +272,12 @@ export default function MainGrid() {
       </Box>
       
         {/* Wildlife Rescue Statistics Component */}
-        <Box data-record-list sx={{ mt: 3, mb: 2 }}>
+        <Box data-record-list sx={{ mt: 3, mb: 8 }}>
           <WildlifeRescueStatistics {...(showPendingOnly && { showPendingOnly })} />
         </Box>
 
         {/* Analytics Section */}
-        <Box data-analytics sx={{ mt: 2, mb: 3, minHeight: '70vh' }}>
+        <Box data-analytics sx={{ mt: 8, mb: 3, minHeight: '70vh' }}>
           <Card sx={{ p: 2, boxShadow: 1 }}>
             <Typography variant="h4" component="h2" gutterBottom sx={{ color: 'primary.main', mb: 2 }}>
               Analytics
