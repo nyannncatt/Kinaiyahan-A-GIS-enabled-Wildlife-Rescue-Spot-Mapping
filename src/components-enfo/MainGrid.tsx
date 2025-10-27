@@ -313,25 +313,33 @@ export default function MainGrid() {
                       { 
                         id: 'reported', 
                         value: approvedRecords.filter(r => r.status === 'reported').length,
-                        label: 'Reported',
+                        label: approvedRecords.length > 0 
+                          ? `Reported (${((approvedRecords.filter(r => r.status === 'reported').length / approvedRecords.length) * 100).toFixed(1)}%)`
+                          : 'Reported (0%)',
                         color: selectedStatusFilter && selectedStatusFilter !== 'Reported' ? '#e5393530' : '#e53935'
                       },
                       { 
                         id: 'rescued', 
                         value: approvedRecords.filter(r => r.status === 'rescued').length,
-                        label: 'Rescued',
+                        label: approvedRecords.length > 0 
+                          ? `Rescued (${((approvedRecords.filter(r => r.status === 'rescued').length / approvedRecords.length) * 100).toFixed(1)}%)`
+                          : 'Rescued (0%)',
                         color: selectedStatusFilter && selectedStatusFilter !== 'Rescued' ? '#1e88e530' : '#1e88e5'
                       },
                       { 
                         id: 'turned over', 
                         value: approvedRecords.filter(r => r.status === 'turned over').length,
-                        label: 'Turned Over',
+                        label: approvedRecords.length > 0 
+                          ? `Turned Over (${((approvedRecords.filter(r => r.status === 'turned over').length / approvedRecords.length) * 100).toFixed(1)}%)`
+                          : 'Turned Over (0%)',
                         color: selectedStatusFilter && selectedStatusFilter !== 'Turned Over' ? '#fdd83530' : '#fdd835'
                       },
                       { 
                         id: 'dispersed', 
                         value: approvedRecords.filter(r => r.status === 'released').length,
-                        label: 'Dispersed',
+                        label: approvedRecords.length > 0 
+                          ? `Dispersed (${((approvedRecords.filter(r => r.status === 'released').length / approvedRecords.length) * 100).toFixed(1)}%)`
+                          : 'Dispersed (0%)',
                         color: selectedStatusFilter && selectedStatusFilter !== 'Dispersed' ? '#43a04730' : '#43a047'
                       },
                     ],
@@ -339,6 +347,15 @@ export default function MainGrid() {
                     outerRadius: 120,
                     paddingAngle: 2,
                     cornerRadius: 5,
+                    arcLabel: (item) => {
+                      const total = approvedRecords.filter(r => r.status === 'reported').length + 
+                                   approvedRecords.filter(r => r.status === 'rescued').length + 
+                                   approvedRecords.filter(r => r.status === 'turned over').length + 
+                                   approvedRecords.filter(r => r.status === 'released').length;
+                      const percentage = total > 0 ? ((item.value / total) * 100).toFixed(1) + '%' : '0%';
+                      return percentage;
+                    },
+                    arcLabelMinAngle: 10,
                   }
                 ]}
                 width={400}
@@ -392,7 +409,7 @@ export default function MainGrid() {
                       opacity: !selectedStatusFilter ? 0.9 : 1
                     }}
                   >
-                    {approvedRecords.length} total
+                    {approvedRecords.length} total (100%)
                   </Typography>
                 </Box>
               </Box>
@@ -406,6 +423,10 @@ export default function MainGrid() {
                 const count = status.label === 'Dispersed'
                   ? approvedRecords.filter(r => r.status === 'released').length
                   : approvedRecords.filter(r => r.status === status.label.toLowerCase()).length;
+                
+                const percentage = approvedRecords.length > 0 
+                  ? ((count / approvedRecords.length) * 100).toFixed(1) 
+                  : '0.0';
                 
                 const isSelected = selectedStatusFilter === status.label;
                 
@@ -454,7 +475,7 @@ export default function MainGrid() {
                           opacity: isSelected ? 0.9 : 1
                         }}
                       >
-                        {count} records
+                        {count} records ({percentage}%)
                       </Typography>
                     </Box>
                   </Box>
