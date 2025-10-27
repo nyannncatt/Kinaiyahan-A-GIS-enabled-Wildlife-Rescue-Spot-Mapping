@@ -429,6 +429,7 @@ export default function MainGrid() {
                   : '0.0';
                 
                 const isSelected = selectedStatusFilter === status.label;
+                const isShowAllMode = !selectedStatusFilter;
                 
                 return (
                   <Box
@@ -440,28 +441,32 @@ export default function MainGrid() {
                       gap: 1,
                       p: 1.5,
                       border: `3px solid`,
-                      borderColor: isSelected ? status.color : `${status.color}60`,
+                      borderColor: (isSelected || isShowAllMode) ? status.color : `${status.color}60`,
                       borderRadius: 2,
-                      backgroundColor: isSelected ? status.color : `${status.color}15`,
+                      backgroundColor: isSelected 
+                        ? status.color 
+                        : isShowAllMode 
+                          ? `${status.color}50` 
+                          : `${status.color}15`,
                       minWidth: 150,
                       cursor: 'pointer',
                       transition: 'all 0.2s ease-in-out',
-                      transform: isSelected ? 'scale(1.05)' : 'scale(1)',
-                      boxShadow: isSelected ? `0 4px 12px ${status.color}60` : 'none',
-                      opacity: isSelected ? 1 : 0.5,
+                      transform: (isSelected || isShowAllMode) ? 'scale(1.05)' : 'scale(1)',
+                      boxShadow: (isSelected || isShowAllMode) ? `0 4px 12px ${status.color}60` : 'none',
+                      opacity: isSelected ? 1 : isShowAllMode ? 0.8 : 0.5,
                       '&:hover': {
-                        backgroundColor: isSelected ? status.color : `${status.color}30`,
+                        backgroundColor: isSelected ? status.color : isShowAllMode ? `${status.color}60` : `${status.color}30`,
                         transform: 'scale(1.03)',
                         opacity: 1,
                       }
                     }}
                   >
-                    <Typography sx={{ fontSize: '1.5rem', opacity: isSelected ? 1 : 0.6 }}>{status.icon}</Typography>
+                    <Typography sx={{ fontSize: '1.5rem', opacity: (isSelected || isShowAllMode) ? 1 : 0.6 }}>{status.icon}</Typography>
                     <Box>
                       <Typography 
                         variant="body2" 
                         sx={{ 
-                          fontWeight: isSelected ? 700 : 600, 
+                          fontWeight: (isSelected || isShowAllMode) ? 700 : 600, 
                           color: isSelected ? 'white' : status.color 
                         }}
                       >
