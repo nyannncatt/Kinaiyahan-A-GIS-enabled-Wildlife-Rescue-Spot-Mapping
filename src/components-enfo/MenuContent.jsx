@@ -163,22 +163,30 @@ export default function MenuContent() {
       const recordRect = recordListElement.getBoundingClientRect();
       const analyticsRect = analyticsElement.getBoundingClientRect();
       const windowHeight = window.innerHeight;
+      const viewportCenter = windowHeight / 2;
       
-      // Check if map is in view (top portion of screen)
-      const mapInView = mapRect.top < windowHeight * 0.5 && mapRect.bottom > 0;
+      // Calculate distances from viewport center
+      const mapDistance = Math.abs(mapRect.top + mapRect.height / 2 - viewportCenter);
+      const recordDistance = Math.abs(recordRect.top + recordRect.height / 2 - viewportCenter);
+      const analyticsDistance = Math.abs(analyticsRect.top + analyticsRect.height / 2 - viewportCenter);
       
-      // Check if record list is in view (top portion of screen)
-      const recordInView = recordRect.top < windowHeight * 0.5 && recordRect.bottom > 0;
+      // Find which section is closest to center
+      const distances = [
+        { tab: 'mapping', distance: mapDistance, rect: mapRect },
+        { tab: 'records', distance: recordDistance, rect: recordRect },
+        { tab: 'analytics', distance: analyticsDistance, rect: analyticsRect }
+      ];
       
-      // Check if analytics is in view (top portion of screen)
-      const analyticsInView = analyticsRect.top < windowHeight * 0.5 && analyticsRect.bottom > 0;
+      // Sort by distance and check which is in view
+      distances.sort((a, b) => a.distance - b.distance);
       
-      if (analyticsInView && !recordInView && !mapInView) {
-        setActiveTab('analytics');
-      } else if (recordInView && !mapInView && !analyticsInView) {
-        setActiveTab('records');
-      } else if (mapInView) {
-        setActiveTab('mapping');
+      // Check all visible sections and pick the one closest to center
+      const visibleSections = distances.filter(item => 
+        item.rect.top < windowHeight && item.rect.bottom > 0
+      );
+      
+      if (visibleSections.length > 0) {
+        setActiveTab(visibleSections[0].tab);
       }
     };
 
@@ -195,6 +203,8 @@ export default function MenuContent() {
 
   const handleTabClick = (tabId) => {
     console.log('Tab clicked:', tabId);
+    
+    // Set active tab immediately
     setActiveTab(tabId);
     
     // Handle Records tab - scroll to record list section
