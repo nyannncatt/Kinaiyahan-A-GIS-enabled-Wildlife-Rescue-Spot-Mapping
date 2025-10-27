@@ -110,7 +110,7 @@ function formatStatusLabel(status: string | undefined): string {
   const normalized = normalizeStatus(status);
   switch (normalized) {
     case "released":
-      return "Dispersed";
+      return "Released";
     case "turned over":
       return "Turned Over";
     case "reported":
@@ -1364,7 +1364,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
 
   const filteredMarkers = wildlifeRecords.filter((m) => {
     const normalizedStatus = normalizeStatus(m.status);
-    const isIncluded = enabledStatuses.includes(normalizedStatus);
+    const showAllBecauseReported = enabledStatuses.includes('reported');
+    const isIncluded = showAllBecauseReported || enabledStatuses.includes(normalizedStatus);
     // Show approved records OR records created by authenticated users (no approval needed)
     const isApproved = m.approval_status === 'approved' || m.user_id !== null;
     // Debug logging (remove in production)
@@ -1403,7 +1404,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const allMarkers = [...wildlifeRecords, ...testMarkers];
   const finalFilteredMarkers = allMarkers.filter((m) => {
     const normalizedStatus = normalizeStatus(m.status);
-    const isIncluded = enabledStatuses.includes(normalizedStatus);
+    const showAllBecauseReported = enabledStatuses.includes('reported');
+    const isIncluded = showAllBecauseReported || enabledStatuses.includes(normalizedStatus);
     // Show approved records OR records created by authenticated users (no approval needed)
     const isApproved = m.approval_status === 'approved' || m.user_id !== null;
     return isIncluded && isApproved;
@@ -1495,7 +1497,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                 label: 'Reported', 
                 color: '#e53935',
                 icon: '🗒️',
-                count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'reported' && (r.approval_status === 'approved' || r.user_id !== null)).length
+                count: wildlifeRecords.filter(r => (r.approval_status === 'approved' || r.user_id !== null)).length
               },
               { 
                 value: 'rescued', 
@@ -1513,7 +1515,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
               },
               { 
                 value: 'released', 
-                label: 'Dispersed', 
+                label: 'Released', 
                 color: '#43a047',
                 icon: '🌀',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'released' && (r.approval_status === 'approved' || r.user_id !== null)).length
@@ -1992,7 +1994,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   <MenuItem value="reported">Reported</MenuItem>
                   <MenuItem value="rescued">Rescued</MenuItem>
                   <MenuItem value="turned over">Turned over</MenuItem>
-                  <MenuItem value="released">Dispersed</MenuItem>
+                  <MenuItem value="released">Released</MenuItem>
                 </TextField>
 
                 {/* Reporter details */}
@@ -2241,7 +2243,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   <MenuItem value="reported">Reported</MenuItem>
                   <MenuItem value="rescued">Rescued</MenuItem>
                   <MenuItem value="turned over">Turned over</MenuItem>
-                  <MenuItem value="released">Dispersed</MenuItem>
+                  <MenuItem value="released">Released</MenuItem>
                 </TextField>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Barangay</Box>
                 <TextField
@@ -2362,10 +2364,10 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                 <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                     <Typography variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
-                      Dispersed: {dispersingMarker.species_name}
+                      Released: {dispersingMarker.species_name}
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      Click anywhere on the map to set the new dispersal location.
+                      Click anywhere on the map to set the new release location.
                     </Typography>
                     <Button
                       variant="outlined"
@@ -2376,7 +2378,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                       }}
                       sx={{ mt: 1 }}
                     >
-                      Cancel Dispersal
+                      Cancel Release
                     </Button>
                   </Box>
                 </Popup>
@@ -2712,7 +2714,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   <MenuItem value="reported">Reported</MenuItem>
                   <MenuItem value="rescued">Rescued</MenuItem>
                   <MenuItem value="turned over">Turned over</MenuItem>
-                  <MenuItem value="released">Dispersed</MenuItem>
+                  <MenuItem value="released">Released</MenuItem>
                 </TextField>
 
                 {/* Reporter details (editable) */}
@@ -2900,7 +2902,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           border: '1px solid',
                           borderColor: '#4caf50'
                         }}>
-                          <div><strong>📍 Dispersed Location</strong></div>
+                          <div><strong>📍 Released Location</strong></div>
                           <div>Original: {trace.originalBarangay || 'Unknown'} ({trace.originalLat.toFixed(5)}, {trace.originalLng.toFixed(5)})</div>
                           <div>Current: {trace.dispersedBarangay || 'Unknown'} ({trace.dispersedLat.toFixed(5)}, {trace.dispersedLng.toFixed(5)})</div>
                           <Button
@@ -2927,7 +2929,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                               handleUndispersed(m.id);
                             }}
                           >
-                            Undispersed
+                            Unrelease
                           </Button>
                         </Box>
                       ) : null;
@@ -2995,7 +2997,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                             try { markerRefs.current[m.id]?.closePopup?.(); } catch {}
                           }}
                         >
-                          Dispersal
+                          Release
                         </Button>
                         <Button
                           variant="outlined"

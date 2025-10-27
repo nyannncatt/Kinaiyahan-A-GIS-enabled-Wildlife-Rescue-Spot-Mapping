@@ -60,10 +60,7 @@ export default function MainGrid() {
   
   // Filter records based on selected status
   const filteredRecords = selectedStatusFilter 
-    ? approvedRecords.filter(r => {
-        const status = r.status === 'released' ? 'dispersed' : r.status;
-        return status === selectedStatusFilter.toLowerCase();
-      })
+    ? approvedRecords.filter(r => r.status === selectedStatusFilter.toLowerCase())
     : approvedRecords;
   
   // Top barangays with data (based on filtered records)
@@ -311,14 +308,6 @@ export default function MainGrid() {
                   {
                     data: [
                       { 
-                        id: 'reported', 
-                        value: approvedRecords.filter(r => r.status === 'reported').length,
-                        label: approvedRecords.length > 0 
-                          ? `Reported (${((approvedRecords.filter(r => r.status === 'reported').length / approvedRecords.length) * 100).toFixed(1)}%)`
-                          : 'Reported (0%)',
-                        color: selectedStatusFilter && selectedStatusFilter !== 'Reported' ? '#e5393530' : '#e53935'
-                      },
-                      { 
                         id: 'rescued', 
                         value: approvedRecords.filter(r => r.status === 'rescued').length,
                         label: approvedRecords.length > 0 
@@ -335,12 +324,12 @@ export default function MainGrid() {
                         color: selectedStatusFilter && selectedStatusFilter !== 'Turned Over' ? '#fdd83530' : '#fdd835'
                       },
                       { 
-                        id: 'dispersed', 
+                        id: 'released', 
                         value: approvedRecords.filter(r => r.status === 'released').length,
                         label: approvedRecords.length > 0 
-                          ? `Dispersed (${((approvedRecords.filter(r => r.status === 'released').length / approvedRecords.length) * 100).toFixed(1)}%)`
-                          : 'Dispersed (0%)',
-                        color: selectedStatusFilter && selectedStatusFilter !== 'Dispersed' ? '#43a04730' : '#43a047'
+                          ? `Released (${((approvedRecords.filter(r => r.status === 'released').length / approvedRecords.length) * 100).toFixed(1)}%)`
+                          : 'Released (0%)',
+                        color: selectedStatusFilter && selectedStatusFilter !== 'Released' ? '#43a04730' : '#43a047'
                       },
                     ],
                     innerRadius: 30,
@@ -348,8 +337,7 @@ export default function MainGrid() {
                     paddingAngle: 2,
                     cornerRadius: 5,
                     arcLabel: (item) => {
-                      const total = approvedRecords.filter(r => r.status === 'reported').length + 
-                                   approvedRecords.filter(r => r.status === 'rescued').length + 
+                      const total = approvedRecords.filter(r => r.status === 'rescued').length + 
                                    approvedRecords.filter(r => r.status === 'turned over').length + 
                                    approvedRecords.filter(r => r.status === 'released').length;
                       const percentage = total > 0 ? ((item.value / total) * 100).toFixed(1) + '%' : '0%';
@@ -409,18 +397,17 @@ export default function MainGrid() {
                       opacity: !selectedStatusFilter ? 0.9 : 1
                     }}
                   >
-                    {approvedRecords.length} total (100%)
+                    {approvedRecords.length} total (100%) • {approvedRecords.filter(r => r.status === 'reported').length} reported
                   </Typography>
                 </Box>
               </Box>
 
               {[
-                { label: 'Reported', color: '#e53935', icon: '🗒️' },
                 { label: 'Rescued', color: '#1e88e5', icon: '🤝' },
                 { label: 'Turned Over', color: '#fdd835', icon: '🔄' },
-                { label: 'Dispersed', color: '#43a047', icon: '🌀' }
+                { label: 'Released', color: '#43a047', icon: '🌀' }
               ].map((status) => {
-                const count = status.label === 'Dispersed'
+                const count = status.label === 'Released'
                   ? approvedRecords.filter(r => r.status === 'released').length
                   : approvedRecords.filter(r => r.status === status.label.toLowerCase()).length;
                 
@@ -480,7 +467,7 @@ export default function MainGrid() {
                           opacity: isSelected ? 0.9 : 1
                         }}
                       >
-                        {count} records ({percentage}%)
+                        {count} of {approvedRecords.length} total ({percentage}%)
                       </Typography>
                     </Box>
                   </Box>
@@ -542,7 +529,7 @@ export default function MainGrid() {
                     {displayRecords.length}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {selectedStatusFilter ? 'Filtered Records' : 'Total Approved Records'}
+                    {selectedStatusFilter ? 'Filtered Records' : 'Total Records'}
                   </Typography>
                 </Card>
                 <Card sx={{ p: 2, textAlign: 'center', minWidth: 150, boxShadow: 1 }}>
