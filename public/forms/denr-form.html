@@ -220,7 +220,22 @@ function printForm() {
   
   // Trigger print dialog
   window.print();
+
+  // Restore input styles shortly after the print dialog closes (print or cancel)
+  setTimeout(() => {
+    inputs.forEach(input => {
+      input.style.color = '';
+    });
+  }, 150);
 }
+
+// Also restore styles on afterprint event (cross-browser safety)
+window.addEventListener('afterprint', () => {
+  const inputs = document.querySelectorAll('.fillable');
+  inputs.forEach(input => {
+    input.style.color = '';
+  });
+});
 </script>
 </body>
 </html>
