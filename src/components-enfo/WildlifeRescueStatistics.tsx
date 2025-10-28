@@ -469,6 +469,21 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
 
   // Handle print individual record
   const handlePrintRecord = (record: WildlifeRecord) => {
+    // Open the DENR form template in a new window
+    const templatePath = '/forms/denr-form.html';
+    const printWindow = window.open(templatePath, '_blank');
+    
+    if (!printWindow) {
+      alert('Please allow popups for this site to open the DENR form.');
+      return;
+    }
+    
+    // Just open the window, don't auto-trigger print
+    // User can manually print when ready
+  };
+  
+  // Old handlePrintRecord code for reference (commented out)
+  const handlePrintRecordOld = (record: WildlifeRecord) => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       const printContent = `

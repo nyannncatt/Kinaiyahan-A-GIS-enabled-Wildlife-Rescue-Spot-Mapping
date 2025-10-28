@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SAMPLE PRINT - DENR FORM</title>
+<style>
+  body {
+    font-family: "Times New Roman", serif;
+    background-color: #fff;
+    margin: 40px 2.54cm;
+  }
+  .container {
+    width: 700px;
+    margin: 0 auto;
+    padding-bottom: 100px;
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: center;
+    gap: 20px;
+  }
+  .header img {
+    width: 90px;
+    height: auto;
+  }
+  .header-text {
+    font-weight: bold;
+    font-size: 11pt;
+    line-height: 1.2;
+    white-space: nowrap;
+    flex: 1;
+    text-align: center;
+  }
+  .header-text span {
+    display: block;
+    font-size: 11pt;
+    font-weight: normal;
+  }
+  h3 {
+    margin: 20px 0 10px;
+    font-size: 11pt;
+    font-weight: bold;
+    text-align: center;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10px 0 20px;
+  }
+  th, td {
+    border: 1px solid #000;
+    padding: 6px;
+    text-align: center;
+    font-size: 11pt;
+    width: 33.33%;
+  }
+  p {
+    font-size: 11pt;
+    margin: 6px 0;
+  }
+  .underline {
+    display: inline-block;
+    border-bottom: 1px solid #000;
+    min-width: 150px;
+  }
+  
+  .fillable {
+    border: none;
+    border-bottom: 1px solid #000;
+    background-color: transparent;
+    outline: none;
+    font-family: "Times New Roman", serif;
+    font-size: 11pt;
+    padding: 0 4px;
+    min-width: 150px;
+    height: auto;
+    vertical-align: text-bottom;
+    line-height: 1;
+  }
+  
+  .print-button {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+    z-index: 1000;
+  }
+  
+  .print-button:hover {
+    background-color: #0056b3;
+  }
+  
+  @media print {
+    .print-button {
+      display: none;
+    }
+    
+    @page {
+      margin: 0 2.54cm;
+      size: A4;
+    }
+    
+    body {
+      margin: 0;
+      padding: 20px;
+    }
+    
+    .container {
+      margin: 0 auto;
+      width: 100%;
+      max-width: 800px;
+    }
+  }
+</style>
+</head>
+<body>
+<button class="print-button" onclick="printForm()">Print Form</button>
+<div class="container">
+
+  <br>
+  <!-- Header Section -->
+  <div class="header">
+    <img src="/images/denrlogo.png" alt="DENR Logo">
+    <div class="header-text">
+      DEPARTMENT OF ENVIRONMENT AND NATURAL RESOURCES
+      <span>KAGAWARAN NG KAPALIGARAN AT LIKAS YAMAN</span>
+    </div>
+    <img src="/images/bagongpilipinaslogo.png" alt="Bagong Pilipinas Logo">
+  </div>
+
+  <br>
+  <br>
+  <br>
+   <!-- LEFT-ALIGNED CODE -->
+   <p style="text-align:left;"><span contenteditable="true" style="outline: none; padding: 2px;">CODE-DENR-CENRO B340</span> <input type="text" class="fillable" style="width:200px; margin-left: 10px;"></p>
+
+   <br>
+   <br>
+   <h3 contenteditable="true" style="outline: none; padding: 2px;">ACKNOWLEDGEMENT RECEIPT OF TURN-OVER WILDLIFE</h3>
+
+   <!-- CENTERED ACKNOWLEDGEMENT PARAGRAPH -->
+   <p style="text-align:center; line-height:1.8;">
+     <span contenteditable="true" style="outline: none; padding: 2px;">THIS IS TO ACKNOWLEDGE THE RECEIPT OF the following wildlife species turn-over to</span>
+   </p>
+  <p style="text-align:center; line-height:1.8;">
+    <input type="text" class="fillable" style="width:150px;"> <span contenteditable="true" style="outline: none; padding: 2px;">on</span> 
+    <input type="text" class="fillable" style="width:150px;"> <span contenteditable="true" style="outline: none; padding: 2px;">for</span> 
+    <input type="text" class="fillable" style="width:150px;">
+  </p>
+
+  <table>
+    <tr>
+      <th contenteditable="true" style="outline: none; padding: 2px;">SPECIES</th>
+      <th contenteditable="true" style="outline: none; padding: 2px;">SCIENTIFIC NAME</th>
+      <th contenteditable="true" style="outline: none; padding: 2px;">QUANTITY</th>
+    </tr>
+    <tr>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+    </tr>
+    <tr>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+    </tr>
+    <tr>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+    </tr>
+  </table>
+
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">ORIGIN OF WILDLIFE:</span> <input type="text" class="fillable" style="width:250px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">CONDITION OF WILDLIFE:</span> <input type="text" class="fillable" style="width:400px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">REMARKS:</span> <input type="text" class="fillable" style="width:400px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">RECEIVED BY:</span> <input type="text" class="fillable" style="width:250px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">TURNED OVER BY:</span> <input type="text" class="fillable" style="width:250px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">WITNESS BY:</span> <input type="text" class="fillable" style="width:250px;"></p>
+
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">TURNED OVER TO RESCUE ON</span> <input type="text" class="fillable" style="width:250px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">RECEIVED:</span> <input type="text" class="fillable" style="width:250px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">TURNED OVER BY:</span> <input type="text" class="fillable" style="width:250px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">RECEIVED BY:</span> <input type="text" class="fillable" style="width:250px;"></p>
+
+  <br>
+  <br>
+  <!-- Footer Section -->
+  <div style="position: fixed; bottom: 20px; left: 0; right: 0; text-align: center; font-family: 'Times New Roman', serif; font-size: 11pt; color: gray;">
+    <p><span contenteditable="true" style="outline: none; padding: 2px;"><strong>Calanawan, Tankulan, Manolo Fortich, Bukidnon</strong></span></p>
+    <p><span contenteditable="true" style="outline: none; padding: 2px;">cenromanolofortich@denr.gov.ph | Mobile No.: (+63) 917-522-8580</span></p>
+  </div>
+
+</div>
+
+<script>
+function printForm() {
+  // Ensure all input values are visible for printing
+  const inputs = document.querySelectorAll('.fillable');
+  inputs.forEach(input => {
+    if (input.value.trim() === '') {
+      input.style.color = 'transparent';
+    } else {
+      input.style.color = 'black';
+    }
+  });
+  
+  // Trigger print dialog
+  window.print();
+}
+</script>
+</body>
+</html>
+
