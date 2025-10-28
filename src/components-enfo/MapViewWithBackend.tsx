@@ -710,11 +710,15 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   useEffect(() => {
     const currentDraft = editingMarkerId ? editDrafts[editingMarkerId] : null;
     const query = currentDraft?.species_name?.trim() || "";
-    if (!editingMarkerId || query.length < 2 || !showEditSpeciesDropdown) {
+    if (!editingMarkerId || query.length < 2) {
       setEditSpeciesOptions([]);
       setEditSpeciesLoading(false);
       setShowEditSpeciesDropdown(false);
       return;
+    }
+    // Ensure dropdown becomes visible again once user types >= 2 chars
+    if (!showEditSpeciesDropdown) {
+      setShowEditSpeciesDropdown(true);
     }
     setEditSpeciesLoading(true);
     const controller = new AbortController();
@@ -1911,7 +1915,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             eventHandlers={{ add: (e: any) => e.target.openPopup() }}
           >
             <Popup className="themed-popup" autoPan autoPanPadding={[16,16]}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 260 }}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 300 }}>
                 <strong>Add marker here</strong>
                 {pendingWarning && (
                   <Alert severity="warning" sx={{ my: 0.5 }}>
@@ -1957,7 +1961,9 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           <Box
                             key={`${opt.label}-${opt.common || ""}`}
                             sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
-                            onClick={() => {
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
                               setPendingMarker((p) => (p ? { ...p, speciesName: opt.label } : p));
                               setShowSpeciesDropdown(false);
                             }}
@@ -2158,19 +2164,32 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
-                <Box sx={{ position: 'relative' }}>
+                <Box>
                 <TextField
                   variant="outlined"
                   margin="dense"
                   fullWidth
                   size="small"
-                  value={editDrafts[editingMarker.id]?.species_name || editingMarker.species_name}
-                  onChange={(e) =>
+                  value={
+                    editDrafts[editingMarker.id]?.species_name !== undefined
+                      ? editDrafts[editingMarker.id]?.species_name
+                      : editingMarker.species_name
+                  }
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
                     setEditDrafts((prev) => ({
                       ...prev,
-                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: e.target.value, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
-                    }))
-                  }
+                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: nextValue, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
+                    }));
+                    // Show/hide dropdown reactively when user clears or types
+                    const trimmed = nextValue.trim();
+                    if (trimmed.length >= 2) {
+                      setShowEditSpeciesDropdown(true);
+                    } else {
+                      setShowEditSpeciesDropdown(false);
+                      setEditSpeciesOptions([]);
+                    }
+                  }}
                   onFocus={() => {
                     setShowEditSpeciesDropdown(true);
                   }}
@@ -2182,11 +2201,6 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                 />
                   {showEditSpeciesDropdown && (
                     <Box sx={{ 
-                      position: 'absolute', 
-                      top: '100%', 
-                      left: 0, 
-                      right: 0, 
-                      zIndex: 1000,
                       mt: 0.5, 
                       border: "1px solid", 
                       borderColor: "divider", 
@@ -2308,7 +2322,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
               icon={createStatusIcon(relocatingMarker.status)}
               ref={(ref) => { if (ref) markerRefs.current[relocatingMarker.id] = ref; }}
             >
-              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
+              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]} maxWidth={420}>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                   <Typography variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
                     Relocating: {relocatingMarker.species_name}
@@ -2846,7 +2860,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   )}
                 </Box>
 
-                    <Box sx={{ display: "flex", gap: 1 }}>
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: 'wrap' }}>
                   <Button
                     variant="contained"
                     color="primary"
@@ -2886,7 +2900,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                     </Box>
                   </Box>
                 ) : (
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 360 }}>
                     <div><strong>{m.species_name}</strong></div>
                     <div>Status: {formatStatusLabel(m.status)}</div>
                     {/* Dispersal information */}
@@ -2905,7 +2919,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           <div><strong>📍 Released Location</strong></div>
                           <div>Original: {trace.originalBarangay || 'Unknown'} ({trace.originalLat.toFixed(5)}, {trace.originalLng.toFixed(5)})</div>
                           <div>Current: {trace.dispersedBarangay || 'Unknown'} ({trace.dispersedLat.toFixed(5)}, {trace.dispersedLng.toFixed(5)})</div>
-                          <Button
+                      <Button
                             variant="outlined"
                             size="small"
                             color="error"
@@ -2962,8 +2976,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           setEditingMarkerId(m.id);
                             setTimeout(() => {
                             try { markerRefs.current[m.id]?.openPopup?.(); } catch {}
-                            const el = editInputRefs.current[m.id];
-                              if (el) { try { el.focus(); } catch {} }
+                            // Ensure no input is focused automatically
+                            try { (document.activeElement as HTMLElement | null)?.blur?.(); } catch {}
                             }, 0);
                           }}
                         >

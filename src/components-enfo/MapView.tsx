@@ -860,7 +860,7 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
             eventHandlers={{ add: (e: any) => e.target.openPopup() }}
           >
             <Popup className="themed-popup" autoPan autoPanPadding={[16,16]}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 260 }}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 300 }}>
                 <strong>Add marker here</strong>
                 <TextField
                   placeholder="Species name"
@@ -884,9 +884,11 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                         <Box
                           key={`${opt.label}-${opt.common || ""}`}
                           sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
-                          onClick={() =>
-                            setPendingMarker((p) => (p ? { ...p, speciesName: opt.label } : p))
-                          }
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setPendingMarker((p) => (p ? { ...p, speciesName: opt.label } : p));
+                          }}
                         >
                           {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
                           <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
@@ -1047,7 +1049,7 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
             ref={(ref) => { if (ref) markerRefs.current[editingMarker.id] = ref; }}
             eventHandlers={{ add: (e: any) => e.target.openPopup() }}
           >
-            <Popup className="themed-popup">
+            <Popup className="themed-popup" maxWidth={420}>
               {/* Reuse the same editing UI by forcing the isEditing branch */}
               {(() => {
                 const m = editingMarker;
@@ -1101,7 +1103,7 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                       <div>Latitude: {m.pos[0].toFixed(5)}</div>
                       <div>Longitude: {m.pos[1].toFixed(5)}</div>
                     </Box>
-                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
                       <Button
                         variant="contained"
                         color="primary"
@@ -1150,7 +1152,7 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
               ref={(ref) => { markerRefs.current[m.id] = ref; }}
               eventHandlers={{ add: (e: any) => e.target.openPopup() }}
             >
-              <Popup className="themed-popup">
+              <Popup className="themed-popup" maxWidth={420}>
                 {editingMarkerId === m.id ? (
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                     <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
@@ -1328,7 +1330,7 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                       )}
                     </Box>
 
-                    <Box sx={{ display: "flex", gap: 1 }}>
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: 'wrap' }}>
                       <Button
                         variant="contained"
                         color="primary"
@@ -1389,7 +1391,7 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                     </Box>
                   </Box>
                 ) : (
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 360 }}>
                     <div><strong>{m.title}</strong></div>
                     <div>Status: {m.status}</div>
                     {m.photo && <img src={m.photo} alt="marker" style={{ width: "100%", borderRadius: 8 }} />}
@@ -1417,8 +1419,8 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                           setEditingMarkerId(m.id);
                           setTimeout(() => {
                             try { markerRefs.current[m.id]?.openPopup?.(); } catch {}
-                            const el = editInputRefs.current[m.id];
-                            if (el) { try { el.focus(); } catch {} }
+                            // Ensure no input is focused automatically
+                            try { (document.activeElement as HTMLElement | null)?.blur?.(); } catch {}
                           }, 0);
                         }}
                       >
