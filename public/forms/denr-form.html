@@ -151,6 +151,7 @@
 </head>
 <body>
 <button class="print-button" onclick="printForm()">Print Form</button>
+<button class="print-button" style="right: 140px; background-color: #2e7d32" onclick="saveForm()">Save</button>
 <div class="container">
 
   <br>
@@ -231,6 +232,13 @@
 
 <script>
 function printForm() {
+  // Require save before allowing print
+  try {
+    if (!window.__formHasSavedOnce || window.__formIsDirty) {
+      alert('Please save the form first before printing.');
+      return;
+    }
+  } catch {}
   // Ensure all input values are visible for printing
   const inputs = document.querySelectorAll('.fillable');
   inputs.forEach(input => {
@@ -251,6 +259,76 @@ function printForm() {
     });
   }, 150);
 }
+
+function getRecordId() {
+  try { return new URLSearchParams(window.location.search).get('recordId') || 'no-record'; } catch { return 'no-record'; }
+}
+
+function saveForm() {
+  const recordId = getRecordId();
+  const inputs = Array.from(document.querySelectorAll('.fillable')).map(el => el.value || '');
+  const edits = Array.from(document.querySelectorAll('[contenteditable="true"]')).map(el => (el.textContent || ''));
+  const payload = { recordId, savedAt: new Date().toISOString(), inputs, edits };
+  try {
+    localStorage.setItem(`denrForm:${recordId}`, JSON.stringify(payload));
+    alert('Form saved for record ' + recordId + '.');
+    // Mark as saved and clean
+    window.__formHasSavedOnce = true;
+    window.__formIsDirty = false;
+  } catch { alert('Unable to save.'); }
+}
+
+function loadFormIfAny() {
+  const recordId = getRecordId();
+  try {
+    const raw = localStorage.getItem(`denrForm:${recordId}`);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    (data.inputs || []).forEach((val, idx) => {
+      const el = document.querySelectorAll('.fillable')[idx];
+      if (el) el.value = val;
+    });
+    (data.edits || []).forEach((val, idx) => {
+      const el = document.querySelectorAll('[contenteditable="true"]')[idx];
+      if (el) el.textContent = val;
+    });
+    // Existing saved payload means user can print without saving unless they change something
+    window.__formHasSavedOnce = true;
+  } catch {}
+}
+
+loadFormIfAny();
+
+// Track dirty state: set when any field changes; cleared on save
+window.__formIsDirty = false;
+window.__formHasSavedOnce = window.__formHasSavedOnce || false;
+
+function attachDirtyListeners() {
+  const inputs = document.querySelectorAll('.fillable');
+  inputs.forEach(el => {
+    el.addEventListener('input', () => { window.__formIsDirty = true; });
+    el.addEventListener('change', () => { window.__formIsDirty = true; });
+  });
+  const editables = document.querySelectorAll('[contenteditable="true"]');
+  editables.forEach(el => {
+    el.addEventListener('input', () => { window.__formIsDirty = true; });
+    el.addEventListener('blur', () => { window.__formIsDirty = true; });
+    el.addEventListener('keyup', () => { window.__formIsDirty = true; });
+  });
+}
+
+attachDirtyListeners();
+
+// Prevent accidental close if there are unsaved changes; allow leaving if no edits were made
+window.addEventListener('beforeunload', function (e) {
+  try {
+    if (window.__formIsDirty) {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    }
+  } catch {}
+});
 
 // Also restore styles on afterprint event (cross-browser safety)
 window.addEventListener('afterprint', () => {

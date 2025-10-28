@@ -290,14 +290,14 @@ export default function MainGrid() {
         </Box>
 
         {/* Analytics Section */}
-        <Box data-analytics sx={{ mt: 8, mb: 3, minHeight: '70vh' }}>
+        <Box data-analytics sx={{ mt: 8, mb: 3, minHeight: '70vh', maxWidth: { xs: '100%', md: '1577px' }, mx: 'auto' }}>
           <Card sx={{ p: 2, boxShadow: 1 }}>
             <Typography variant="h4" component="h2" gutterBottom sx={{ color: 'primary.main', mb: 2 }}>
               Analytics
             </Typography>
             
             {/* Pie Chart for Status Distribution */}
-            <Box sx={{ mb: 3 }}>
+            <Box sx={{ mb: 3 }}>  
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6" sx={{ color: 'text.primary', fontWeight: 600 }}>
                   Status Distribution
