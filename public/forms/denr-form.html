@@ -14,6 +14,29 @@
     background-color: #fff;
     margin: 40px 2.54cm;
   }
+
+  /* Screen-only background theme copied from Public Report */
+  @media screen {
+    html, body {
+      height: 100%;
+      overflow: hidden; /* remove page scroll on site */
+    }
+    body {
+      background: linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    .container {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      padding: 40px;
+      max-width: 800px;
+      max-height: calc(100vh - 80px); /* keep within viewport */
+      overflow: hidden; /* prevent inner scroll */
+    }
+  }
   .container {
     width: 700px;
     margin: 0 auto;
@@ -183,7 +206,7 @@
       <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
     </tr>
   </table>
-
+<BR>
   <p><span contenteditable="true" style="outline: none; padding: 2px;">ORIGIN OF WILDLIFE:</span> <input type="text" class="fillable" style="width:250px;"></p>
   <p><span contenteditable="true" style="outline: none; padding: 2px;">CONDITION OF WILDLIFE:</span> <input type="text" class="fillable" style="width:400px;"></p>
   <p><span contenteditable="true" style="outline: none; padding: 2px;">REMARKS:</span> <input type="text" class="fillable" style="width:400px;"></p>
