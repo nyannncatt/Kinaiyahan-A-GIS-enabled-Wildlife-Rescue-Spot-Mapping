@@ -81,6 +81,12 @@ export default function MainGrid() {
     .map(([barangay, count]) => ({ barangay, count }))
     .sort((a, b) => (b.count as number) - (a.count as number))
     .slice(0, 5);
+  const topBarangaysTotal = topBarangays.reduce((sum, item) => sum + Number(item.count), 0);
+  const topBarangaysPieData = topBarangays.map((item) => ({
+    id: item.barangay,
+    value: Number(item.count),
+    label: item.barangay,
+  }));
   
   // Records summary counts (based on filtered records)
   const displayRecords = selectedStatusFilter ? filteredRecords : approvedRecords;
@@ -316,7 +322,7 @@ export default function MainGrid() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          data-analytics sx={{ mt: 8, mb: 3, minHeight: '70vh', maxWidth: { xs: '100%', md: '1577px' }, mx: 'auto' }}>
+          data-analytics sx={{ mt: 8, mb: 3, maxWidth: { xs: '100%', md: '1577px' }, mx: 'auto' }}>
           <Card sx={{ p: 2, boxShadow: 1 }}>
             <Typography variant="h4" component="h2" gutterBottom sx={{ color: 'primary.main', mb: 2 }}>
               Analytics
@@ -358,8 +364,8 @@ export default function MainGrid() {
                         color: selectedStatusFilter && selectedStatusFilter !== 'Released' ? '#43a04730' : '#43a047'
                       },
                     ],
-                    innerRadius: 30,
-                    outerRadius: 120,
+                    innerRadius: 28,
+                    outerRadius: 95,
                     paddingAngle: 2,
                     cornerRadius: 5,
                     arcLabel: (item) => {
@@ -372,8 +378,8 @@ export default function MainGrid() {
                     arcLabelMinAngle: 10,
                   }
                 ]}
-                width={400}
-                height={350}
+                width={320}
+                height={220}
               />
             </Box>
 
@@ -503,11 +509,11 @@ export default function MainGrid() {
 
             {/* Top Barangays Section */}
             <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" gutterBottom sx={{ color: 'text.primary', fontWeight: 600, mt: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ color: 'text.primary', fontWeight: 600, mt: 1 }}>
                 Top 5 Barangays with Wildlife Activity
               </Typography>
               {/* Municipality filter */}
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
                 {[
                   { label: 'All', value: null },
                   { label: 'Manolo Fortich', value: 'Manolo Fortich' },
@@ -529,42 +535,30 @@ export default function MainGrid() {
                   );
                 })}
               </Box>
-              {topBarangays.length > 0 ? (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'center' }}>
-                  {topBarangays.map((item, index) => (
-                    <Card
-                      key={item.barangay}
-                      sx={{
-                        p: 2,
-                        minWidth: 180,
-                        boxShadow: 2,
-                        border: '2px solid',
-                        borderColor: index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : 'primary.main',
-                        backgroundColor: index < 3 ? `${index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : '#CD7F32'}20` : 'background.paper'
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography sx={{ fontSize: '1.5rem' }}>
-                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📍'}
-                        </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                          Rank {index + 1}
-                        </Typography>
-                      </Box>
-                      <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
-                        {item.barangay}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {Number(item.count)} {Number(item.count) === 1 ? 'record' : 'records'}
-                      </Typography>
-                    </Card>
-                  ))}
-                </Box>
-              ) : (
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  No barangay data available yet
-                </Typography>
-              )}
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 240 }}>
+                {topBarangays.length > 0 ? (
+                  <PieChart
+                    series={[{
+                      data: topBarangaysPieData,
+                      innerRadius: 26,
+                      outerRadius: 92,
+                      paddingAngle: 2,
+                      cornerRadius: 5,
+                      arcLabel: (item) => {
+                        const pct = topBarangaysTotal > 0 ? ((item.value / topBarangaysTotal) * 100).toFixed(1) + '%' : '0%';
+                        return pct;
+                      },
+                      arcLabelMinAngle: 10,
+                    }]}
+                    width={360}
+                    height={220}
+                  />
+                ) : (
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    No barangay data available yet
+                  </Typography>
+                )}
+              </Box>
             </Box>
 
             {/* Records Summary */}
