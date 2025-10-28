@@ -41,6 +41,8 @@ export default function MainGrid() {
   
   // State for filtering analytics by status
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
+  // State for municipality filter in analytics (Top Barangays)
+  const [selectedMunicipality, setSelectedMunicipality] = useState<string | null>(null);
   
   // Fetch wildlife records for analytics
   useEffect(() => {
@@ -64,8 +66,13 @@ export default function MainGrid() {
     ? approvedRecords.filter(r => r.status === selectedStatusFilter.toLowerCase())
     : approvedRecords;
   
-  // Top barangays with data (based on filtered records)
-  const barangayFrequency = (selectedStatusFilter ? filteredRecords : approvedRecords).reduce((acc: any, record: any) => {
+  // Top barangays with data (based on filters)
+  const barangaySource = (selectedStatusFilter ? filteredRecords : approvedRecords).filter((r: any) => {
+    if (!selectedMunicipality) return true;
+    const m = (r.municipality || '').toLowerCase();
+    return m === selectedMunicipality.toLowerCase();
+  });
+  const barangayFrequency = barangaySource.reduce((acc: any, record: any) => {
     const barangay = record.barangay || 'Unknown';
     acc[barangay] = (acc[barangay] || 0) + 1;
     return acc;
@@ -79,6 +86,8 @@ export default function MainGrid() {
   const displayRecords = selectedStatusFilter ? filteredRecords : approvedRecords;
   const uniqueSpecies = new Set(displayRecords.map((r: any) => r.species_name)).size;
   const activeBarangays = new Set(displayRecords.map((r: any) => r.barangay).filter(Boolean)).size;
+  const totalApproved = wildlifeRecords.filter((r: any) => r.approval_status === 'approved').length;
+  const totalRejected = wildlifeRecords.filter((r: any) => r.approval_status === 'rejected').length;
   
   // State for pending reports
   const [pendingCount, setPendingCount] = useState(0);
@@ -497,6 +506,29 @@ export default function MainGrid() {
               <Typography variant="h6" gutterBottom sx={{ color: 'text.primary', fontWeight: 600, mt: 3 }}>
                 Top 5 Barangays with Wildlife Activity
               </Typography>
+              {/* Municipality filter */}
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                {[
+                  { label: 'All', value: null },
+                  { label: 'Manolo Fortich', value: 'Manolo Fortich' },
+                  { label: 'Sumilao', value: 'Sumilao' },
+                  { label: 'Malitbog', value: 'Malitbog' },
+                  { label: 'Impasugong', value: 'Impasugong' },
+                ].map((opt) => {
+                  const isActive = (opt.value ?? null) === (selectedMunicipality ?? null);
+                  return (
+                    <Button
+                      key={opt.label}
+                      size="small"
+                      variant={isActive ? 'contained' : 'outlined'}
+                      onClick={() => setSelectedMunicipality(opt.value as any)}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      {opt.label}
+                    </Button>
+                  );
+                })}
+              </Box>
               {topBarangays.length > 0 ? (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'center' }}>
                   {topBarangays.map((item, index) => (
@@ -549,13 +581,25 @@ export default function MainGrid() {
                     {selectedStatusFilter ? 'Filtered Records' : 'Total Records'}
                   </Typography>
                 </Card>
-                <Card sx={{ p: 2, textAlign: 'center', minWidth: 150, boxShadow: 1 }}>
-                  <Typography variant="h4" sx={{ color: 'success.main', fontWeight: 700 }}>
-                    {uniqueSpecies}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Unique Species
-                  </Typography>
+                <Card sx={{ p: 2, textAlign: 'center', minWidth: 250, boxShadow: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 3 }}>
+                    <Box sx={{ textAlign: 'center', flex: 1 }}>
+                      <Typography variant="h4" sx={{ color: 'success.main', fontWeight: 700 }}>
+                        {totalApproved}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        Approved
+                      </Typography>
+                    </Box>
+                    <Box sx={{ textAlign: 'center', flex: 1 }}>
+                      <Typography variant="h4" sx={{ color: 'error.main', fontWeight: 700 }}>
+                        {totalRejected}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        Rejected
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Card>
                 <Card sx={{ p: 2, textAlign: 'center', minWidth: 150, boxShadow: 1 }}>
                   <Typography variant="h4" sx={{ color: 'info.main', fontWeight: 700 }}>
