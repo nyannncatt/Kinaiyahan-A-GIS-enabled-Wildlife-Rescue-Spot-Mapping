@@ -1415,13 +1415,11 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       variant="text"
                       onClick={() => handleDeleteRecord(record.id)}
                       sx={{ 
-                        color: theme.palette.error.main,
+                        color: '#ff1744 !important',
                         textTransform: 'none',
-                        fontWeight: 600,
+                        fontWeight: 700,
                         '&:hover': { 
-                          bgcolor: theme.palette.mode === 'dark' 
-                            ? 'rgba(239, 68, 68, 0.12)' 
-                            : 'rgba(239, 68, 68, 0.06)'
+                          bgcolor: 'rgba(255, 23, 68, 0.08)'
                         }
                       }}
                     >
