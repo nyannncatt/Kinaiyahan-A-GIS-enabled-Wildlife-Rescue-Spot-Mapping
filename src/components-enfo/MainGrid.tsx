@@ -28,6 +28,7 @@ import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import { getWildlifeRecords } from '../services/wildlifeRecords';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { useTheme } from '@mui/material/styles';
+import { motion } from 'framer-motion';
 
 export default function MainGrid() {
   const theme = useTheme();
@@ -273,6 +274,10 @@ export default function MainGrid() {
 
       {/* Map Container */}
       <Box 
+        component={motion.div}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
         data-map-container
         sx={{ 
           height: 700, 
@@ -285,12 +290,24 @@ export default function MainGrid() {
       </Box>
       
         {/* Wildlife Rescue Statistics Component */}
-        <Box data-record-list sx={{ mt: 3, mb: 8 }}>
+        <Box 
+          component={motion.div}
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          data-record-list sx={{ mt: 3, mb: 8 }}>
           <WildlifeRescueStatistics {...(showPendingOnly && { showPendingOnly })} />
         </Box>
 
         {/* Analytics Section */}
-        <Box data-analytics sx={{ mt: 8, mb: 3, minHeight: '70vh', maxWidth: { xs: '100%', md: '1577px' }, mx: 'auto' }}>
+        <Box 
+          component={motion.div}
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          data-analytics sx={{ mt: 8, mb: 3, minHeight: '70vh', maxWidth: { xs: '100%', md: '1577px' }, mx: 'auto' }}>
           <Card sx={{ p: 2, boxShadow: 1 }}>
             <Typography variant="h4" component="h2" gutterBottom sx={{ color: 'primary.main', mb: 2 }}>
               Analytics

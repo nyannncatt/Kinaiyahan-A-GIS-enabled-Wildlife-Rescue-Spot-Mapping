@@ -489,6 +489,16 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
 
   // Handle print individual record
   const handlePrintRecord = (record: WildlifeRecord) => {
+    // If a saved form already exists, warn that it will be overwritten upon Save
+    try {
+      const key = `denrForm:${record.id}`;
+      const exists = !!localStorage.getItem(key);
+      if (exists) {
+        const proceed = window.confirm('A saved form already exists for this record. Opening the form and saving again will overwrite the existing saved form. Continue?');
+        if (!proceed) return;
+      }
+    } catch {}
+
     // Open the DENR form template with recordId in a new tab
     const templatePath = `/forms/denr-form.html?recordId=${record.id}`;
     const printWindow = window.open(templatePath, '_blank');
@@ -498,8 +508,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       return;
     }
     
-    // Just open the window, don't auto-trigger print
-    // User can manually print when ready
+    // Just open the window; user can manually save/print
   };
   
   // Old handlePrintRecord code for reference (commented out)
