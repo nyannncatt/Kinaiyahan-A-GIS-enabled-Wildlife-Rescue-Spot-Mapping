@@ -557,8 +557,8 @@ export default function PublicReport() {
         setError('⚠️ Please enter your name before proceeding.');
         return;
       }
-      if (!phoneNumber.trim()) {
-        setError('⚠️ Please enter your contact number before proceeding.');
+      if (phoneNumber.trim().length !== 10) {
+        setError('⚠️ Please enter a valid 10-digit contact number.');
         return;
       }
     }
@@ -793,12 +793,12 @@ export default function PublicReport() {
         // If has EXIF GPS, no additional validation needed
         return true;
       case 2:
-        return reporterName.trim() !== '' && phoneNumber.trim() !== '';
+        return reporterName.trim() !== '' && phoneNumber.trim().length === 10;
       case 3:
         return speciesName.trim() !== '' && 
                (hasExifGps || barangay.trim() !== '') && 
                reporterName.trim() !== '' && 
-               phoneNumber.trim() !== '';
+               phoneNumber.trim().length === 10;
       default:
         return false;
     }
@@ -1508,7 +1508,7 @@ export default function PublicReport() {
                        value={phoneNumber}
                        onChange={(e) => {
                          const inputValue = e.target.value;
-                         const phoneNumberValue = inputValue.replace(/[^0-9]/g, '');
+                         const phoneNumberValue = inputValue.replace(/[^0-9]/g, '').slice(0, 10);
                          
                          // Show warning if non-numeric characters were removed
                          if (inputValue !== phoneNumberValue) {
@@ -1563,6 +1563,15 @@ export default function PublicReport() {
                          </InputAdornment>
                        }
                        label="Contact Number"
+                       inputProps={{ maxLength: 10, inputMode: 'numeric', pattern: '[0-9]*' }}
+                       error={phoneNumber.length > 0 && phoneNumber.length !== 10}
+                       endAdornment={
+                         phoneNumber.length > 0 && phoneNumber.length !== 10 ? (
+                           <Typography variant="caption" color="error" sx={{ ml: 1 }}>
+                             10 digits
+                           </Typography>
+                         ) : undefined
+                       }
                        sx={{
                          borderRadius: 2,
                          '& .MuiOutlinedInput-root': {

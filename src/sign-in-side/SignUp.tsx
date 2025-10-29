@@ -20,6 +20,8 @@ export default function SignUp() {
   const [fullName, setFullName] = useState('');
   const [lastName, setLastName] = useState('');
   const [contactNumber, setContactNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [countryCode, setCountryCode] = useState('+63');
   const [gender, setGender] = useState<'male' | 'female' | 'prefer_not_to_say'>('prefer_not_to_say');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -211,19 +213,59 @@ export default function SignUp() {
                 '& .MuiInputLabel-root.Mui-focused': { color: '#2e7d32' },
               }}
             />
-            <TextField
-              label="Contact Number"
-              value={contactNumber}
-              onChange={(e) => setContactNumber(e.target.value)}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': { borderColor: '#c8e6c9' },
-                  '&:hover fieldset': { borderColor: '#81c784' },
-                  '&.Mui-focused fieldset': { borderColor: '#2e7d32' },
-                },
-                '& .MuiInputLabel-root.Mui-focused': { color: '#2e7d32' },
-              }}
-            />
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <FormControl
+                sx={{
+                  minWidth: 110,
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': { borderColor: '#c8e6c9' },
+                    '&:hover fieldset': { borderColor: '#81c784' },
+                    '&.Mui-focused fieldset': { borderColor: '#2e7d32' },
+                  },
+                  '& .MuiInputLabel-root.Mui-focused': { color: '#2e7d32' },
+                }}
+              >
+                <InputLabel id="country-code-label">Code</InputLabel>
+                <Select
+                  labelId="country-code-label"
+                  label="Code"
+                  value={countryCode}
+                  onChange={(e) => {
+                    const nextCode = e.target.value as string;
+                    setCountryCode(nextCode);
+                    setContactNumber(nextCode + phoneNumber);
+                  }}
+                >
+                  <MenuItem value="+63">+63 (PH)</MenuItem>
+                  <MenuItem value="+60">+60 (MY)</MenuItem>
+                  <MenuItem value="+62">+62 (ID)</MenuItem>
+                  <MenuItem value="+65">+65 (SG)</MenuItem>
+                  <MenuItem value="+66">+66 (TH)</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label="Phone Number"
+                placeholder="9XXXXXXXXX"
+                value={phoneNumber}
+                onChange={(e) => {
+                  const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setPhoneNumber(digitsOnly);
+                  setContactNumber(countryCode + digitsOnly);
+                }}
+                error={phoneNumber.length > 0 && phoneNumber.length !== 10}
+                helperText={phoneNumber.length > 0 && phoneNumber.length !== 10 ? 'Enter exactly 10 digits' : ' '}
+                inputProps={{ maxLength: 10, inputMode: 'numeric', pattern: '[0-9]*' }}
+                sx={{
+                  flex: 1,
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': { borderColor: '#c8e6c9' },
+                    '&:hover fieldset': { borderColor: '#81c784' },
+                    '&.Mui-focused fieldset': { borderColor: '#2e7d32' },
+                  },
+                  '& .MuiInputLabel-root.Mui-focused': { color: '#2e7d32' },
+                }}
+              />
+            </Box>
             <FormControl
               sx={{
                 '& .MuiOutlinedInput-root': {
