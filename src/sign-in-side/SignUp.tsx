@@ -33,6 +33,8 @@ export default function SignUp() {
   const [success, setSuccess] = useState<string | null>(null);
   const [firstNameWarning, setFirstNameWarning] = useState<string | null>(null);
   const [lastNameWarning, setLastNameWarning] = useState<string | null>(null);
+  const [emailWarning, setEmailWarning] = useState<string | null>(null);
+  const [passwordWarning, setPasswordWarning] = useState<string | null>(null);
 
   const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null;
@@ -57,6 +59,16 @@ export default function SignUp() {
     setError(null);
     setSuccess(null);
     try {
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters long');
+        setSubmitting(false);
+        return;
+      }
+      if (!email.includes('@')) {
+        setError('Please enter a valid email address containing @');
+        setSubmitting(false);
+        return;
+      }
       // Sign up user with metadata
       const { data: signData, error: signErr } = await supabase.auth.signUp({
         email,
@@ -319,7 +331,18 @@ export default function SignUp() {
               type="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setEmail(value);
+                if (value && !value.includes('@')) {
+                  setEmailWarning('Email must contain @');
+                } else {
+                  setEmailWarning(null);
+                }
+              }}
+              inputProps={{ pattern: '.+@.+' }}
+              error={Boolean(emailWarning)}
+              helperText={emailWarning ? emailWarning : ' '}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   '& fieldset': { borderColor: '#c8e6c9' },
@@ -334,7 +357,18 @@ export default function SignUp() {
               type="password"
               required
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setPassword(value);
+                if (value && value.length < 8) {
+                  setPasswordWarning('Password must be at least 8 characters');
+                } else {
+                  setPasswordWarning(null);
+                }
+              }}
+              inputProps={{ minLength: 8 }}
+              error={Boolean(passwordWarning)}
+              helperText={passwordWarning ? passwordWarning : ' '}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   '& fieldset': { borderColor: '#c8e6c9' },
