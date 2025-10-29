@@ -74,7 +74,7 @@ export default function SignInCard() {
         go("/enforcement");
       } else if (role === "cenro") {
         go("/enforcement");
-      } else if (userData?.role === "admin") {
+      } else if (role === "admin") {
         go("/admin");
       } else {
         setLoginError("No role assigned. Please contact admin.");
