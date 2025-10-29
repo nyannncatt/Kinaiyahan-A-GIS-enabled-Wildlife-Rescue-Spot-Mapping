@@ -4,6 +4,7 @@ import Enforcement from "./pages/Enforcement";
 import Cenro from "./pages/Cenro";
 import PublicReport from "./pages/PublicReport";
 import SignIn from "./sign-in-side/SignInSide";
+import SignUp from "./sign-in-side/SignUp";
 import { CircularProgress, Box } from "@mui/material";
 import React, { ReactElement, useEffect } from "react";
 
@@ -47,6 +48,7 @@ function App() {
     <Routes>
       <Route path="/login" element={<SignIn />} />
       <Route path="/enforcement" element={<RequireAuth><Enforcement /></RequireAuth>} />
+      <Route path="/signup" element={<SignUp />} />
       <Route path="/cenro" element={<RequireAuth><Cenro /></RequireAuth>} />
       {/** removed legacy /report-sighting route */}
       {/* Public report route (no auth) */}

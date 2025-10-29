@@ -78,12 +78,15 @@ export default function SignInCard() {
         setLoginError("No role assigned. Please contact admin.");
       }
     } catch (error: unknown) {
-      // ✅ Safe error handling
+      // ✅ Safe error handling + special case for unconfirmed email
       let message = "Invalid credentials";
-      if (error instanceof Error) {
-        message = error.message;
-      } else if (typeof error === "string") {
-        message = error;
+      const raw = error as any;
+      const msg = (raw?.message || (error instanceof Error ? error.message : String(error || ""))) as string;
+      const lower = msg.toLowerCase();
+      if (lower.includes("not confirmed") || lower.includes("confirm your email")) {
+        message = "Email not confirmed. Please check your inbox and confirm your account.";
+      } else {
+        message = msg || message;
       }
       setLoginError(message);
     }
@@ -135,11 +138,17 @@ export default function SignInCard() {
         Log In
       </Button>
 
+      {/* Clear Sign Up call-to-action */}
+      <Button
+        fullWidth
+        variant="outlined"
+        onClick={() => navigate('/signup')}
+      >
+        Create account
+      </Button>
+
       <Typography sx={{ textAlign: "center" }}>
-        Don&apos;t have an account?{" "}
-        <Button variant="text" onClick={() => navigate("/signup")}>
-          Sign Up
-        </Button>
+        Don&apos;t have an account? <Button variant="text" onClick={() => navigate('/signup')}>Sign Up</Button>
       </Typography>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 2 }}>
