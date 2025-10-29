@@ -220,6 +220,14 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
       '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
   };
 
+  // Transparent labels overlays to show city/place names on satellite
+  const labelUrls = {
+    esriWorldBoundariesAndPlaces:
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+    esriWorldTransportation:
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
+  } as const;
+
   const [isAddingMarker, setIsAddingMarker] = useState(false);
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
 
@@ -845,6 +853,22 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
         whenReady={() => { /* set in effect below */ }}
       >
         <TileLayer url={tileUrls[skin]} attribution={attributions[skin]} />
+        {skin === 'satellite' && (
+          <>
+            <TileLayer
+              url={labelUrls.esriWorldBoundariesAndPlaces}
+              attribution={attributions.satellite}
+              opacity={0.9}
+              zIndex={400}
+            />
+            <TileLayer
+              url={labelUrls.esriWorldTransportation}
+              attribution={attributions.satellite}
+              opacity={0.5}
+              zIndex={401}
+            />
+          </>
+        )}
         <ResizeHandler />
         <MapBoundsController />
         <BoundaryGuide />

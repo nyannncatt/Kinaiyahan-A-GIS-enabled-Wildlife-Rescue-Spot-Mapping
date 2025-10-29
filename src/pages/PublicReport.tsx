@@ -156,6 +156,45 @@ export default function PublicReport() {
 
   const todayIso = useMemo(() => new Date().toISOString(), []);
 
+  // Define barangays by municipality
+  const manoloFortichBarangays = [
+    'Agusan Canyon', 'Alae', 'Dahilayan', 'Dalirig', 'Damilag', 'Diclum',
+    'Guilang-guilang', 'Kalugmanan', 'Lindaban', 'Lingion', 'Lunocan',
+    'Maluko', 'Mambatangan', 'Mampayag', 'Minsuro', 'Mantibugao',
+    'Tankulan (Pob.)', 'San Miguel', 'Sankanan', 'Santiago', 'Santo Niño', 'Ticala'
+  ];
+
+  const malitbogBarangays = [
+    'Kalingking', 'Kiabo', 'Mindagat', 'Omagling', 'Patpat', 'Poblacion',
+    'Sampiano', 'San Luis', 'Santa Ines', 'Silo-o', 'Sumalsag'
+  ];
+
+  const sumilaoBarangays = [
+    'Culasi', 'Kisolon', 'Licoan', 'Lupiagan', 'Ocasion', 'Puntian',
+    'San Roque', 'San Vicente', 'Poblacion(Sumilao)', 'Vista Villa'
+  ];
+
+  const impasugongBarangays = [
+    'Bontongon', 'Bulonay', 'Capitan Bayong', 'Cawayan', 'Dumalaguing', 'Guihean',
+    'Hagpa', 'Impalutao', 'Kalabugao', 'Kibenton', 'La Fortuna', 'Poblacion(Impasugong)', 'Sayawan'
+  ];
+
+  // Get barangays based on selected municipality
+  const getBarangaysForMunicipality = (municipality: string) => {
+    switch (municipality) {
+      case 'Manolo Fortich':
+        return manoloFortichBarangays;
+      case 'Malitbog':
+        return malitbogBarangays;
+      case 'Sumilao':
+        return sumilaoBarangays;
+      case 'Impasugong':
+        return impasugongBarangays;
+      default:
+        return [...manoloFortichBarangays, ...malitbogBarangays, ...sumilaoBarangays, ...impasugongBarangays];
+    }
+  };
+
   const steps = isMobile ? [
     'Wildlife',
     'Location', 
@@ -194,7 +233,44 @@ export default function PublicReport() {
       { name: 'Sankanan', latMin: 8.305, latMax: 8.325, lngMin: 124.850, lngMax: 124.865 },
       { name: 'Santiago', latMin: 8.430, latMax: 8.445, lngMin: 124.985, lngMax: 125.000 },
       { name: 'Santo Niño', latMin: 8.425, latMax: 8.440, lngMin: 124.855, lngMax: 124.870 },
-      { name: 'Ticala', latMin: 8.335, latMax: 8.355, lngMin: 124.885, lngMax: 124.900 }
+      { name: 'Ticala', latMin: 8.335, latMax: 8.355, lngMin: 124.885, lngMax: 124.900 },
+      // Malitbog barangays
+      { name: 'Kalingking', latMin: 8.535, latMax: 8.545, lngMin: 124.875, lngMax: 124.885 },
+      { name: 'Kiabo', latMin: 8.515, latMax: 8.525, lngMin: 124.855, lngMax: 124.865 },
+      { name: 'Mindagat', latMin: 8.495, latMax: 8.505, lngMin: 124.895, lngMax: 124.905 },
+      { name: 'Omagling', latMin: 8.475, latMax: 8.485, lngMin: 124.835, lngMax: 124.845 },
+      { name: 'Patpat', latMin: 8.555, latMax: 8.565, lngMin: 124.915, lngMax: 124.925 },
+      { name: 'Poblacion', latMin: 8.525, latMax: 8.535, lngMin: 124.865, lngMax: 124.875 },
+      { name: 'Sampiano', latMin: 8.505, latMax: 8.515, lngMin: 124.845, lngMax: 124.855 },
+      { name: 'San Luis', latMin: 8.485, latMax: 8.495, lngMin: 124.885, lngMax: 124.895 },
+      { name: 'Santa Ines', latMin: 8.545, latMax: 8.555, lngMin: 124.905, lngMax: 124.915 },
+      { name: 'Silo-o', latMin: 8.465, latMax: 8.475, lngMin: 124.825, lngMax: 124.835 },
+      { name: 'Sumalsag', latMin: 8.520, latMax: 8.530, lngMin: 124.870, lngMax: 124.880 },
+      // Sumilao barangays
+      { name: 'Culasi', latMin: 8.295, latMax: 8.305, lngMin: 124.945, lngMax: 124.955 },
+      { name: 'Kisolon', latMin: 8.315, latMax: 8.325, lngMin: 124.935, lngMax: 124.945 },
+      { name: 'Licoan', latMin: 8.305, latMax: 8.315, lngMin: 124.925, lngMax: 124.935 },
+      { name: 'Lupiagan', latMin: 8.285, latMax: 8.295, lngMin: 124.915, lngMax: 124.925 },
+      { name: 'Ocasion', latMin: 8.275, latMax: 8.285, lngMin: 124.905, lngMax: 124.915 },
+      { name: 'Puntian', latMin: 8.265, latMax: 8.275, lngMin: 124.895, lngMax: 124.905 },
+      { name: 'San Roque', latMin: 8.255, latMax: 8.265, lngMin: 124.885, lngMax: 124.895 },
+      { name: 'San Vicente', latMin: 8.245, latMax: 8.255, lngMin: 124.875, lngMax: 124.885 },
+      { name: 'Poblacion(Sumilao)', latMin: 8.310, latMax: 8.320, lngMin: 124.940, lngMax: 124.950 },
+      { name: 'Vista Villa', latMin: 8.325, latMax: 8.335, lngMin: 124.930, lngMax: 124.940 },
+      // Impasugong barangays
+      { name: 'Bontongon', latMin: 8.295, latMax: 8.305, lngMin: 124.995, lngMax: 125.005 },
+      { name: 'Bulonay', latMin: 8.315, latMax: 8.325, lngMin: 125.015, lngMax: 125.025 },
+      { name: 'Capitan Bayong', latMin: 8.275, latMax: 8.285, lngMin: 125.005, lngMax: 125.015 },
+      { name: 'Cawayan', latMin: 8.345, latMax: 8.355, lngMin: 125.025, lngMax: 125.035 },
+      { name: 'Dumalaguing', latMin: 8.245, latMax: 8.255, lngMin: 125.000, lngMax: 125.010 },
+      { name: 'Guihean', latMin: 8.265, latMax: 8.275, lngMin: 125.010, lngMax: 125.020 },
+      { name: 'Hagpa', latMin: 8.285, latMax: 8.295, lngMin: 125.020, lngMax: 125.030 },
+      { name: 'Impalutao', latMin: 8.305, latMax: 8.315, lngMin: 125.030, lngMax: 125.040 },
+      { name: 'Kalabugao', latMin: 8.325, latMax: 8.335, lngMin: 125.035, lngMax: 125.045 },
+      { name: 'Kibenton', latMin: 8.255, latMax: 8.265, lngMin: 125.015, lngMax: 125.025 },
+      { name: 'La Fortuna', latMin: 8.335, latMax: 8.345, lngMin: 125.040, lngMax: 125.050 },
+      { name: 'Poblacion(Impasugong)', latMin: 8.310, latMax: 8.320, lngMin: 125.025, lngMax: 125.035 },
+      { name: 'Sayawan', latMin: 8.270, latMax: 8.280, lngMin: 125.007, lngMax: 125.017 }
     ];
 
     // Find the barangay that contains these coordinates
@@ -287,6 +363,15 @@ export default function PublicReport() {
         if (extractedMunicipality && extractedMunicipality.toLowerCase().includes('manolo fortich')) {
           setMunicipality('Manolo Fortich');
           console.log('Set municipality to Manolo Fortich');
+        } else if (extractedMunicipality && extractedMunicipality.toLowerCase().includes('malitbog')) {
+          setMunicipality('Malitbog');
+          console.log('Set municipality to Malitbog');
+        } else if (extractedMunicipality && extractedMunicipality.toLowerCase().includes('sumilao')) {
+          setMunicipality('Sumilao');
+          console.log('Set municipality to Sumilao');
+        } else if (extractedMunicipality && extractedMunicipality.toLowerCase().includes('impasugong')) {
+          setMunicipality('Impasugong');
+          console.log('Set municipality to Impasugong');
         }
         
         // Auto-populate barangay with improved matching
@@ -295,7 +380,16 @@ export default function PublicReport() {
             'Agusan Canyon', 'Alae', 'Dahilayan', 'Dalirig', 'Damilag', 'Diclum',
             'Guilang-guilang', 'Kalugmanan', 'Lindaban', 'Lingion', 'Lunocan',
             'Maluko', 'Mambatangan', 'Mampayag', 'Minsuro', 'Mantibugao',
-            'Tankulan (Pob.)', 'San Miguel', 'Sankanan', 'Santiago', 'Santo Niño', 'Ticala'
+            'Tankulan (Pob.)', 'San Miguel', 'Sankanan', 'Santiago', 'Santo Niño', 'Ticala',
+            // Malitbog barangays
+            'Kalingking', 'Kiabo', 'Mindagat', 'Omagling', 'Patpat', 'Poblacion',
+            'Sampiano', 'San Luis', 'Santa Ines', 'Silo-o', 'Sumalsag',
+            // Sumilao barangays
+            'Culasi', 'Kisolon', 'Licoan', 'Lupiagan', 'Ocasion', 'Puntian',
+            'San Roque', 'San Vicente', 'Poblacion(Sumilao)', 'Vista Villa',
+            // Impasugong barangays
+            'Bontongon', 'Bulonay', 'Capitan Bayong', 'Cawayan', 'Dumalaguing', 'Guihean',
+            'Hagpa', 'Impalutao', 'Kalabugao', 'Kibenton', 'La Fortuna', 'Poblacion(Impasugong)', 'Sayawan'
           ];
           
           // Try exact match first
@@ -358,7 +452,44 @@ export default function PublicReport() {
       'Sankanan': { lat: 8.316000, lng: 124.857900 },
       'Santiago': { lat: 8.438600, lng: 124.993400 },
       'Santo Niño': { lat: 8.431100, lng: 124.861500 },
-      'Ticala': { lat: 8.341200, lng: 124.891100 }
+      'Ticala': { lat: 8.341200, lng: 124.891100 },
+      // Malitbog barangays
+      'Kalingking': { lat: 8.540000, lng: 124.880000 },
+      'Kiabo': { lat: 8.520000, lng: 124.860000 },
+      'Mindagat': { lat: 8.500000, lng: 124.900000 },
+      'Omagling': { lat: 8.480000, lng: 124.840000 },
+      'Patpat': { lat: 8.560000, lng: 124.920000 },
+      'Poblacion': { lat: 8.530000, lng: 124.870000 },
+      'Sampiano': { lat: 8.510000, lng: 124.850000 },
+      'San Luis': { lat: 8.490000, lng: 124.890000 },
+      'Santa Ines': { lat: 8.550000, lng: 124.910000 },
+      'Silo-o': { lat: 8.470000, lng: 124.830000 },
+      'Sumalsag': { lat: 8.525000, lng: 124.875000 },
+      // Sumilao barangays
+      'Culasi': { lat: 8.300000, lng: 124.950000 },
+      'Kisolon': { lat: 8.320000, lng: 124.940000 },
+      'Licoan': { lat: 8.310000, lng: 124.930000 },
+      'Lupiagan': { lat: 8.290000, lng: 124.920000 },
+      'Ocasion': { lat: 8.280000, lng: 124.910000 },
+      'Puntian': { lat: 8.270000, lng: 124.900000 },
+      'San Roque': { lat: 8.260000, lng: 124.890000 },
+      'San Vicente': { lat: 8.250000, lng: 124.880000 },
+      'Poblacion(Sumilao)': { lat: 8.315000, lng: 124.945000 },
+      'Vista Villa': { lat: 8.330000, lng: 124.935000 },
+      // Impasugong barangays
+      'Bontongon': { lat: 8.300000, lng: 125.000000 },
+      'Bulonay': { lat: 8.320000, lng: 125.020000 },
+      'Capitan Bayong': { lat: 8.280000, lng: 125.010000 },
+      'Cawayan': { lat: 8.350000, lng: 125.030000 },
+      'Dumalaguing': { lat: 8.250000, lng: 125.005000 },
+      'Guihean': { lat: 8.270000, lng: 125.015000 },
+      'Hagpa': { lat: 8.290000, lng: 125.025000 },
+      'Impalutao': { lat: 8.310000, lng: 125.035000 },
+      'Kalabugao': { lat: 8.330000, lng: 125.040000 },
+      'Kibenton': { lat: 8.260000, lng: 125.020000 },
+      'La Fortuna': { lat: 8.340000, lng: 125.045000 },
+      'Poblacion(Impasugong)': { lat: 8.315000, lng: 125.030000 },
+      'Sayawan': { lat: 8.275000, lng: 125.012000 }
     };
 
     return barangayCenters[barangayName as keyof typeof barangayCenters] || null;
@@ -1121,7 +1252,11 @@ export default function PublicReport() {
                     <Select
                       id="municipality"
                       value={municipality}
-                      onChange={(e) => setMunicipality(e.target.value)}
+                      onChange={(e) => {
+                        setMunicipality(e.target.value);
+                        // Clear barangay when municipality changes
+                        setBarangay('');
+                      }}
                       label={hasExifGps ? 'Municipality (editable for context)' : 'Municipality'}
                       startAdornment={
                         <InputAdornment position="start">
@@ -1146,6 +1281,9 @@ export default function PublicReport() {
                       }}
                     >
                       <MenuItem value="Manolo Fortich">Manolo Fortich</MenuItem>
+                      <MenuItem value="Malitbog">Malitbog</MenuItem>
+                      <MenuItem value="Sumilao">Sumilao</MenuItem>
+                      <MenuItem value="Impasugong">Impasugong</MenuItem>
                     </Select>
                   </FormControl>
                 </Box>
@@ -1185,28 +1323,11 @@ export default function PublicReport() {
                         }
                       }}
                     >
-                      <MenuItem value="Agusan Canyon">Agusan Canyon</MenuItem>
-                      <MenuItem value="Alae">Alae</MenuItem>
-                      <MenuItem value="Dahilayan">Dahilayan</MenuItem>
-                      <MenuItem value="Dalirig">Dalirig</MenuItem>
-                      <MenuItem value="Damilag">Damilag</MenuItem>
-                      <MenuItem value="Diclum">Diclum</MenuItem>
-                      <MenuItem value="Guilang-guilang">Guilang-guilang</MenuItem>
-                      <MenuItem value="Kalugmanan">Kalugmanan</MenuItem>
-                      <MenuItem value="Lindaban">Lindaban</MenuItem>
-                      <MenuItem value="Lingion">Lingion</MenuItem>
-                      <MenuItem value="Lunocan">Lunocan</MenuItem>
-                      <MenuItem value="Maluko">Maluko</MenuItem>
-                      <MenuItem value="Mambatangan">Mambatangan</MenuItem>
-                      <MenuItem value="Mampayag">Mampayag</MenuItem>
-                      <MenuItem value="Minsuro">Minsuro</MenuItem>
-                      <MenuItem value="Mantibugao">Mantibugao</MenuItem>
-                      <MenuItem value="Tankulan (Pob.)">Tankulan (Pob.)</MenuItem>
-                      <MenuItem value="San Miguel">San Miguel</MenuItem>
-                      <MenuItem value="Sankanan">Sankanan</MenuItem>
-                      <MenuItem value="Santiago">Santiago</MenuItem>
-                      <MenuItem value="Santo Niño">Santo Niño</MenuItem>
-                      <MenuItem value="Ticala">Ticala</MenuItem>
+                      {getBarangaysForMunicipality(municipality).map((barangayName) => (
+                        <MenuItem key={barangayName} value={barangayName}>
+                          {barangayName}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </Box>
