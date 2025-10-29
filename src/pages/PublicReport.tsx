@@ -53,20 +53,65 @@ function extractLatLngFromExif(file: File): Promise<{ lat?: number; lng?: number
   return new Promise(async (resolve) => {
     try {
       console.log('Starting EXIF extraction for file:', file.name, file.size, 'bytes');
-      const exifData = await exifr.parse(file, { gps: true });
+      
+      // Parse EXIF data with GPS focus
+      const exifData = await exifr.parse(file, { 
+        gps: true,
+        pick: ['GPSLatitude', 'GPSLongitude', 'GPSLatitudeRef', 'GPSLongitudeRef', 'latitude', 'longitude']
+      });
+      
       console.log('Raw EXIF data:', exifData);
       
-      if (exifData && exifData.latitude && exifData.longitude) {
-        console.log('GPS coordinates found:', { 
-          latitude: exifData.latitude, 
-          longitude: exifData.longitude,
-          latType: typeof exifData.latitude,
-          lngType: typeof exifData.longitude
-        });
-        resolve({
-          lat: exifData.latitude,
-          lng: exifData.longitude
-        });
+      let latitude: number | undefined;
+      let longitude: number | undefined;
+      
+      // Try multiple possible GPS data locations
+      if (exifData) {
+        // Standard GPS location
+        if (exifData.latitude && exifData.longitude) {
+          latitude = exifData.latitude;
+          longitude = exifData.longitude;
+        }
+        // GPS coordinates object
+        else if (exifData.GPSLatitude && exifData.GPSLongitude) {
+          latitude = exifData.GPSLatitude;
+          longitude = exifData.GPSLongitude;
+        }
+        // GPS data as nested object
+        else if (exifData.GPS && exifData.GPS.GPSLatitude && exifData.GPS.GPSLongitude) {
+          latitude = exifData.GPS.GPSLatitude;
+          longitude = exifData.GPS.GPSLongitude;
+        }
+        // Latitude/Longitude with different case
+        else if (exifData.Latitude && exifData.Longitude) {
+          latitude = exifData.Latitude;
+          longitude = exifData.Longitude;
+        }
+      }
+      
+      // Validate coordinates
+      if (latitude !== undefined && longitude !== undefined) {
+        // Ensure coordinates are valid numbers
+        const lat = Number(latitude);
+        const lng = Number(longitude);
+        
+        // Validate coordinate ranges (Manolo Fortich area: ~8.2-8.5N, ~124.8-125.0E)
+        if (!isNaN(lat) && !isNaN(lng) && 
+            lat >= 8.0 && lat <= 9.0 && 
+            lng >= 124.5 && lng <= 125.5) {
+          console.log('GPS coordinates validated and found:', { 
+            latitude: lat, 
+            longitude: lng,
+            precision: '6 decimals'
+          });
+          resolve({
+            lat: lat,
+            lng: lng
+          });
+        } else {
+          console.log('GPS coordinates found but outside valid range:', { lat, lng });
+          resolve(null);
+        }
       } else {
         console.log('No GPS data found in EXIF');
         resolve(null);
@@ -125,31 +170,31 @@ export default function PublicReport() {
 
   const getBarangayFromCoordinates = (lat: number, lng: number) => {
     // More accurate coordinate ranges for Manolo Fortich barangays
-    // Based on actual geographic boundaries
+    // Expanded bounds for better coverage based on actual geographic boundaries
     const barangayBounds = [
-      // Updated bounds based on accurate coordinates
-      { name: 'Agusan Canyon', latMin: 8.38, latMax: 8.40, lngMin: 124.88, lngMax: 124.89 },
-      { name: 'Alae', latMin: 8.42, latMax: 8.43, lngMin: 124.81, lngMax: 124.82 },
-      { name: 'Dahilayan', latMin: 8.21, latMax: 8.23, lngMin: 124.84, lngMax: 124.86 },
-      { name: 'Dalirig', latMin: 8.37, latMax: 8.38, lngMin: 124.90, lngMax: 124.91 },
-      { name: 'Damilag', latMin: 8.35, latMax: 8.36, lngMin: 124.81, lngMax: 124.82 },
-      { name: 'Diclum', latMin: 8.36, latMax: 8.37, lngMin: 124.85, lngMax: 124.86 },
-      { name: 'Guilang-guilang', latMin: 8.36, latMax: 8.37, lngMin: 124.86, lngMax: 124.87 },
-      { name: 'Kalugmanan', latMin: 8.27, latMax: 8.28, lngMin: 124.85, lngMax: 124.86 },
-      { name: 'Lindaban', latMin: 8.29, latMax: 8.30, lngMin: 124.84, lngMax: 124.85 },
-      { name: 'Lingion', latMin: 8.40, latMax: 8.41, lngMin: 124.88, lngMax: 124.89 },
-      { name: 'Lunocan', latMin: 8.41, latMax: 8.42, lngMin: 124.82, lngMax: 124.83 },
-      { name: 'Maluko', latMin: 8.37, latMax: 8.38, lngMin: 124.95, lngMax: 124.96 },
-      { name: 'Mambatangan', latMin: 8.43, latMax: 8.44, lngMin: 124.80, lngMax: 124.81 },
-      { name: 'Mampayag', latMin: 8.26, latMax: 8.27, lngMin: 124.82, lngMax: 124.83 },
-      { name: 'Minsuro', latMin: 8.51, latMax: 8.52, lngMin: 124.82, lngMax: 124.83 },
-      { name: 'Mantibugao', latMin: 8.45, latMax: 8.47, lngMin: 124.82, lngMax: 124.83 },
-      { name: 'Tankulan (Pob.)', latMin: 8.36, latMax: 8.37, lngMin: 124.86, lngMax: 124.87 },
-      { name: 'San Miguel', latMin: 8.38, latMax: 8.39, lngMin: 124.83, lngMax: 124.84 },
-      { name: 'Sankanan', latMin: 8.31, latMax: 8.32, lngMin: 124.85, lngMax: 124.86 },
-      { name: 'Santiago', latMin: 8.43, latMax: 8.44, lngMin: 124.99, lngMax: 125.00 },
-      { name: 'Santo Niño', latMin: 8.43, latMax: 8.44, lngMin: 124.86, lngMax: 124.87 },
-      { name: 'Ticala', latMin: 8.34, latMax: 8.35, lngMin: 124.89, lngMax: 124.90 }
+      // Expanded bounds for better accuracy
+      { name: 'Agusan Canyon', latMin: 8.380, latMax: 8.400, lngMin: 124.880, lngMax: 124.890 },
+      { name: 'Alae', latMin: 8.420, latMax: 8.430, lngMin: 124.810, lngMax: 124.820 },
+      { name: 'Dahilayan', latMin: 8.210, latMax: 8.235, lngMin: 124.840, lngMax: 124.860 },
+      { name: 'Dalirig', latMin: 8.370, latMax: 8.385, lngMin: 124.895, lngMax: 124.910 },
+      { name: 'Damilag', latMin: 8.350, latMax: 8.365, lngMin: 124.810, lngMax: 124.820 },
+      { name: 'Diclum', latMin: 8.360, latMax: 8.375, lngMin: 124.845, lngMax: 124.860 },
+      { name: 'Guilang-guilang', latMin: 8.365, latMax: 8.375, lngMin: 124.860, lngMax: 124.870 },
+      { name: 'Kalugmanan', latMin: 8.270, latMax: 8.285, lngMin: 124.850, lngMax: 124.865 },
+      { name: 'Lindaban', latMin: 8.285, latMax: 8.305, lngMin: 124.840, lngMax: 124.855 },
+      { name: 'Lingion', latMin: 8.395, latMax: 8.415, lngMin: 124.880, lngMax: 124.895 },
+      { name: 'Lunocan', latMin: 8.410, latMax: 8.425, lngMin: 124.815, lngMax: 124.835 },
+      { name: 'Maluko', latMin: 8.370, latMax: 8.385, lngMin: 124.950, lngMax: 124.965 },
+      { name: 'Mambatangan', latMin: 8.425, latMax: 8.445, lngMin: 124.800, lngMax: 124.815 },
+      { name: 'Mampayag', latMin: 8.260, latMax: 8.275, lngMin: 124.820, lngMax: 124.835 },
+      { name: 'Minsuro', latMin: 8.505, latMax: 8.520, lngMin: 124.815, lngMax: 124.835 },
+      { name: 'Mantibugao', latMin: 8.450, latMax: 8.475, lngMin: 124.815, lngMax: 124.835 },
+      { name: 'Tankulan (Pob.)', latMin: 8.360, latMax: 8.375, lngMin: 124.860, lngMax: 124.870 },
+      { name: 'San Miguel', latMin: 8.375, latMax: 8.395, lngMin: 124.825, lngMax: 124.845 },
+      { name: 'Sankanan', latMin: 8.305, latMax: 8.325, lngMin: 124.850, lngMax: 124.865 },
+      { name: 'Santiago', latMin: 8.430, latMax: 8.445, lngMin: 124.985, lngMax: 125.000 },
+      { name: 'Santo Niño', latMin: 8.425, latMax: 8.440, lngMin: 124.855, lngMax: 124.870 },
+      { name: 'Ticala', latMin: 8.335, latMax: 8.355, lngMin: 124.885, lngMax: 124.900 }
     ];
 
     // Find the barangay that contains these coordinates
@@ -161,14 +206,22 @@ export default function PublicReport() {
       }
     }
 
-    // If no specific match, try to find the closest one based on distance
+    // If no exact match, try to find the closest one based on distance (using center points)
     let closestBarangay = '';
     let minDistance = Infinity;
 
     for (const barangay of barangayBounds) {
       const centerLat = (barangay.latMin + barangay.latMax) / 2;
       const centerLng = (barangay.lngMin + barangay.lngMax) / 2;
-      const distance = Math.sqrt(Math.pow(lat - centerLat, 2) + Math.pow(lng - centerLng, 2));
+      // Use Haversine distance for better accuracy
+      const R = 6371; // Earth's radius in km
+      const dLat = (lat - centerLat) * Math.PI / 180;
+      const dLng = (lng - centerLng) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat * Math.PI / 180) * Math.cos(centerLat * Math.PI / 180) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const distance = R * c;
       
       if (distance < minDistance) {
         minDistance = distance;
@@ -176,7 +229,7 @@ export default function PublicReport() {
       }
     }
 
-    console.log(`No exact match found, closest barangay: ${closestBarangay} (distance: ${minDistance})`);
+    console.log(`No exact match found, closest barangay: ${closestBarangay} (distance: ${minDistance.toFixed(2)} km)`);
     return closestBarangay;
   };
 
@@ -779,13 +832,14 @@ export default function PublicReport() {
                     }
                   }}
                 >
-                  <input
+                  {/* Temporarily disabled upload photo feature */}
+                  {/* <input
                     accept="image/*"
                     style={{ display: 'none' }}
                     id="photo-upload"
                     type="file"
                     onChange={handlePhotoChange}
-                  />
+                  /> */}
                   
                   <Box sx={{ position: 'relative', zIndex: 1 }}>
                     {/* Single Camera Icon - More Clear */}
@@ -822,8 +876,9 @@ export default function PublicReport() {
                     </Box>
                     
                     {/* Action Buttons */}
-                    <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mb: 3 }}>
-                      <Button
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+                      {/* Temporarily disabled upload photo button */}
+                      {/* <Button
                         variant="contained"
                         component="label"
                         htmlFor="photo-upload"
@@ -843,7 +898,7 @@ export default function PublicReport() {
                         }}
                       >
                         Choose File
-                      </Button>
+                      </Button> */}
                       
                       <Button
                         variant="outlined"
@@ -2097,7 +2152,7 @@ export default function PublicReport() {
               </Alert>
             </Box>
 
-            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
               <Button
                 onClick={() => {
                   setShowSuccessModal(false);
@@ -2127,6 +2182,38 @@ export default function PublicReport() {
                 }}
               >
                 Submit Another Report
+              </Button>
+              
+              <Button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  navigate('/login');
+                }}
+                variant="outlined"
+                sx={{ 
+                  minWidth: 120,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  py: 1.5,
+                  color: '#2e7d32',
+                  borderColor: '#2e7d32',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: 'scale(1)',
+                  '&:hover': {
+                    borderColor: '#1b5e20',
+                    color: '#1b5e20',
+                    backgroundColor: 'rgba(46, 125, 50, 0.04)',
+                    transform: 'scale(1.05)',
+                    boxShadow: '0 8px 25px rgba(46, 125, 50, 0.2)'
+                  },
+                  '&:active': {
+                    transform: 'scale(0.95)',
+                    transition: 'transform 0.1s ease'
+                  }
+                }}
+              >
+                Go Back to Login
               </Button>
             </Box>
           </Box>

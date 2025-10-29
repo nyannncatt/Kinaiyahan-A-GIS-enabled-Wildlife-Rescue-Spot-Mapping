@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, GeoJSON } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, GeoJSON, Polyline } from 'react-leaflet';
 import { Icon, LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -104,6 +104,22 @@ function normalizeStatus(status: string | undefined): string {
   if (v === "reported") return "reported";
   if (v === "rescued") return "rescued";
   return v;
+}
+
+function formatStatusLabel(status: string | undefined): string {
+  const normalized = normalizeStatus(status);
+  switch (normalized) {
+    case "released":
+      return "Dispersed";
+    case "turned over":
+      return "Turned Over";
+    case "reported":
+      return "Reported";
+    case "rescued":
+      return "Rescued";
+    default:
+      return String(status || "");
+  }
 }
 
 function MapBoundsController() {
@@ -293,7 +309,8 @@ const statusColors: Record<string, string> = {
   'reported': '#f44336', // Red
   'rescued': '#2196f3', // Blue
   'turned over': '#ffc107', // Yellow
-  'released': '#4caf50' // Green
+  'released': '#4caf50', // Green
+  'dispersed': '#ff9800' // Orange
 };
 
 export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
@@ -307,11 +324,43 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [editingMarkerId, setEditingMarkerId] = useState<string | null>(null);
   const [editDrafts, setEditDrafts] = useState<Record<string, any>>({});
   const [relocatingMarkerId, setRelocatingMarkerId] = useState<string | null>(null);
+  const [dispersingMarkerId, setDispersingMarkerId] = useState<string | null>(null);
+  const [originalLocation, setOriginalLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [cursorPosition, setCursorPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [relocationOriginalLocation, setRelocationOriginalLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [dispersalTraces, setDispersalTraces] = useState<Array<{
+    id: string;
+    originalLat: number;
+    originalLng: number;
+    originalBarangay?: string;
+    dispersedLat: number;
+    dispersedLng: number;
+    dispersedBarangay?: string;
+    speciesName: string;
+  }>>(() => {
+    // Load dispersal traces from localStorage on component mount
+    try {
+      const saved = localStorage.getItem('wildlife-dispersal-traces');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [role, setRole] = useState<string | null>(null);
   const [editSpeciesOptions, setEditSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
   const [editSpeciesLoading, setEditSpeciesLoading] = useState(false);
+  const [showEditSpeciesDropdown, setShowEditSpeciesDropdown] = useState(false);
   const [hasLoadedRecords, setHasLoadedRecords] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Save dispersal traces to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('wildlife-dispersal-traces', JSON.stringify(dispersalTraces));
+    } catch (error) {
+      console.error('Failed to save dispersal traces to localStorage:', error);
+    }
+  }, [dispersalTraces]);
   const [visibilityBump, setVisibilityBump] = useState(0);
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
   const [pendingWarning, setPendingWarning] = useState<string | null>(null);
@@ -353,7 +402,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [showResults, setShowResults] = useState(false);
 
   // Status filters (multi-select)
-  const ALL_STATUSES = ["reported", "rescued", "turned over", "released"] as const;
+  const ALL_STATUSES = ["reported", "rescued", "turned over", "released", "dispersed"] as const;
   const [enabledStatuses, setEnabledStatuses] = useState<string[]>([...ALL_STATUSES]);
 
   // Debug logging for initial state
@@ -367,6 +416,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   // Species autocomplete
   const [speciesOptions, setSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
   const [speciesLoading, setSpeciesLoading] = useState(false);
+  const [showSpeciesDropdown, setShowSpeciesDropdown] = useState(false);
   
   const markerRefs = useRef<Record<string, L.Marker | null>>({});
   const editInputRefs = useRef<Record<string, HTMLInputElement>>({});
@@ -595,15 +645,45 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     return () => controller.abort();
   }, [pendingMarker?.pos?.[0], pendingMarker?.pos?.[1]]);
 
+  // Load initial species suggestions when component mounts
+  useEffect(() => {
+    const loadInitialSpecies = async () => {
+      setSpeciesLoading(true);
+      try {
+        // Load popular wildlife species for the Philippines
+        const url = `https://api.inaturalist.org/v1/taxa/autocomplete?q=wildlife&per_page=12`;
+        const res = await fetch(url, { headers: { Accept: "application/json" } });
+        if (res.ok) {
+          const data = await res.json();
+          const options = (data?.results || [])
+            .map((r: any) => ({ label: r?.name || "", common: r?.preferred_common_name || undefined }))
+            .filter((o: any) => o.label);
+          setSpeciesOptions(options);
+          setShowSpeciesDropdown(true);
+        }
+      } catch (error) {
+        console.log('Failed to load initial species suggestions:', error);
+      } finally {
+        setSpeciesLoading(false);
+      }
+    };
+
+    // Load initial suggestions after a short delay to ensure component is ready
+    const timer = setTimeout(loadInitialSpecies, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Species autocomplete
   useEffect(() => {
     const query = pendingMarker?.speciesName?.trim() || "";
     if (!pendingMarker || query.length < 2) {
       setSpeciesOptions([]);
       setSpeciesLoading(false);
+      setShowSpeciesDropdown(false);
       return;
     }
     setSpeciesLoading(true);
+    setShowSpeciesDropdown(true);
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
@@ -630,9 +710,10 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   useEffect(() => {
     const currentDraft = editingMarkerId ? editDrafts[editingMarkerId] : null;
     const query = currentDraft?.species_name?.trim() || "";
-    if (!editingMarkerId || query.length < 2) {
+    if (!editingMarkerId || query.length < 2 || !showEditSpeciesDropdown) {
       setEditSpeciesOptions([]);
       setEditSpeciesLoading(false);
+      setShowEditSpeciesDropdown(false);
       return;
     }
     setEditSpeciesLoading(true);
@@ -657,7 +738,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [editDrafts, editingMarkerId]);
+  }, [editDrafts, editingMarkerId, showEditSpeciesDropdown]);
 
   // Debounced place search
   useEffect(() => {
@@ -1006,6 +1087,144 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     }
   };
 
+  const handleUndispersed = async (dispersedRecordId: string) => {
+    try {
+      console.log('Starting undispersed for record:', dispersedRecordId);
+      
+      // Find the dispersal trace to get original location info
+      const trace = dispersalTraces.find(t => t.id === dispersedRecordId);
+      if (!trace) {
+        throw new Error('Dispersal trace not found');
+      }
+      
+      // Find the original marker
+      const originalMarker = wildlifeRecords.find(m => 
+        m.latitude === trace.originalLat && 
+        m.longitude === trace.originalLng &&
+        m.species_name === trace.speciesName
+      );
+      
+      if (!originalMarker) {
+        throw new Error('Original marker not found');
+      }
+      
+      // Delete the dispersed record
+      await deleteWildlifeRecord(dispersedRecordId);
+      
+      // Remove from dispersal traces
+      setDispersalTraces(prev => prev.filter(t => t.id !== dispersedRecordId));
+      
+      // Refresh records
+      try { triggerRecordsRefresh(); } catch {}
+      
+      // Show success modal
+      setSuccessModal({
+        open: true,
+        title: 'Success!',
+        message: `Dispersal has been undone. Wildlife record restored to original location.`,
+      });
+      
+      // Refresh map data
+      setTimeout(() => {
+        refreshMapData();
+      }, 1000);
+      
+    } catch (err) {
+      console.error('Error undoing dispersal:', err);
+      setError(err instanceof Error ? err.message : 'Failed to undo dispersal');
+    }
+  };
+
+  const handleDispersalMarker = async (id: string, newLat: number, newLng: number) => {
+    try {
+      console.log('Starting dispersal for marker:', id, 'to coordinates:', { lat: newLat, lng: newLng });
+      
+      // Get the original marker data
+      const originalMarker = wildlifeRecords.find(m => m.id === id);
+      if (!originalMarker) {
+        throw new Error('Original marker not found');
+      }
+      
+      // Get the new barangay based on coordinates using reverse geocoding
+      const newBarangay = await getBarangayFromCoordinates(newLat, newLng);
+      console.log('New barangay from coordinates:', newBarangay);
+      
+      // Create a new record for the dispersed location instead of updating the original
+      const dispersedRecord = {
+        species_name: originalMarker.species_name,
+        status: 'released' as const,
+        approval_status: 'approved' as const,
+        latitude: newLat,
+        longitude: newLng,
+        barangay: newBarangay || undefined,
+        municipality: originalMarker.municipality,
+        reporter_name: originalMarker.reporter_name,
+        contact_number: originalMarker.contact_number,
+        photo_url: originalMarker.photo_url,
+        has_exif_gps: originalMarker.has_exif_gps,
+        timestamp_captured: new Date().toISOString()
+        // Note: Dispersal tracking fields removed for now due to database schema limitations
+      };
+      
+      console.log('Creating dispersed record:', dispersedRecord);
+      const createdRecord = await createWildlifeRecord(dispersedRecord);
+      console.log('Created dispersed record:', createdRecord);
+      
+      // Store dispersal trace information in state
+      const traceInfo: {
+        id: string;
+        originalLat: number;
+        originalLng: number;
+        originalBarangay?: string;
+        dispersedLat: number;
+        dispersedLng: number;
+        dispersedBarangay?: string;
+        speciesName: string;
+      } = {
+        id: createdRecord.id,
+        originalLat: originalMarker.latitude,
+        originalLng: originalMarker.longitude,
+        originalBarangay: originalMarker.barangay || undefined,
+        dispersedLat: newLat,
+        dispersedLng: newLng,
+        dispersedBarangay: newBarangay || undefined,
+        speciesName: originalMarker.species_name
+      };
+      
+      setDispersalTraces(prev => [...prev, traceInfo]);
+      setDispersingMarkerId(null);
+      setOriginalLocation(null);
+      try { triggerRecordsRefresh(); } catch {}
+      
+      // Show success modal
+      setSuccessModal({
+        open: true,
+        title: 'Success!',
+        message: `Wildlife record has been dispersed to new location. Original location preserved with trace line.${newBarangay ? ` New location: ${newBarangay}` : ''}`,
+      });
+      
+      // Refresh map data after successful creation
+      setTimeout(() => {
+        refreshMapData();
+      }, 1000);
+    } catch (err) {
+      console.error('Error dispersing wildlife record:', err);
+      
+      // Check if it's a database constraint error
+      if (err instanceof Error && err.message.includes('dispersed')) {
+        setError('The "dispersed" status is not supported by the database. Please contact the administrator to add this status.');
+      } else if (err instanceof Error && err.message.includes('constraint')) {
+        setError('Database constraint error. The dispersed status may not be allowed.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to disperse wildlife record');
+      }
+      
+      // Reset dispersal state on error
+      setDispersingMarkerId(null);
+      setOriginalLocation(null);
+    }
+  };
+
   // Handle photo upload
   const handlePhotoUpload = async (file: File, recordId?: string) => {
     try {
@@ -1069,10 +1288,58 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         const lat = Number(e.latlng.lat);
         const lng = Number(e.latlng.lng);
         handleRelocateMarker(markerId, lat, lng);
+      },
+      mousemove(e) {
+        if (!enabled) return;
+        const lat = Number(e.latlng.lat);
+        const lng = Number(e.latlng.lng);
+        setCursorPosition({ lat, lng });
+      },
+      mouseout() {
+        if (enabled) {
+          setCursorPosition(null);
+        }
       }
     });
 
     // Change cursor when in relocation mode
+    useEffect(() => {
+      if (enabled) {
+        // Use a custom cursor with location pin icon
+        map.getContainer().style.cursor = 'url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyUzYuNDggMjIgMTIgMjJTMjIgMTcuNTIgMjIgMTJTMTcuNTIgMiAxMiAyWk0xMiAxM0MxMC4zNCAxMyA5IDExLjY2IDkgMTBTMTAuMzQgNyAxMiA3UzE1IDguMzQgMTUgMTBTMTMuNjYgMTMgMTIgMTNaIiBmaWxsPSIjRkY2MDAwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjMiIGZpbGw9IiNGRkZGRkYiLz4KPC9zdmc+") 12 12, pointer';
+        return () => {
+          map.getContainer().style.cursor = '';
+        };
+      }
+    }, [enabled, map]);
+
+    return null;
+  }
+
+  function DispersalMarkerOnClick({ enabled, markerId }: { enabled: boolean; markerId: string | null }) {
+    const map = useMap();
+    
+    useMapEvents({
+      click(e) {
+        if (!enabled || !markerId) return;
+        const lat = Number(e.latlng.lat);
+        const lng = Number(e.latlng.lng);
+        handleDispersalMarker(markerId, lat, lng);
+      },
+      mousemove(e) {
+        if (!enabled) return;
+        const lat = Number(e.latlng.lat);
+        const lng = Number(e.latlng.lng);
+        setCursorPosition({ lat, lng });
+      },
+      mouseout() {
+        if (enabled) {
+          setCursorPosition(null);
+        }
+      }
+    });
+
+    // Change cursor when in dispersal mode
     useEffect(() => {
       if (enabled) {
         // Use a custom cursor with location pin icon
@@ -1207,169 +1474,128 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         position: 'absolute', 
         top: 10, 
         right: 10, 
-        zIndex: 1100,
+        zIndex: 1500,
         display: 'flex',
         flexDirection: 'column',
         gap: 1,
-        maxWidth: { xs: 'calc(100vw - 20px)', sm: '280px' },
+        maxWidth: { xs: 'calc(100vw - 20px)', sm: 'auto' },
         width: { xs: 'calc(100vw - 20px)', sm: 'auto' }
       }}>
-        {/* Filter Header */}
-        <Box sx={{
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: 2,
-          px: { xs: 1.5, sm: 2 },
-          py: 1,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-          border: '1px solid rgba(255,255,255,0.2)',
-          maxHeight: { xs: '70vh', sm: 'auto' },
-          overflow: { xs: 'auto', sm: 'visible' }
+        {/* Status Filter Buttons */}
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' }, 
+          gap: { xs: 0.5, sm: 1 },
+          flexWrap: 'wrap',
+          justifyContent: 'center'
         }}>
-          <Typography variant="subtitle2" sx={{ 
-            fontWeight: 600, 
-            color: 'text.primary',
-            textAlign: 'center',
-            mb: 1
-          }}>
-            Filter by Status
-          </Typography>
-          
-          {/* Status Filter Buttons */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
             {[
               { 
                 value: 'reported', 
                 label: 'Reported', 
-                color: '#e53935', 
-                icon: '🚨',
+                color: '#e53935',
+                icon: '🗒️',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'reported' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
               { 
                 value: 'rescued', 
                 label: 'Rescued', 
-                color: '#1e88e5', 
-                icon: '🚑',
+                color: '#1e88e5',
+                icon: '🤝',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'rescued' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
               { 
                 value: 'turned over', 
                 label: 'Turned Over', 
-                color: '#fdd835', 
-                icon: '🤝',
+                color: '#fdd835',
+                icon: '🔄',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'turned over' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
               { 
                 value: 'released', 
-                label: 'Released', 
-                color: '#43a047', 
-                icon: '🆓',
+                label: 'Dispersed', 
+                color: '#43a047',
+                icon: '🌀',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'released' && (r.approval_status === 'approved' || r.user_id !== null)).length
-              }
+              },
             ].map((status) => {
               const isSelected = enabledStatuses.includes(status.value);
               return (
-                <Box
+                <Tooltip 
                   key={status.value}
-                  onClick={() => {
-                    if (isSelected) {
-                      setEnabledStatuses(prev => prev.filter(s => s !== status.value));
-                    } else {
-                      setEnabledStatuses(prev => [...prev, status.value]);
-                    }
-                  }}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    p: { xs: 1, sm: 1.5 },
-                    borderRadius: 1.5,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease-in-out',
-                    backgroundColor: isSelected ? alpha(status.color, 0.15) : 'transparent',
-                    border: `2px solid ${isSelected ? status.color : 'transparent'}`,
-                    minHeight: { xs: 44, sm: 'auto' },
-                    '&:hover': {
-                      backgroundColor: isSelected ? alpha(status.color, 0.25) : alpha(status.color, 0.08),
-                      transform: { xs: 'none', sm: 'translateX(2px)' },
-                      boxShadow: isSelected ? `0 4px 12px ${alpha(status.color, 0.3)}` : '0 2px 8px rgba(0,0,0,0.1)'
-                    },
-                    '&:active': {
-                      transform: 'scale(0.98)'
-                    }
+                  title={isSelected ? `Hide ${status.label} records` : `Show ${status.label} records`} 
+                  enterDelay={500}
+                  PopperProps={{
+                    style: { zIndex: 1500 }
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
-                    <Typography sx={{ fontSize: { xs: '1.1rem', sm: '1.2rem' } }}>{status.icon}</Typography>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        fontWeight: isSelected ? 600 : 500,
-                        color: isSelected ? status.color : 'text.primary',
-                        transition: 'all 0.2s ease-in-out',
-                        fontSize: { xs: '0.875rem', sm: '0.875rem' }
-                      }}
-                    >
-                      {status.label}
-                    </Typography>
-                  </Box>
-                  
-                  {/* Count Badge */}
-                  <Chip
-                    label={status.count}
+                  <Button
+                    variant={isSelected ? "contained" : "outlined"}
+                    color="inherit"
                     size="small"
-                    sx={{
-                      backgroundColor: isSelected ? status.color : alpha(status.color, 0.2),
-                      color: isSelected ? 'white' : status.color,
-                      fontWeight: 600,
-                      minWidth: { xs: 20, sm: 24 },
-                      height: { xs: 20, sm: 24 },
-                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                      transition: 'all 0.2s ease-in-out'
+                    onClick={() => {
+                      if (isSelected) {
+                        setEnabledStatuses(prev => prev.filter(s => s !== status.value));
+                      } else {
+                        setEnabledStatuses(prev => [...prev, status.value]);
+                      }
                     }}
-                  />
-                </Box>
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      minWidth: 'auto',
+                      px: 2,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'flex-start',
+                      gap: 1,
+                      border: '1px solid black',
+                      transition: 'all 0.2s ease-in-out',
+                      '&:hover': {
+                        backgroundColor: 'action.hover',
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                        borderColor: 'primary.main',
+                        color: 'primary.main'
+                      },
+                      backgroundColor: isSelected ? status.color : 'rgba(255, 255, 255, 0.8)',
+                      color: isSelected ? 'white' : status.color,
+                      backdropFilter: 'blur(5px)'
+                    }}
+                  >
+                    <Typography sx={{ fontSize: '1.1rem' }}>{status.icon}</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          fontWeight: 600,
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        {status.label}
+                      </Typography>
+                      <Chip
+                        label={status.count}
+                        size="small"
+                        sx={{
+                          backgroundColor: isSelected ? 'rgba(255,255,255,0.9)' : alpha(status.color, 0.2),
+                          color: isSelected ? status.color : status.color,
+                          fontWeight: 600,
+                          minWidth: 20,
+                          height: 20,
+                          fontSize: '0.7rem',
+                          transition: 'all 0.2s ease-in-out',
+                          border: `1px solid ${isSelected ? status.color : 'transparent'}`,
+                          '& .MuiChip-label': {
+                            px: 0.5
+                          }
+                        }}
+                      />
+                    </Box>
+                  </Button>
+                </Tooltip>
               );
             })}
-          </Box>
-          
-          {/* Clear All / Select All */}
-          <Box sx={{ 
-            display: 'flex', 
-            gap: { xs: 0.5, sm: 1 }, 
-            mt: 1,
-            justifyContent: 'center',
-            flexDirection: { xs: 'column', sm: 'row' }
-          }}>
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => setEnabledStatuses([])}
-              sx={{ 
-                fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                py: { xs: 0.75, sm: 0.5 },
-                px: { xs: 1, sm: 1.5 },
-                minWidth: 'auto',
-                flex: { xs: 1, sm: 'none' }
-              }}
-            >
-              Clear All
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => setEnabledStatuses([...ALL_STATUSES])}
-              sx={{ 
-                fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                py: { xs: 0.75, sm: 0.5 },
-                px: { xs: 1, sm: 1.5 },
-                minWidth: 'auto',
-                flex: { xs: 1, sm: 'none' }
-              }}
-            >
-              Select All
-            </Button>
-          </Box>
         </Box>
       </Box>
 
@@ -1464,7 +1690,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
 
         /* Prevent tall popup from overflowing viewport: cap content and scroll inside */
         .themed-popup .leaflet-popup-content {
-          max-height: 320px;
+          max-height: 280px;
           overflow: auto;
           margin: 13px 19px; /* keep Leaflet default spacing */
         }
@@ -1472,16 +1698,42 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
           max-width: 320px; /* avoid overly wide popups at low zoom */
         }
         
+        /* Auto-adjust popup position to prevent overflow at map edges */
+        .themed-popup {
+          position: absolute;
+        }
+        
+        .themed-popup .leaflet-popup-content-wrapper {
+          max-width: min(90vw, 400px); /* Responsive width */
+        }
+        
+        /* Ensure popup always stays within viewport */
+        .leaflet-popup-container {
+          max-width: 100vw;
+        }
+        
+        .themed-popup .leaflet-popup-content img {
+          max-width: 100%;
+          height: auto;
+          object-fit: contain;
+        }
+        
+        /* Lock popup size when editing to prevent resizing */
+        .themed-popup.lock-size .leaflet-popup-content-wrapper {
+          width: auto !important;
+          max-width: min(90vw, 400px) !important;
+        }
+        
       `}</style>
 
       {/* Map control buttons */}
       <Box sx={{ position: "absolute", top: 60, left: 10, zIndex: 1000, display: "flex", flexDirection: "column", gap: 1 }}>
-        <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
+          <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
           <Button
             variant={isAddingMarker ? "contained" : "outlined"}
             color={isAddingMarker ? "primary" : "inherit"}
-            size="small"
-            onClick={() => setIsAddingMarker((v) => !v)}
+              size="small"
+              onClick={() => setIsAddingMarker((v) => !v)}
             sx={{ 
               textTransform: 'none',
               fontWeight: 600,
@@ -1505,15 +1757,15 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
             {isAddingMarker ? "Adding Marker" : "Add Marker"}
           </Button>
-        </Tooltip>
-        
-        <Tooltip title="Refresh map data" enterDelay={500}>
+          </Tooltip>
+          
+          <Tooltip title="Refresh map data" enterDelay={500}>
           <Button
             variant="outlined"
             color="inherit"
-            size="small"
-            onClick={refreshMapData}
-            disabled={fetchingModal.open}
+              size="small"
+              onClick={refreshMapData}
+              disabled={fetchingModal.open}
             sx={{ 
               textTransform: 'none',
               fontWeight: 600,
@@ -1609,8 +1861,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             <ZoomOutIcon sx={{ fontSize: 18 }} />
             Zoom Out
           </Button>
-        </Tooltip>
-        
+          </Tooltip>
+          
       </Box>
 
       {error && (
@@ -1646,6 +1898,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         <MapInstance />
         <AddMarkerOnClick enabled={isAddingMarker && role === 'enforcement'} />
         <RelocateMarkerOnClick enabled={!!relocatingMarkerId} markerId={relocatingMarkerId} />
+        <DispersalMarkerOnClick enabled={!!dispersingMarkerId} markerId={dispersingMarkerId} />
 
         {/* Pending marker with photo upload */}
         {pendingMarker && (
@@ -1677,32 +1930,44 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                       return next as PendingMarker;
                     })
                   }
+                  onFocus={() => {
+                    if (speciesOptions.length > 0) {
+                      setShowSpeciesDropdown(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    // Delay hiding to allow click on dropdown items
+                    setTimeout(() => setShowSpeciesDropdown(false), 200);
+                  }}
                   required
                   error={Boolean(pendingWarning) && !(pendingMarker.speciesName || '').trim()}
                   inputRef={(el) => { pendingSpeciesRef.current = el; }}
                 />
-                <Box sx={{ mt: 0.5, border: "1px solid", borderColor: "divider", borderRadius: 1, height: 128, overflow: "auto" }}>
-                  {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
-                  {!speciesLoading && speciesOptions.length === 0 && (
-                    <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
-                  )}
-                  {!speciesLoading && speciesOptions.length > 0 && (
-                    <Box>
-                      {speciesOptions.map((opt) => (
-                        <Box
-                          key={`${opt.label}-${opt.common || ""}`}
-                          sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
-                          onClick={() =>
-                            setPendingMarker((p) => (p ? { ...p, speciesName: opt.label } : p))
-                          }
-                        >
-                          {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
-                          <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-                </Box>
+                {showSpeciesDropdown && (
+                  <Box sx={{ mt: 0.5, border: "1px solid", borderColor: "divider", borderRadius: 1, height: 128, overflow: "auto" }}>
+                    {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
+                    {!speciesLoading && speciesOptions.length === 0 && (
+                      <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
+                    )}
+                    {!speciesLoading && speciesOptions.length > 0 && (
+                      <Box>
+                        {speciesOptions.map((opt) => (
+                          <Box
+                            key={`${opt.label}-${opt.common || ""}`}
+                            sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                            onClick={() => {
+                              setPendingMarker((p) => (p ? { ...p, speciesName: opt.label } : p));
+                              setShowSpeciesDropdown(false);
+                            }}
+                          >
+                            {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                            <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                )}
                 <TextField
                   select
                   size="small"
@@ -1727,7 +1992,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   <MenuItem value="reported">Reported</MenuItem>
                   <MenuItem value="rescued">Rescued</MenuItem>
                   <MenuItem value="turned over">Turned over</MenuItem>
-                  <MenuItem value="released">Released</MenuItem>
+                  <MenuItem value="released">Dispersed</MenuItem>
                 </TextField>
 
                 {/* Reporter details */}
@@ -1760,8 +2025,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                     const fullNumber = countryCode + phoneNumber;
                     setPendingMarker((p) => {
                       const next = p ? { ...p, phoneNumber, contactNumber: fullNumber } : p;
-                      if (next && isPendingComplete(next)) setPendingWarning(null);
-                      return next as PendingMarker;
+                    if (next && isPendingComplete(next)) setPendingWarning(null);
+                    return next as PendingMarker;
                     });
                   }}
                   required
@@ -1888,64 +2153,75 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             icon={createStatusIcon(editingMarker.status)}
             ref={(ref) => { if (ref) markerRefs.current[editingMarker.id] = ref; }}
           >
-            <Popup className="themed-popup">
+            <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
                 <Box sx={{ position: 'relative' }}>
-                  <TextField
-                    variant="outlined"
-                    margin="dense"
-                    fullWidth
-                    size="small"
-                    value={editDrafts[editingMarker.id]?.species_name || editingMarker.species_name}
-                    onChange={(e) =>
-                      setEditDrafts((prev) => ({
-                        ...prev,
-                        [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: e.target.value, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
-                      }))
-                    }
-                    inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
-                  />
-                  <Box sx={{ 
-                    position: 'absolute', 
-                    top: '100%', 
-                    left: 0, 
-                    right: 0, 
-                    zIndex: 1000,
-                    mt: 0.5, 
-                    border: "1px solid", 
-                    borderColor: "divider", 
-                    borderRadius: 1, 
-                    height: 128, 
-                    overflow: "auto",
-                    bgcolor: 'background.paper',
-                    boxShadow: 2
-                  }}>
-                    {editSpeciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
-                    {!editSpeciesLoading && editSpeciesOptions.length === 0 && editDrafts[editingMarker.id]?.species_name && editDrafts[editingMarker.id].species_name.length >= 2 && (
-                      <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
-                    )}
-                    {!editSpeciesLoading && editSpeciesOptions.length > 0 && (
-                      <Box>
-                        {editSpeciesOptions.map((opt) => (
-                          <Box
-                            key={`${opt.label}-${opt.common || ""}`}
-                            sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
-                            onClick={() => {
-                              setEditDrafts((prev) => ({
-                                ...prev,
-                                [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: opt.label, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
-                              }));
-                              setEditSpeciesOptions([]);
-                            }}
-                          >
-                            {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
-                            <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
-                          </Box>
-                        ))}
-                      </Box>
-                    )}
-                  </Box>
+                <TextField
+                  variant="outlined"
+                  margin="dense"
+                  fullWidth
+                  size="small"
+                  value={editDrafts[editingMarker.id]?.species_name || editingMarker.species_name}
+                  onChange={(e) =>
+                    setEditDrafts((prev) => ({
+                      ...prev,
+                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: e.target.value, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
+                    }))
+                  }
+                  onFocus={() => {
+                    setShowEditSpeciesDropdown(true);
+                  }}
+                  onBlur={() => {
+                    // Delay hiding to allow click on dropdown items
+                    setTimeout(() => setShowEditSpeciesDropdown(false), 200);
+                  }}
+                  inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
+                />
+                  {showEditSpeciesDropdown && (
+                    <Box sx={{ 
+                      position: 'absolute', 
+                      top: '100%', 
+                      left: 0, 
+                      right: 0, 
+                      zIndex: 1000,
+                      mt: 0.5, 
+                      border: "1px solid", 
+                      borderColor: "divider", 
+                      borderRadius: 1, 
+                      maxHeight: 200, 
+                      overflow: "auto",
+                      bgcolor: 'background.paper',
+                      boxShadow: 2
+                    }}>
+                      {editSpeciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
+                      {!editSpeciesLoading && editSpeciesOptions.length === 0 && editDrafts[editingMarker.id]?.species_name && editDrafts[editingMarker.id].species_name.length >= 2 && (
+                        <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
+                      )}
+                      {!editSpeciesLoading && editSpeciesOptions.length > 0 && (
+                        <Box>
+                          {editSpeciesOptions.map((opt) => (
+                            <Box
+                              key={`${opt.label}-${opt.common || ""}`}
+                              sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                              onMouseDown={(e) => {
+                                e.preventDefault(); // Prevent input blur
+                                setEditDrafts((prev) => ({
+                                  ...prev,
+                                  [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: opt.label, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
+                                }));
+                                setShowEditSpeciesDropdown(false);
+                                setEditSpeciesOptions([]);
+                              }}
+                            >
+                              {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                              <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
+                  )}
                 </Box>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Status</Box>
                 <TextField
@@ -1965,7 +2241,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   <MenuItem value="reported">Reported</MenuItem>
                   <MenuItem value="rescued">Rescued</MenuItem>
                   <MenuItem value="turned over">Turned over</MenuItem>
-                  <MenuItem value="released">Released</MenuItem>
+                  <MenuItem value="released">Dispersed</MenuItem>
                 </TextField>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Barangay</Box>
                 <TextField
@@ -2030,7 +2306,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
               icon={createStatusIcon(relocatingMarker.status)}
               ref={(ref) => { if (ref) markerRefs.current[relocatingMarker.id] = ref; }}
             >
-              <Popup className="themed-popup">
+              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                   <Typography variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
                     Relocating: {relocatingMarker.species_name}
@@ -2052,8 +2328,317 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
           ) : null;
         })()}
 
+        {/* Dispersal marker and trace line */}
+        {dispersingMarkerId && (() => {
+          const dispersingMarker = finalFilteredMarkers.find(m => m.id === dispersingMarkerId);
+          return dispersingMarker ? (
+            <>
+              {/* Original location marker */}
+              <Marker
+                key={`original-${dispersingMarker.id}`}
+                position={[originalLocation?.lat || dispersingMarker.latitude, originalLocation?.lng || dispersingMarker.longitude]}
+                icon={createStatusIcon(dispersingMarker.status)}
+                ref={(ref) => { if (ref) markerRefs.current[`original-${dispersingMarker.id}`] = ref; }}
+              >
+                <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: 'info.main' }}>
+                      Original Location: {dispersingMarker.species_name}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      This is the original location before dispersal.
+                    </Typography>
+                  </Box>
+                </Popup>
+              </Marker>
+              
+              {/* Dispersal location marker (temporary) */}
+              <Marker
+                key={`dispersal-${dispersingMarker.id}`}
+                position={[dispersingMarker.latitude, dispersingMarker.longitude]}
+                icon={createStatusIcon('released')}
+                ref={(ref) => { if (ref) markerRefs.current[`dispersal-${dispersingMarker.id}`] = ref; }}
+              >
+                <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
+                      Dispersed: {dispersingMarker.species_name}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      Click anywhere on the map to set the new dispersal location.
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => {
+                        setDispersingMarkerId(null);
+                        setOriginalLocation(null);
+                      }}
+                      sx={{ mt: 1 }}
+                    >
+                      Cancel Dispersal
+                    </Button>
+                  </Box>
+                </Popup>
+              </Marker>
+              
+              {/* Trace line from original to dispersal location */}
+              <Polyline
+                positions={[
+                  [originalLocation?.lat || dispersingMarker.latitude, originalLocation?.lng || dispersingMarker.longitude],
+                  [dispersingMarker.latitude, dispersingMarker.longitude]
+                ]}
+                pathOptions={{
+                  color: '#ff9800',
+                  weight: 3,
+                  opacity: 0.8,
+                  dashArray: '10, 10'
+                }}
+              />
+            </>
+          ) : null;
+        })()}
+
+        {/* Dispersal trace lines with multiple curves */}
+        {dispersalTraces.map(trace => {
+          const startLat = trace.originalLat;
+          const startLng = trace.originalLng;
+          const endLat = trace.dispersedLat;
+          const endLng = trace.dispersedLng;
+          
+          // Calculate distance
+          const latDiff = endLat - startLat;
+          const lngDiff = endLng - startLng;
+          const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+          
+          // Determine number of curves based on distance
+          // Near: 3 curves, Far: more curves (up to 7)
+          const numCurves = distance < 0.01 ? 3 : Math.min(Math.floor(distance * 1000) + 3, 7);
+          
+          // Generate multiple curve segments
+          const allCurvePoints: [number, number][] = [];
+          
+          for (let curveIndex = 0; curveIndex < numCurves; curveIndex++) {
+            // Calculate segment start and end points
+            const segmentStart = curveIndex / numCurves;
+            const segmentEnd = (curveIndex + 1) / numCurves;
+            
+            const segStartLat = startLat + latDiff * segmentStart;
+            const segStartLng = startLng + lngDiff * segmentStart;
+            const segEndLat = startLat + latDiff * segmentEnd;
+            const segEndLng = startLng + lngDiff * segmentEnd;
+            
+            // Calculate segment midpoint
+            const segMidLat = (segStartLat + segEndLat) / 2;
+            const segMidLng = (segStartLng + segEndLng) / 2;
+            
+            // Calculate segment distance for curve offset
+            const segLatDiff = segEndLat - segStartLat;
+            const segLngDiff = segEndLng - segStartLng;
+            const segDistance = Math.sqrt(segLatDiff * segLatDiff + segLngDiff * segLngDiff);
+            
+            // Create alternating curve directions for wave-like effect
+            const curveDirection = curveIndex % 2 === 0 ? 1 : -1;
+            const curveOffset = Math.min(segDistance * 0.15, 0.008) * curveDirection;
+            
+            // Perpendicular offset for curve
+            const perpLat = -segLngDiff / segDistance * curveOffset;
+            const perpLng = segLatDiff / segDistance * curveOffset;
+            
+            // Control point for this segment
+            const controlLat = segMidLat + perpLat;
+            const controlLng = segMidLng + perpLng;
+            
+            // Generate curve points for this segment
+            const segmentPoints: [number, number][] = [];
+            const numPoints = Math.max(8, Math.floor(segDistance * 2000)); // More points for longer segments
+            
+            for (let i = 0; i <= numPoints; i++) {
+              const t = i / numPoints;
+              const lat = (1 - t) * (1 - t) * segStartLat + 2 * (1 - t) * t * controlLat + t * t * segEndLat;
+              const lng = (1 - t) * (1 - t) * segStartLng + 2 * (1 - t) * t * controlLng + t * t * segEndLng;
+              segmentPoints.push([lat, lng]);
+            }
+            
+            // Add segment points to overall curve (skip first point to avoid duplicates)
+            if (curveIndex === 0) {
+              allCurvePoints.push(...segmentPoints);
+            } else {
+              allCurvePoints.push(...segmentPoints.slice(1));
+            }
+          }
+          
+          return (
+            <Polyline
+              key={`trace-${trace.id}`}
+              positions={allCurvePoints}
+              pathOptions={{
+                color: '#4caf50',
+                weight: 4,
+                opacity: 0.9
+              }}
+            />
+          );
+        })}
+
+        {/* Dynamic trace line following cursor during relocation (red) */}
+        {relocatingMarkerId && cursorPosition && relocationOriginalLocation && (() => {
+          const startLat = relocationOriginalLocation.lat;
+          const startLng = relocationOriginalLocation.lng;
+          const endLat = cursorPosition.lat;
+          const endLng = cursorPosition.lng;
+          
+          // Calculate distance
+          const latDiff = endLat - startLat;
+          const lngDiff = endLng - startLng;
+          const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+          
+          // Determine number of curves based on distance
+          const numCurves = distance < 0.01 ? 3 : Math.min(Math.floor(distance * 1000) + 3, 7);
+          
+          // Generate multiple curve segments
+          const allCurvePoints: [number, number][] = [];
+          
+          for (let curveIndex = 0; curveIndex < numCurves; curveIndex++) {
+            const segmentStart = curveIndex / numCurves;
+            const segmentEnd = (curveIndex + 1) / numCurves;
+            
+            const segStartLat = startLat + latDiff * segmentStart;
+            const segStartLng = startLng + lngDiff * segmentStart;
+            const segEndLat = startLat + latDiff * segmentEnd;
+            const segEndLng = startLng + lngDiff * segmentEnd;
+            
+            const segMidLat = (segStartLat + segEndLat) / 2;
+            const segMidLng = (segStartLng + segEndLng) / 2;
+            
+            const segLatDiff = segEndLat - segStartLat;
+            const segLngDiff = segEndLng - segStartLng;
+            const segDistance = Math.sqrt(segLatDiff * segLatDiff + segLngDiff * segLngDiff);
+            
+            const curveDirection = curveIndex % 2 === 0 ? 1 : -1;
+            const curveOffset = Math.min(segDistance * 0.15, 0.008) * curveDirection;
+            
+            const perpLat = -segLngDiff / segDistance * curveOffset;
+            const perpLng = segLatDiff / segDistance * curveOffset;
+            
+            const controlLat = segMidLat + perpLat;
+            const controlLng = segMidLng + perpLng;
+            
+            const segmentPoints: [number, number][] = [];
+            const numPoints = Math.max(8, Math.floor(segDistance * 2000));
+            
+            for (let i = 0; i <= numPoints; i++) {
+              const t = i / numPoints;
+              const lat = (1 - t) * (1 - t) * segStartLat + 2 * (1 - t) * t * controlLat + t * t * segEndLat;
+              const lng = (1 - t) * (1 - t) * segStartLng + 2 * (1 - t) * t * controlLng + t * t * segEndLng;
+              segmentPoints.push([lat, lng]);
+            }
+            
+            if (curveIndex === 0) {
+              allCurvePoints.push(...segmentPoints);
+            } else {
+              allCurvePoints.push(...segmentPoints.slice(1));
+            }
+          }
+          
+          return (
+            <Polyline
+              key="dynamic-relocation-trace"
+              positions={allCurvePoints}
+              pathOptions={{
+                color: '#f44336',
+                weight: 3,
+                opacity: 0.6,
+                dashArray: '5, 5'
+              }}
+            />
+          );
+        })()}
+
+        {/* Dynamic trace line following cursor during dispersal (green) */}
+        {dispersingMarkerId && cursorPosition && originalLocation && (() => {
+          const startLat = originalLocation.lat;
+          const startLng = originalLocation.lng;
+          const endLat = cursorPosition.lat;
+          const endLng = cursorPosition.lng;
+          
+          // Calculate distance
+          const latDiff = endLat - startLat;
+          const lngDiff = endLng - startLng;
+          const distance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+          
+          // Determine number of curves based on distance
+          const numCurves = distance < 0.01 ? 3 : Math.min(Math.floor(distance * 1000) + 3, 7);
+          
+          // Generate multiple curve segments
+          const allCurvePoints: [number, number][] = [];
+          
+          for (let curveIndex = 0; curveIndex < numCurves; curveIndex++) {
+            // Calculate segment start and end points
+            const segmentStart = curveIndex / numCurves;
+            const segmentEnd = (curveIndex + 1) / numCurves;
+            
+            const segStartLat = startLat + latDiff * segmentStart;
+            const segStartLng = startLng + lngDiff * segmentStart;
+            const segEndLat = startLat + latDiff * segmentEnd;
+            const segEndLng = startLng + lngDiff * segmentEnd;
+            
+            // Calculate segment midpoint
+            const segMidLat = (segStartLat + segEndLat) / 2;
+            const segMidLng = (segStartLng + segEndLng) / 2;
+            
+            // Calculate segment distance for curve offset
+            const segLatDiff = segEndLat - segStartLat;
+            const segLngDiff = segEndLng - segStartLng;
+            const segDistance = Math.sqrt(segLatDiff * segLatDiff + segLngDiff * segLngDiff);
+            
+            // Create alternating curve directions for wave-like effect
+            const curveDirection = curveIndex % 2 === 0 ? 1 : -1;
+            const curveOffset = Math.min(segDistance * 0.15, 0.008) * curveDirection;
+            
+            // Perpendicular offset for curve
+            const perpLat = -segLngDiff / segDistance * curveOffset;
+            const perpLng = segLatDiff / segDistance * curveOffset;
+            
+            // Control point for this segment
+            const controlLat = segMidLat + perpLat;
+            const controlLng = segMidLng + perpLng;
+            
+            // Generate curve points for this segment
+            const segmentPoints: [number, number][] = [];
+            const numPoints = Math.max(8, Math.floor(segDistance * 2000));
+            
+            for (let i = 0; i <= numPoints; i++) {
+              const t = i / numPoints;
+              const lat = (1 - t) * (1 - t) * segStartLat + 2 * (1 - t) * t * controlLat + t * t * segEndLat;
+              const lng = (1 - t) * (1 - t) * segStartLng + 2 * (1 - t) * t * controlLng + t * t * segEndLng;
+              segmentPoints.push([lat, lng]);
+            }
+            
+            // Add segment points to overall curve
+            if (curveIndex === 0) {
+              allCurvePoints.push(...segmentPoints);
+            } else {
+              allCurvePoints.push(...segmentPoints.slice(1));
+            }
+          }
+          
+          return (
+            <Polyline
+              key="dynamic-dispersal-trace"
+              positions={allCurvePoints}
+              pathOptions={{
+                color: '#4caf50',
+                weight: 3,
+                opacity: 0.6,
+                dashArray: '5, 5'
+              }}
+            />
+          );
+        })()}
+
         {/* Saved user markers */}
-        {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId && m.id !== relocatingMarkerId).length > 0 && (
+        {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId && m.id !== relocatingMarkerId && m.id !== dispersingMarkerId).length > 0 && (
           <MarkerClusterGroup
             chunkedLoading
             iconCreateFunction={(cluster: any) => {
@@ -2081,7 +2666,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                 icon={createStatusIcon(m.status)}
                 ref={(ref) => { markerRefs.current[m.id] = ref; }}
               >
-              <Popup className="themed-popup">
+              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
                 {editingMarkerId === m.id ? (
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                     <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
@@ -2127,7 +2712,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   <MenuItem value="reported">Reported</MenuItem>
                   <MenuItem value="rescued">Rescued</MenuItem>
                   <MenuItem value="turned over">Turned over</MenuItem>
-                  <MenuItem value="released">Released</MenuItem>
+                  <MenuItem value="released">Dispersed</MenuItem>
                 </TextField>
 
                 {/* Reporter details (editable) */}
@@ -2166,14 +2751,14 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                     const fullNumber = countryCode + phoneNumber;
                     setEditDrafts((prev) => ({
                       ...prev,
-                      [m.id]: {
-                        ...prev[m.id],
+                          [m.id]: {
+                            ...prev[m.id],
                         phone_number: phoneNumber,
                         contact_number: fullNumber,
-                        species_name: prev[m.id]?.species_name ?? m.species_name,
-                        status: prev[m.id]?.status ?? m.status,
-                        photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                        reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
+                            species_name: prev[m.id]?.species_name ?? m.species_name,
+                            status: prev[m.id]?.status ?? m.status,
+                            photo_url: prev[m.id]?.photo_url ?? m.photo_url,
+                            reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
                       },
                     }));
                   }}
@@ -2301,7 +2886,52 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                 ) : (
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
                     <div><strong>{m.species_name}</strong></div>
-                    <div>Status: {m.status}</div>
+                    <div>Status: {formatStatusLabel(m.status)}</div>
+                    {/* Dispersal information */}
+                    {(() => {
+                      const trace = dispersalTraces.find(t => t.id === m.id);
+                      return trace ? (
+                        <Box sx={{ 
+                          bgcolor: '#e8f5e8', 
+                          color: '#2e7d32', 
+                          p: 1, 
+                          borderRadius: 1, 
+                          fontSize: '0.875rem',
+                          border: '1px solid',
+                          borderColor: '#4caf50'
+                        }}>
+                          <div><strong>📍 Dispersed Location</strong></div>
+                          <div>Original: {trace.originalBarangay || 'Unknown'} ({trace.originalLat.toFixed(5)}, {trace.originalLng.toFixed(5)})</div>
+                          <div>Current: {trace.dispersedBarangay || 'Unknown'} ({trace.dispersedLat.toFixed(5)}, {trace.dispersedLng.toFixed(5)})</div>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            color="error"
+                            sx={{ 
+                              mt: 1,
+                              minWidth: 'fit-content',
+                              whiteSpace: 'nowrap',
+                              fontSize: '0.75rem',
+                              py: 0.5,
+                              px: 1,
+                              borderColor: '#d32f2f',
+                              color: '#d32f2f',
+                              '&:hover': {
+                                borderColor: '#b71c1c',
+                                color: '#b71c1c',
+                                bgcolor: 'rgba(211, 47, 47, 0.04)'
+                              }
+                            }}
+                            onClick={(e) => {
+                              try { e.preventDefault(); e.stopPropagation(); } catch {}
+                              handleUndispersed(m.id);
+                            }}
+                          >
+                            Undispersed
+                          </Button>
+                        </Box>
+                      ) : null;
+                    })()}
                     {m.photo_url && <img src={m.photo_url} alt="marker" style={{ width: "100%", borderRadius: 8 }} />}
                     <div>Date & Time Captured: {new Date(m.timestamp_captured).toLocaleString()}</div>
                     <div>Latitude: {m.latitude.toFixed(5)}</div>
@@ -2314,6 +2944,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                         <Button
                           variant="outlined"
                           size="small"
+                          sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
                           onClick={(e) => {
                             try { e.preventDefault(); e.stopPropagation(); } catch {}
                             setEditDrafts((prev) => ({
@@ -2340,8 +2971,10 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           variant="outlined"
                           size="small"
                           color="secondary"
+                          sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
                           onClick={(e) => {
                             try { e.preventDefault(); e.stopPropagation(); } catch {}
+                            setRelocationOriginalLocation({ lat: m.latitude, lng: m.longitude });
                             setRelocatingMarkerId(m.id);
                             // Close the popup to allow clicking on map
                             try { markerRefs.current[m.id]?.closePopup?.(); } catch {}
@@ -2352,7 +2985,23 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                         <Button
                           variant="outlined"
                           size="small"
+                          color="warning"
+                          sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
+                          onClick={(e) => {
+                            try { e.preventDefault(); e.stopPropagation(); } catch {}
+                            setOriginalLocation({ lat: m.latitude, lng: m.longitude });
+                            setDispersingMarkerId(m.id);
+                            // Close the popup to allow clicking on map
+                            try { markerRefs.current[m.id]?.closePopup?.(); } catch {}
+                          }}
+                        >
+                          Dispersal
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
                           color="error"
+                          sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
                         onClick={(e) => {
                             try { e.preventDefault(); e.stopPropagation(); } catch {}
                           handleDeleteMarker(m.id);
@@ -2414,6 +3063,51 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             variant="outlined"
             color="inherit"
             onClick={() => setRelocatingMarkerId(null)}
+            sx={{ 
+              color: 'inherit',
+              borderColor: 'currentColor',
+              '&:hover': {
+                borderColor: 'currentColor',
+                bgcolor: 'rgba(255,255,255,0.1)'
+              }
+            }}
+          >
+            Cancel
+          </Button>
+        </Box>
+      )}
+
+      {/* Dispersal Mode Indicator */}
+      {dispersingMarkerId && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 20,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1000,
+            bgcolor: 'warning.main',
+            color: 'warning.contrastText',
+            px: 2,
+            py: 1,
+            borderRadius: 1,
+            boxShadow: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            Click on the map to set dispersal location (cursor changed to location icon)
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            color="inherit"
+            onClick={() => {
+              setDispersingMarkerId(null);
+              setOriginalLocation(null);
+            }}
             sx={{ 
               color: 'inherit',
               borderColor: 'currentColor',

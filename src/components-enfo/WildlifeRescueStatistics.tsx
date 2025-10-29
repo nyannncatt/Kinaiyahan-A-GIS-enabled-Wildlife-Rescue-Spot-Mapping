@@ -80,6 +80,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const [editLoading, setEditLoading] = useState(false);
   const [speciesOptions, setSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
   const [speciesLoading, setSpeciesLoading] = useState(false);
+  const [showSpeciesDropdown, setShowSpeciesDropdown] = useState(false);
   
   // Success notification state
   const [successSnackbar, setSuccessSnackbar] = useState<{
@@ -210,14 +211,16 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     setEditFormData({});
     setEditError(null);
     setSpeciesOptions([]);
+    setShowSpeciesDropdown(false);
   };
 
   // Species autocomplete for edit mode
   useEffect(() => {
     const query = editFormData.species_name?.trim() || "";
-    if (!editDialogOpen || query.length < 2) {
+    if (!editDialogOpen || query.length < 2 || !showSpeciesDropdown) {
       setSpeciesOptions([]);
       setSpeciesLoading(false);
+      setShowSpeciesDropdown(false);
       return;
     }
     setSpeciesLoading(true);
@@ -242,7 +245,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       clearTimeout(timer);
       controller.abort();
     };
-  }, [editFormData.species_name, editDialogOpen]);
+  }, [editFormData.species_name, editDialogOpen, showSpeciesDropdown]);
 
   // Handle approve record
   const handleApproveRecord = async (id: string) => {
@@ -407,7 +410,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             <div class="detail-row">
               <div class="detail-label">Status:</div>
               <div class="detail-value">
-                <span class="status-${record.status.replace(' ', '-')}">${record.status.toUpperCase()}</span>
+                <span class="status-${record.status.replace(' ', '-')}">${formatStatusLabel(record.status).toUpperCase()}</span>
               </div>
             </div>
             
@@ -521,7 +524,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               ${filteredRecords.map(record => `
                 <tr>
                   <td>${record.species_name}</td>
-                  <td class="status-${record.status.replace(' ', '-')}">${record.status.toUpperCase()}</td>
+                  <td class="status-${record.status.replace(' ', '-')}">${formatStatusLabel(record.status).toUpperCase()}</td>
                   <td>${record.barangay || 'N/A'}, ${record.municipality || 'N/A'}</td>
                   <td>${record.reporter_name || 'N/A'}</td>
                   <td>${new Date(record.timestamp_captured).toLocaleDateString()}</td>
@@ -555,6 +558,22 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       case 'turned over': return '#ffc107'; // Yellow
       case 'released': return '#4caf50'; // Green
       default: return '#666';
+    }
+  };
+
+  // Format status label for display
+  const formatStatusLabel = (status: string): string => {
+    switch (status.toLowerCase()) {
+      case 'released':
+        return 'Dispersed';
+      case 'turned over':
+        return 'Turned Over';
+      case 'reported':
+        return 'Reported';
+      case 'rescued':
+        return 'Rescued';
+      default:
+        return status;
     }
   };
 
@@ -774,7 +793,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       <MenuItem value="reported">Reported</MenuItem>
                       <MenuItem value="rescued">Rescued</MenuItem>
                       <MenuItem value="turned over">Turned Over</MenuItem>
-                      <MenuItem value="released">Released</MenuItem>
+                      <MenuItem value="released">Dispersed</MenuItem>
                     </Select>
                   </FormControl>
                 </Box>
@@ -977,7 +996,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       textTransform: 'uppercase',
                     }}
                   >
-                    {record.status}
+                    {formatStatusLabel(record.status)}
                   </Typography>
                 </TableCell>
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
@@ -1210,46 +1229,57 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                 label="Species Name"
                 value={editFormData.species_name || ''}
                 onChange={(e) => setEditFormData(prev => ({ ...prev, species_name: e.target.value }))}
+                onFocus={() => {
+                  setShowSpeciesDropdown(true);
+                }}
+                onBlur={() => {
+                  // Delay hiding to allow click on dropdown items
+                  setTimeout(() => setShowSpeciesDropdown(false), 200);
+                }}
                 fullWidth
                 required
               />
-              <Box sx={{ 
-                position: 'absolute', 
-                top: '100%', 
-                left: 0, 
-                right: 0, 
-                zIndex: 1000,
-                mt: 0.5, 
-                border: "1px solid", 
-                borderColor: "divider", 
-                borderRadius: 1, 
-                height: 128, 
-                overflow: "auto",
-                bgcolor: 'background.paper',
-                boxShadow: 2
-              }}>
-                {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
-                {!speciesLoading && speciesOptions.length === 0 && editFormData.species_name && editFormData.species_name.length >= 2 && (
-                  <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
-                )}
-                {!speciesLoading && speciesOptions.length > 0 && (
-                  <Box>
-                    {speciesOptions.map((opt) => (
-                      <Box
-                        key={`${opt.label}-${opt.common || ""}`}
-                        sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
-                        onClick={() => {
-                          setEditFormData(prev => ({ ...prev, species_name: opt.label }));
-                          setSpeciesOptions([]);
-                        }}
-                      >
-                        {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
-                        <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              </Box>
+              {showSpeciesDropdown && (
+                <Box sx={{ 
+                  position: 'absolute', 
+                  top: '100%', 
+                  left: 0, 
+                  right: 0, 
+                  zIndex: 1000,
+                  mt: 0.5, 
+                  border: "1px solid", 
+                  borderColor: "divider", 
+                  borderRadius: 1, 
+                  maxHeight: 200, 
+                  overflow: "auto",
+                  bgcolor: 'background.paper',
+                  boxShadow: 2
+                }}>
+                  {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
+                  {!speciesLoading && speciesOptions.length === 0 && editFormData.species_name && editFormData.species_name.length >= 2 && (
+                    <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
+                  )}
+                  {!speciesLoading && speciesOptions.length > 0 && (
+                    <Box>
+                      {speciesOptions.map((opt) => (
+                        <Box
+                          key={`${opt.label}-${opt.common || ""}`}
+                          sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                          onMouseDown={(e) => {
+                            e.preventDefault(); // Prevent input blur
+                            setEditFormData(prev => ({ ...prev, species_name: opt.label }));
+                            setShowSpeciesDropdown(false);
+                            setSpeciesOptions([]);
+                          }}
+                        >
+                          {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                          <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              )}
             </Box>
             
             <FormControl fullWidth>
@@ -1262,7 +1292,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                 <MenuItem value="reported">Reported</MenuItem>
                 <MenuItem value="rescued">Rescued</MenuItem>
                 <MenuItem value="turned over">Turned Over</MenuItem>
-                <MenuItem value="released">Released</MenuItem>
+                <MenuItem value="released">Dispersed</MenuItem>
               </Select>
             </FormControl>
             
