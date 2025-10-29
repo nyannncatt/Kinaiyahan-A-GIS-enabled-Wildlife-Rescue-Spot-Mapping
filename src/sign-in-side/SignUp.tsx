@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { Box, Button, TextField, Typography, Avatar, MenuItem, InputLabel, FormControl, Select, Alert, CircularProgress, Link, Card as MuiCard } from '@mui/material';
+import { Box, Button, TextField, Typography, Avatar, MenuItem, InputLabel, FormControl, Select, Alert, CircularProgress, Link, Card as MuiCard, Fade, Slide } from '@mui/material';
 import { CloudUpload } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { supabase } from '../services/supabase';
@@ -36,6 +36,12 @@ export default function SignUp() {
   const [lastNameWarning, setLastNameWarning] = useState<string | null>(null);
   const [emailWarning, setEmailWarning] = useState<string | null>(null);
   const [passwordWarning, setPasswordWarning] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null;
@@ -160,27 +166,30 @@ export default function SignUp() {
           },
         }}
       >
-        <Card
-          variant="outlined"
-          sx={{
-            maxWidth: 640,
-            bgcolor: '#ffffff',
-            borderRadius: 16,
-            border: '1px solid',
-            borderColor: 'divider',
-            overflow: 'hidden',
-            maxHeight: { xs: '90vh', sm: '85vh' },
-            overflowY: 'auto',
-          }}
-        >
-          <Box sx={{ bgcolor: '#2e7d32', color: '#fff', px: 2, py: 1.5, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
-            <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
-              Create account
-            </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              Join Kinaiyahan to report and manage wildlife rescues
-            </Typography>
-          </Box>
+        <Fade in={mounted} timeout={600}>
+          <Card
+            variant="outlined"
+            sx={{
+              maxWidth: 640,
+              bgcolor: '#ffffff',
+              borderRadius: 16,
+              border: '1px solid',
+              borderColor: 'divider',
+              overflow: 'hidden',
+              maxHeight: { xs: '90vh', sm: '85vh' },
+              overflowY: 'auto',
+            }}
+          >
+            <Slide in={mounted} direction="down" timeout={500}>
+              <Box sx={{ bgcolor: '#2e7d32', color: '#fff', px: 2, py: 1.5, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
+                <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
+                  Create account
+                </Typography>
+                <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                  Join Kinaiyahan to report and manage wildlife rescues
+                </Typography>
+              </Box>
+            </Slide>
 
           {error && <Alert severity="error">{error}</Alert>}
           {success && <Alert severity="success">{success}</Alert>}
@@ -440,7 +449,8 @@ export default function SignUp() {
               </Link>
             </Typography>
           </Box>
-        </Card>
+          </Card>
+        </Fade>
       </Box>
       {/* Confirmation dialog removed for Option B */}
     </>
