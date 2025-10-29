@@ -47,6 +47,7 @@ import {
   FileDownload as FileDownloadIcon,
 } from '@mui/icons-material';
 import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
+import { useAuth } from '../context/AuthContext';
 import { useMapNavigation } from '../context/MapNavigationContext';
 import * as XLSX from 'xlsx';
 
@@ -55,6 +56,8 @@ interface WildlifeRescueStatisticsProps {
 }
 
 const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ showPendingOnly = false }) => {
+  const { user } = useAuth();
+  const role = (user?.user_metadata as any)?.role || null;
   const theme = useTheme();
   const { navigateToLocation, refreshRecordsVersion } = useMapNavigation();
   const [wildlifeRecords, setWildlifeRecords] = useState<WildlifeRecord[]>([]);
@@ -1413,7 +1416,8 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     <Button
                       size="small"
                       variant="text"
-                      onClick={() => handleDeleteRecord(record.id)}
+                      onClick={() => { if (role === 'enforcement') handleDeleteRecord(record.id); }}
+                      disabled={role !== 'enforcement'}
                       sx={{ 
                         color: '#ff1744 !important',
                         textTransform: 'none',

@@ -73,7 +73,7 @@ export default function SignInCard() {
       if (role === "enforcement") {
         go("/enforcement");
       } else if (role === "cenro") {
-        go("/cenro");
+        go("/enforcement");
       } else if (userData?.role === "admin") {
         go("/admin");
       } else {
