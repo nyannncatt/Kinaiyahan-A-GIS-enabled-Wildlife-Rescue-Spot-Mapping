@@ -46,7 +46,7 @@ import {
   Close,
   FileDownload as FileDownloadIcon,
 } from '@mui/icons-material';
-import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
+import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, getUserRole, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
 import { useAuth } from '../context/AuthContext';
 import { useMapNavigation } from '../context/MapNavigationContext';
 import * as XLSX from 'xlsx';
@@ -57,7 +57,7 @@ interface WildlifeRescueStatisticsProps {
 
 const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ showPendingOnly = false }) => {
   const { user } = useAuth();
-  const role = (user?.user_metadata as any)?.role || null;
+  const [resolvedRole, setResolvedRole] = useState<string | null>((user?.user_metadata as any)?.role || null);
   const theme = useTheme();
   const { navigateToLocation, refreshRecordsVersion } = useMapNavigation();
   const [wildlifeRecords, setWildlifeRecords] = useState<WildlifeRecord[]>([]);
@@ -112,6 +112,20 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     open: false,
     message: '',
   });
+
+  // Resolve role from DB if not in auth metadata
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!resolvedRole) {
+        try {
+          const r = await getUserRole();
+          if (!cancelled) setResolvedRole(r);
+        } catch {}
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [resolvedRole]);
 
   // Load wildlife records (initial + on refresh signal)
   useEffect(() => {
@@ -1322,7 +1336,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     >
                       View Map
                     </Button>
-                    {role === 'enforcement' && (
+                    {resolvedRole === 'enforcement' && (
                       <IconButton
                         size="small"
                         onClick={() => handleEditRecord(record)}
@@ -1415,7 +1429,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     >
                       View Form
                     </Button>
-                    {role === 'enforcement' && (
+                    {resolvedRole === 'enforcement' && (
                       <Button
                         size="small"
                         variant="text"
