@@ -9,7 +9,7 @@ const Card = styled(MuiCard)(({ theme }) => ({
   flexDirection: 'column',
   alignSelf: 'center',
   width: '100%',
-  padding: theme.spacing(4),
+  padding: theme.spacing(3),
   gap: theme.spacing(2),
   boxShadow:
     'hsla(220, 30%, 5%, 0.05) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.05) 0px 15px 35px -5px',
@@ -168,9 +168,11 @@ export default function SignUp() {
             border: '1px solid',
             borderColor: 'divider',
             overflow: 'hidden',
+            maxHeight: { xs: '90vh', sm: '85vh' },
+            overflowY: 'auto',
           }}
         >
-          <Box sx={{ bgcolor: '#2e7d32', color: '#fff', px: 3, py: 2, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
+          <Box sx={{ bgcolor: '#2e7d32', color: '#fff', px: 2, py: 1.5, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
             <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
               Create account
             </Typography>
@@ -182,7 +184,7 @@ export default function SignUp() {
           {error && <Alert severity="error">{error}</Alert>}
           {success && <Alert severity="success">{success}</Alert>}
 
-          <Box component="form" onSubmit={onSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 3 }}>
+          <Box component="form" onSubmit={onSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, p: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Avatar src={avatarPreview ?? undefined} sx={{ width: 64, height: 64 }} />
               <Button
@@ -200,6 +202,7 @@ export default function SignUp() {
             </Box>
 
             <TextField
+              size="small"
               label="First Name"
               required
               value={fullName}
@@ -226,6 +229,7 @@ export default function SignUp() {
               }}
             />
             <TextField
+              size="small"
               label="Last Name"
               required
               value={lastName}
@@ -253,6 +257,7 @@ export default function SignUp() {
             />
             <Box sx={{ display: 'flex', gap: 1 }}>
               <FormControl
+                size="small"
                 sx={{
                   minWidth: 110,
                   '& .MuiOutlinedInput-root': {
@@ -282,6 +287,7 @@ export default function SignUp() {
                 </Select>
               </FormControl>
               <TextField
+                size="small"
                 label="Phone Number"
                 placeholder="9XXXXXXXXX"
                 value={phoneNumber}
@@ -305,6 +311,7 @@ export default function SignUp() {
               />
             </Box>
             <FormControl
+              size="small"
               sx={{
                 '& .MuiOutlinedInput-root': {
                   '& fieldset': { borderColor: '#c8e6c9' },
@@ -327,6 +334,7 @@ export default function SignUp() {
               </Select>
             </FormControl>
             <TextField
+              size="small"
               label="Email Address"
               type="email"
               required
@@ -353,6 +361,7 @@ export default function SignUp() {
               }}
             />
             <TextField
+              size="small"
               label="Password"
               type="password"
               required
@@ -380,6 +389,7 @@ export default function SignUp() {
             />
 
             <FormControl
+              size="small"
               sx={{
                 '& .MuiOutlinedInput-root': {
                   '& fieldset': { borderColor: '#c8e6c9' },
@@ -401,8 +411,9 @@ export default function SignUp() {
               variant="contained"
               disabled={submitting}
               sx={{
-                mt: 1,
+                mt: 0.5,
                 bgcolor: '#2e7d32',
+                py: 1,
                 '&:hover': { bgcolor: '#1b5e20' },
               }}
             >
