@@ -1087,11 +1087,8 @@ export default function PublicReport() {
                         p: 2,
                         mb: 2
                       }}>
-                        <Typography variant="body2" sx={{ color: '#2e7d32', fontWeight: 600, mb: 0.5 }}>
+                        <Typography variant="body2" sx={{ color: '#2e7d32', fontWeight: 600 }}>
                           📍 GPS Location Ready
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: '#4caf50', fontFamily: 'monospace' }}>
-                          Lat: {currentLocation.lat.toFixed(6)}, Lng: {currentLocation.lng.toFixed(6)}
                         </Typography>
                       </Box>
                     )}
@@ -1391,14 +1388,10 @@ export default function PublicReport() {
                     }}
                   >
                     <Typography variant="body2">
-                      <strong>GPS Location Found!</strong> We've extracted coordinates from your photo:
-                    </Typography>
-                    <Typography variant="body2" sx={{ mt: 1, fontFamily: 'monospace', bgcolor: 'rgba(0,0,0,0.05)', p: 1, borderRadius: 1 }}>
-                      <strong>Latitude:</strong> {extractedCoords.lat.toFixed(8)}<br/>
-                      <strong>Longitude:</strong> {extractedCoords.lng.toFixed(8)}
+                      <strong>GPS Location Found!</strong> We've extracted location from your photo.
                     </Typography>
                     <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
-                      These coordinates will be used for the map marker location.
+                      The detected location will be used for the map marker.
                     </Typography>
                   </Alert>
                 ) : (
@@ -1665,7 +1658,7 @@ export default function PublicReport() {
                     flex: 1, 
                     minWidth: isSmallMobile ? '100%' : 200 
                   }}>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.5, color: '#2e7d32', fontWeight: 700 }}>
                       Species
                     </Typography>
                     <Typography 
@@ -1682,7 +1675,7 @@ export default function PublicReport() {
                     flex: 1, 
                     minWidth: isSmallMobile ? '100%' : 200 
                   }}>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.5, color: '#2e7d32', fontWeight: 700 }}>
                       Location
                     </Typography>
                     <Typography 
@@ -1706,7 +1699,7 @@ export default function PublicReport() {
                     flex: 1, 
                     minWidth: isSmallMobile ? '100%' : 200 
                   }}>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.5, color: '#2e7d32', fontWeight: 700 }}>
                       Reporter
                     </Typography>
                     <Typography 
@@ -1723,7 +1716,7 @@ export default function PublicReport() {
                     flex: 1, 
                     minWidth: isSmallMobile ? '100%' : 200 
                   }}>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.5, color: '#2e7d32', fontWeight: 700 }}>
                       Contact
                     </Typography>
                     <Typography 
@@ -1738,7 +1731,7 @@ export default function PublicReport() {
                   </Box>
                 </Box>
                 <Box>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 0.5, textAlign: 'center', color: '#2e7d32', fontWeight: 700 }}>
                     Photo
                   </Typography>
                   {photoPreview ? (
@@ -1747,7 +1740,9 @@ export default function PublicReport() {
                         display: 'flex', 
                         flexDirection: 'column', 
                         gap: 1,
-                        alignItems: 'flex-start'
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center'
                       }}
                     >
                       <Box
@@ -1762,6 +1757,8 @@ export default function PublicReport() {
                           border: '2px solid #e0e0e0',
                           cursor: 'pointer',
                           transition: 'all 0.2s ease-in-out',
+                          display: 'block',
+                          mx: 'auto',
                           '&:hover': {
                             transform: 'scale(1.02)',
                             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
@@ -1772,8 +1769,7 @@ export default function PublicReport() {
                       />
                       <Typography 
                         variant="caption" 
-                        color="text.secondary"
-                        sx={{ fontSize: '0.75rem' }}
+                        sx={{ fontSize: '0.75rem', color: '#2e7d32', fontWeight: 600 }}
                       >
                         Click to view full size
                       </Typography>
@@ -1784,7 +1780,8 @@ export default function PublicReport() {
                       sx={{ 
                         fontWeight: 'medium',
                         fontSize: isMobile ? '0.875rem' : '1rem',
-                        color: 'text.secondary'
+                        color: 'text.secondary',
+                        textAlign: 'center'
                       }}
                     >
                       No photo uploaded
@@ -2140,7 +2137,7 @@ export default function PublicReport() {
 
             {/* Progress Indicator */}
             <Box sx={{ mt: isMobile ? 3 : 4, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              <Typography variant="body2" sx={{ mb: 1, color: '#2e7d32', fontWeight: 700 }}>
                 Step {activeStep + 1} of {steps.length}
               </Typography>
               <Box 

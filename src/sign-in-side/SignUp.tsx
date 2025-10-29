@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { Box, Button, TextField, Typography, Avatar, MenuItem, InputLabel, FormControl, Select, Alert, CircularProgress, Link, Card as MuiCard } from '@mui/material';
+import { CloudUpload } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { supabase } from '../services/supabase';
 
@@ -186,17 +187,27 @@ export default function SignUp() {
 
           <Box component="form" onSubmit={onSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, p: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar src={avatarPreview ?? undefined} sx={{ width: 64, height: 64 }} />
+              <Avatar src={avatarPreview ?? undefined} sx={{ width: 64, height: 64, border: '2px solid #c8e6c9' }} />
               <Button
-                variant="outlined"
+                variant="contained"
                 component="label"
                 sx={{
-                  borderColor: '#81c784',
-                  color: '#2e7d32',
-                  '&:hover': { borderColor: '#2e7d32', bgcolor: 'rgba(46,125,50,0.04)' },
+                  textTransform: 'none',
+                  borderRadius: 3,
+                  px: 2,
+                  py: 1,
+                  fontWeight: 600,
+                  letterSpacing: 0.2,
+                  background: 'linear-gradient(45deg, #2e7d32 0%, #66bb6a 100%)',
+                  color: '#ffffff',
+                  boxShadow: '0 6px 14px rgba(46,125,50,0.25)',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #1b5e20 0%, #4caf50 100%)',
+                    boxShadow: '0 8px 20px rgba(46,125,50,0.35)'
+                  },
                 }}
               >
-                Upload profile picture
+                <CloudUpload sx={{ mr: 1 }} /> Upload profile picture
                 <input hidden accept="image/*" type="file" onChange={handleAvatar} />
               </Button>
             </Box>
