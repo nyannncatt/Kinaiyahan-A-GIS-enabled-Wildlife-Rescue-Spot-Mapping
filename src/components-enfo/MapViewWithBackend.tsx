@@ -1836,7 +1836,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             variant={isAddingMarker ? "contained" : "outlined"}
             color={isAddingMarker ? "primary" : "inherit"}
               size="small"
-              onClick={() => setIsAddingMarker((v) => !v)}
+              onClick={() => { if (role === 'enforcement') setIsAddingMarker((v) => !v); }}
+              disabled={role !== 'enforcement'}
             sx={{ 
               textTransform: 'none',
               fontWeight: 600,
@@ -3031,24 +3032,26 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
                           onClick={(e) => {
                             try { e.preventDefault(); e.stopPropagation(); } catch {}
-                            setEditDrafts((prev) => ({
-                              ...prev,
-                            [m.id]: {
-                              species_name: m.species_name,
-                              status: m.status,
-                              photo_url: m.photo_url ?? null,
-                              barangay: m.barangay ?? null,
-                              municipality: m.municipality ?? null,
-                              },
-                            }));
-                          setEditingMarkerId(m.id);
-                          setSpeciesSelectedFromDropdown(false); // Reset flag when starting to edit a new marker
-                            setTimeout(() => {
-                            try { markerRefs.current[m.id]?.openPopup?.(); } catch {}
-                            // Ensure no input is focused automatically
-                            try { (document.activeElement as HTMLElement | null)?.blur?.(); } catch {}
-                            }, 0);
+                            if (role === 'enforcement') {
+                              setEditDrafts((prev) => ({
+                                ...prev,
+                                [m.id]: {
+                                  species_name: m.species_name,
+                                  status: m.status,
+                                  photo_url: m.photo_url ?? null,
+                                  barangay: m.barangay ?? null,
+                                  municipality: m.municipality ?? null,
+                                },
+                              }));
+                              setEditingMarkerId(m.id);
+                              setSpeciesSelectedFromDropdown(false);
+                              setTimeout(() => {
+                                try { markerRefs.current[m.id]?.openPopup?.(); } catch {}
+                                try { (document.activeElement as HTMLElement | null)?.blur?.(); } catch {}
+                              }, 0);
+                            }
                           }}
+                          disabled={role !== 'enforcement'}
                         >
                           Edit
                         </Button>
@@ -3059,11 +3062,14 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
                           onClick={(e) => {
                             try { e.preventDefault(); e.stopPropagation(); } catch {}
-                            setRelocationOriginalLocation({ lat: m.latitude, lng: m.longitude });
-                            setRelocatingMarkerId(m.id);
+                            if (role === 'enforcement') {
+                              setRelocationOriginalLocation({ lat: m.latitude, lng: m.longitude });
+                              setRelocatingMarkerId(m.id);
+                            }
                             // Close the popup to allow clicking on map
                             try { markerRefs.current[m.id]?.closePopup?.(); } catch {}
                           }}
+                          disabled={role !== 'enforcement'}
                         >
                           Relocate Pin
                         </Button>
@@ -3074,11 +3080,14 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
                           onClick={(e) => {
                             try { e.preventDefault(); e.stopPropagation(); } catch {}
-                            setOriginalLocation({ lat: m.latitude, lng: m.longitude });
-                            setDispersingMarkerId(m.id);
+                            if (role === 'enforcement') {
+                              setOriginalLocation({ lat: m.latitude, lng: m.longitude });
+                              setDispersingMarkerId(m.id);
+                            }
                             // Close the popup to allow clicking on map
                             try { markerRefs.current[m.id]?.closePopup?.(); } catch {}
                           }}
+                          disabled={role !== 'enforcement'}
                         >
                           Release
                         </Button>
@@ -3087,10 +3096,11 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           size="small"
                           color="error"
                           sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
-                        onClick={(e) => {
+                          onClick={(e) => {
                             try { e.preventDefault(); e.stopPropagation(); } catch {}
-                          handleDeleteMarker(m.id);
+                            if (role === 'enforcement') handleDeleteMarker(m.id);
                           }}
+                          disabled={role !== 'enforcement'}
                         >
                           Delete
                         </Button>
