@@ -429,7 +429,7 @@ export default function MainGrid() {
                       opacity: !selectedStatusFilter ? 0.9 : 1
                     }}
                   >
-                    {approvedRecords.length} total (100%) • {approvedRecords.filter(r => r.status === 'reported').length} reported
+                    {approvedRecords.length} total (100%) • {approvedRecords.length} reported
                   </Typography>
                 </Box>
               </Box>
