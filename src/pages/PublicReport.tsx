@@ -773,6 +773,11 @@ export default function PublicReport() {
                      id="species-name"
                      value={speciesName}
                      onChange={(e) => setSpeciesName(e.target.value)}
+                     onKeyDown={(e) => {
+                       if (e.key === 'Enter') {
+                         e.preventDefault();
+                       }
+                     }}
                      startAdornment={
                        <InputAdornment position="start">
                          <Pets color="action" />
@@ -857,12 +862,7 @@ export default function PublicReport() {
                           justifyContent: 'center',
                           mx: 'auto',
                           mb: 2,
-                          transition: 'all 0.3s ease',
-                          '&:hover': {
-                            transform: 'scale(1.05)',
-                            bgcolor: photoFile ? '#2e7d32' : '#4caf50',
-                            borderColor: photoFile ? '#1b5e20' : '#2e7d32'
-                          }
+                          transition: 'all 0.3s ease'
                         }}
                       >
                         <PhotoCamera 
