@@ -31,6 +31,8 @@ export default function SignUp() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [firstNameWarning, setFirstNameWarning] = useState<string | null>(null);
+  const [lastNameWarning, setLastNameWarning] = useState<string | null>(null);
 
   const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null;
@@ -189,7 +191,19 @@ export default function SignUp() {
               label="First Name"
               required
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) => {
+                const lettersOnly = e.target.value.replace(/[^A-Za-z]/g, '');
+                if (e.target.value !== lettersOnly) {
+                  setFirstNameWarning('Only letters are allowed in first name');
+                  setTimeout(() => setFirstNameWarning(null), 3000);
+                } else {
+                  setFirstNameWarning(null);
+                }
+                setFullName(lettersOnly);
+              }}
+              inputProps={{ pattern: '[A-Za-z]*' }}
+              error={Boolean(firstNameWarning)}
+              helperText={firstNameWarning ? firstNameWarning : ' '}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   '& fieldset': { borderColor: '#c8e6c9' },
@@ -203,7 +217,19 @@ export default function SignUp() {
               label="Last Name"
               required
               value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
+              onChange={(e) => {
+                const lettersOnly = e.target.value.replace(/[^A-Za-z]/g, '');
+                if (e.target.value !== lettersOnly) {
+                  setLastNameWarning('Only letters are allowed in last name');
+                  setTimeout(() => setLastNameWarning(null), 3000);
+                } else {
+                  setLastNameWarning(null);
+                }
+                setLastName(lettersOnly);
+              }}
+              inputProps={{ pattern: '[A-Za-z]*' }}
+              error={Boolean(lastNameWarning)}
+              helperText={lastNameWarning ? lastNameWarning : ' '}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   '& fieldset': { borderColor: '#c8e6c9' },
