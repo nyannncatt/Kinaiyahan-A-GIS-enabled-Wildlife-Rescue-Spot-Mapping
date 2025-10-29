@@ -1093,6 +1093,17 @@ export default function PublicReport() {
         return (
           <Box sx={{ mt: 2 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 2 : 3 }}>
+              {/* Warning message when GPS data is available */}
+              {hasExifGps && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  <Typography variant="body2">
+                    <strong>Location Info:</strong> GPS coordinates were extracted from your photo. 
+                    You can edit the municipality and barangay fields below for context if the GPS location seems inaccurate, 
+                    but this won't change the actual coordinates used for mapping.
+                  </Typography>
+                </Alert>
+              )}
+              
               <Box sx={{ 
                 display: 'flex', 
                 gap: 2, 
@@ -1105,14 +1116,13 @@ export default function PublicReport() {
                 }}>
                   <FormControl fullWidth variant="outlined">
                     <InputLabel htmlFor="municipality">
-                      {hasExifGps ? 'Municipality (from photo GPS)' : 'Municipality'}
+                      {hasExifGps ? 'Municipality (editable for context)' : 'Municipality'}
                     </InputLabel>
                     <Select
                       id="municipality"
                       value={municipality}
                       onChange={(e) => setMunicipality(e.target.value)}
-                      label={hasExifGps ? 'Municipality (from photo GPS)' : 'Municipality'}
-                      disabled={hasExifGps === true}
+                      label={hasExifGps ? 'Municipality (editable for context)' : 'Municipality'}
                       startAdornment={
                         <InputAdornment position="start">
                           <LocationOn color="action" />
@@ -1145,15 +1155,14 @@ export default function PublicReport() {
                 }}>
                   <FormControl fullWidth variant="outlined">
                     <InputLabel htmlFor="barangay">
-                      {hasExifGps ? 'Barangay (from photo GPS) *' : 'Barangay *'}
+                      {hasExifGps ? 'Barangay (editable for context) *' : 'Barangay *'}
                     </InputLabel>
                     <Select
                       id="barangay"
                       value={barangay}
                       onChange={(e) => setBarangay(e.target.value)}
-                      label={hasExifGps ? 'Barangay (from photo GPS) *' : 'Barangay *'}
+                      label={hasExifGps ? 'Barangay (editable for context) *' : 'Barangay *'}
                       required
-                      disabled={hasExifGps === true}
                       startAdornment={
                         <InputAdornment position="start">
                           <LocationOn color="action" />
@@ -1202,25 +1211,6 @@ export default function PublicReport() {
                   </FormControl>
                 </Box>
               </Box>
-              
-              {/* EXIF GPS Data Help Message */}
-              {hasExifGps === true && (
-                <Box sx={{ mt: 2 }}>
-                  <Alert 
-                    severity="info" 
-                    sx={{ 
-                      borderRadius: 2,
-                      '& .MuiAlert-message': {
-                        width: '100%'
-                      }
-                    }}
-                  >
-                    <Typography variant="body2">
-                      <strong>Location Auto-filled from Photo GPS:</strong> The municipality and barangay fields have been automatically filled using the GPS coordinates from your photo. These fields are disabled because the GPS data is more accurate than manual selection.
-                    </Typography>
-                  </Alert>
-                </Box>
-              )}
               
               {hasExifGps === false && (
                 <Box sx={{ mt: 2 }}>
