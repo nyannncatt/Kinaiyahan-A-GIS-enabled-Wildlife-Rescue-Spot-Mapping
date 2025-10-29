@@ -49,7 +49,8 @@ function App() {
       <Route path="/login" element={<SignIn />} />
       <Route path="/enforcement" element={<RequireAuth><Enforcement /></RequireAuth>} />
       <Route path="/signup" element={<SignUp />} />
-      <Route path="/cenro" element={<RequireAuth><Cenro /></RequireAuth>} />
+      {/* Alias: show /cenro URL but render Enforcement view (CENRO is view-only in components) */}
+      <Route path="/cenro" element={<RequireAuth><Enforcement /></RequireAuth>} />
       {/** removed legacy /report-sighting route */}
       {/* Public report route (no auth) */}
       <Route path="/public-report" element={<PublicReport />} />
