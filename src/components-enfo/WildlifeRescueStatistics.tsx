@@ -1322,21 +1322,23 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     >
                       View Map
                     </Button>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEditRecord(record)}
-                      sx={{ 
-                        color: 'text.secondary',
-                        '&:hover': { 
-                          bgcolor: theme.palette.mode === 'dark' 
-                            ? 'rgba(25, 118, 210, 0.1)' 
-                            : 'rgba(25, 118, 210, 0.04)',
-                          color: theme.palette.primary.main
-                        }
-                      }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
+                    {role === 'enforcement' && (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleEditRecord(record)}
+                        sx={{ 
+                          color: 'text.secondary',
+                          '&:hover': { 
+                            bgcolor: theme.palette.mode === 'dark' 
+                              ? 'rgba(25, 118, 210, 0.1)' 
+                              : 'rgba(25, 118, 210, 0.04)',
+                            color: theme.palette.primary.main
+                          }
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    )}
                     <IconButton
                       size="small"
                       onClick={() => handlePrintRecord(record)}
@@ -1413,22 +1415,23 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     >
                       View Form
                     </Button>
-                    <Button
-                      size="small"
-                      variant="text"
-                      onClick={() => { if (role === 'enforcement') handleDeleteRecord(record.id); }}
-                      disabled={role !== 'enforcement'}
-                      sx={{ 
-                        color: '#ff1744 !important',
-                        textTransform: 'none',
-                        fontWeight: 700,
-                        '&:hover': { 
-                          bgcolor: 'rgba(255, 23, 68, 0.08)'
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
+                    {role === 'enforcement' && (
+                      <Button
+                        size="small"
+                        variant="text"
+                        onClick={() => handleDeleteRecord(record.id)}
+                        sx={{ 
+                          color: '#ff1744 !important',
+                          textTransform: 'none',
+                          fontWeight: 700,
+                          '&:hover': { 
+                            bgcolor: 'rgba(255, 23, 68, 0.08)'
+                          }
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    )}
                   </Box>
                 </TableCell>
               </TableRow>
