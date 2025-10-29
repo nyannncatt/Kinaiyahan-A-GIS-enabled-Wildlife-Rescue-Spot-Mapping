@@ -47,16 +47,18 @@ export default function SignInCard() {
         return;
       }
 
-      // ✅ Fetch role from Supabase "users" table
-      const { data: userData, error: roleError } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (roleError) {
-        setLoginError("Error fetching user role.");
-        return;
+      // Try to get role from public.users first, then fall back to auth metadata
+      let role: string | null = null;
+      try {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
+        role = userData?.role ?? null;
+      } catch {}
+      if (!role) {
+        role = (user.user_metadata as any)?.role ?? null;
       }
 
       const go = (path: string) => {
@@ -68,9 +70,9 @@ export default function SignInCard() {
         }
       };
 
-      if (userData?.role === "enforcement") {
+      if (role === "enforcement") {
         go("/enforcement");
-      } else if (userData?.role === "cenro") {
+      } else if (role === "cenro") {
         go("/cenro");
       } else if (userData?.role === "admin") {
         go("/admin");

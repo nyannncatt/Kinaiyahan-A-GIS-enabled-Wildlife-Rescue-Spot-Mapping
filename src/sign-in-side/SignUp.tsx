@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { Box, Button, TextField, Typography, Avatar, MenuItem, InputLabel, FormControl, Select, Alert, CircularProgress, Link, Card as MuiCard, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Button, TextField, Typography, Avatar, MenuItem, InputLabel, FormControl, Select, Alert, CircularProgress, Link, Card as MuiCard } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { supabase } from '../services/supabase';
 
@@ -20,6 +20,7 @@ export default function SignUp() {
   const [fullName, setFullName] = useState('');
   const [lastName, setLastName] = useState('');
   const [contactNumber, setContactNumber] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | 'prefer_not_to_say'>('prefer_not_to_say');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'cenro' | 'enforcement'>('enforcement');
@@ -28,7 +29,6 @@ export default function SignUp() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null;
@@ -69,21 +69,22 @@ export default function SignUp() {
       // If email confirmation is enabled, there is no active session yet.
       // Only perform avatar upload and metadata update when a session exists.
       const hasSession = !!signData.session?.access_token;
-      if (hasSession) {
-        // Optional: upload avatar
-        let avatarUrl: string | null = null;
-        if (avatarFile) {
-          avatarUrl = await uploadAvatar(userId);
-        }
+      // With email confirmation disabled, there should be a session now.
+      // Upload avatar if provided
+      let avatarUrl: string | null = null;
+      if (avatarFile && hasSession) {
+        avatarUrl = await uploadAvatar(userId);
+      }
 
-        // Persist profile details in auth metadata
+      // Persist profile details in auth metadata
+      if (hasSession) {
         const { error: metaErr } = await supabase.auth.updateUser({
           data: {
-            // store both for compatibility
             first_name: fullName,
             full_name: fullName,
             last_name: lastName,
             phone: contactNumber,
+            gender,
             role,
             avatar_url: avatarUrl || undefined,
           },
@@ -91,16 +92,26 @@ export default function SignUp() {
         if (metaErr) throw metaErr;
       }
 
-      // Ensure row exists/updated in users table only when a session exists (RLS requires auth.uid())
+      // Create/Update row in public.users (RLS passes with session)
       if (hasSession) {
         const { error: upsertErr } = await supabase
           .from('users')
-          .upsert({ id: userId, role, first_name: fullName, last_name: lastName }, { onConflict: 'id' });
+          .upsert({ 
+            id: userId, 
+            role, 
+            first_name: fullName, 
+            last_name: lastName,
+            contact_number: contactNumber || null,
+            avatar_url: avatarUrl || null,
+            gender: gender
+          }, { onConflict: 'id' });
         if (upsertErr) throw upsertErr;
       }
 
-      setSuccess('Account created! Please check your email to confirm, then log in.');
-      setShowConfirmDialog(true);
+      // Do not keep user logged in after signup: sign out and send to login
+      try { await supabase.auth.signOut(); } catch {}
+      setSuccess('Account created! Please sign in.');
+      navigate('/login');
     } catch (err: any) {
       setError(err.message || 'Sign up failed');
     } finally {
@@ -213,6 +224,28 @@ export default function SignUp() {
                 '& .MuiInputLabel-root.Mui-focused': { color: '#2e7d32' },
               }}
             />
+            <FormControl
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: '#c8e6c9' },
+                  '&:hover fieldset': { borderColor: '#81c784' },
+                  '&.Mui-focused fieldset': { borderColor: '#2e7d32' },
+                },
+                '& .MuiInputLabel-root.Mui-focused': { color: '#2e7d32' },
+              }}
+            >
+              <InputLabel id="gender-label">Gender</InputLabel>
+              <Select
+                labelId="gender-label"
+                label="Gender"
+                value={gender}
+                onChange={(e) => setGender(e.target.value as any)}
+              >
+                <MenuItem value="male">Male</MenuItem>
+                <MenuItem value="female">Female</MenuItem>
+                <MenuItem value="prefer_not_to_say">Prefer not to say</MenuItem>
+              </Select>
+            </FormControl>
             <TextField
               label="Email Address"
               type="email"
@@ -285,18 +318,7 @@ export default function SignUp() {
           </Box>
         </Card>
       </Box>
-      <Dialog open={showConfirmDialog} onClose={() => setShowConfirmDialog(false)}>
-        <DialogTitle>Confirm your email</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">
-            We sent a confirmation link to <strong>{email}</strong>. Please open your inbox and click the link to activate your account. After confirming, return here to sign in.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowConfirmDialog(false)}>Close</Button>
-          <Button variant="contained" onClick={() => navigate('/login')}>Go to login</Button>
-        </DialogActions>
-      </Dialog>
+      {/* Confirmation dialog removed for Option B */}
     </>
   );
 }

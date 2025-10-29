@@ -80,7 +80,21 @@ export default function SignInCard() {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      // No navigation here → AuthContext handles redirect automatically
+      // Determine role: prefer users table, else auth metadata
+      const user = data.user;
+      let role = null;
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+        role = userData?.role ?? null;
+      } catch {}
+      if (!role) role = user?.user_metadata?.role ?? null;
+
+      if (role === 'enforcement') navigate('/enforcement');
+      else if (role === 'cenro') navigate('/cenro');
     } catch (err) {
       const msg = err?.message ? String(err.message) : "Invalid email or password";
       const lower = msg.toLowerCase();
