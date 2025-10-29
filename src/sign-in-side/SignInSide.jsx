@@ -29,7 +29,7 @@ export default function SignInSide(props) {
           if (role === "enforcement") {
             navigate("/enforcement", { replace: true });
           } else if (role === "cenro") {
-            navigate("/enforcement", { replace: true });
+            navigate("/cenro", { replace: true });
           } else if (role === "admin") {
             navigate("/admin", { replace: true });
           } else {
