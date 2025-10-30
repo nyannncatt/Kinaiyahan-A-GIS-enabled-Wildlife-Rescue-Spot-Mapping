@@ -852,7 +852,13 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
         maxBoundsViscosity={0.5}
         whenReady={() => { /* set in effect below */ }}
       >
-        <TileLayer url={tileUrls[skin]} attribution={attributions[skin]} />
+        <TileLayer
+          url={tileUrls[skin]}
+          attribution={attributions[skin]}
+          eventHandlers={{
+            load: () => console.log("Base map tile layer loaded " + Date()),
+          }}
+        />
         {skin === 'satellite' && (
           <>
             <TileLayer
@@ -1174,7 +1180,13 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
               position={m.pos}
               icon={createStatusIcon(m.status)}
               ref={(ref) => { markerRefs.current[m.id] = ref; }}
-              eventHandlers={{ add: (e: any) => e.target.openPopup() }}
+              eventHandlers={{
+                add: (e: any) => {
+                  e.target.openPopup();
+                  // Log marker load with speciesName or title
+                  console.log(`${m.title || m.speciesName || 'Marker'} Loaded ` + Date());
+                },
+              }}
             >
               <Popup className="themed-popup" maxWidth={420}>
                 {editingMarkerId === m.id ? (
