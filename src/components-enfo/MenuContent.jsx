@@ -156,26 +156,42 @@ export default function MenuContent() {
       const mapContainer = document.querySelector('[data-map-container]');
       const recordListElement = document.querySelector('[data-record-list]');
       const analyticsElement = document.querySelector('[data-analytics]');
+      const profileElement = document.querySelector('[data-profile]');
       
-      if (!mapContainer || !recordListElement || !analyticsElement) return;
-      
-      const mapRect = mapContainer.getBoundingClientRect();
-      const recordRect = recordListElement.getBoundingClientRect();
-      const analyticsRect = analyticsElement.getBoundingClientRect();
+      const distances = [];
       const windowHeight = window.innerHeight;
       const viewportCenter = windowHeight / 2;
       
-      // Calculate distances from viewport center
-      const mapDistance = Math.abs(mapRect.top + mapRect.height / 2 - viewportCenter);
-      const recordDistance = Math.abs(recordRect.top + recordRect.height / 2 - viewportCenter);
-      const analyticsDistance = Math.abs(analyticsRect.top + analyticsRect.height / 2 - viewportCenter);
+      // Map section
+      if (mapContainer) {
+        const mapRect = mapContainer.getBoundingClientRect();
+        const mapDistance = Math.abs(mapRect.top + mapRect.height / 2 - viewportCenter);
+        distances.push({ tab: 'mapping', distance: mapDistance, rect: mapRect });
+      }
       
-      // Find which section is closest to center
-      const distances = [
-        { tab: 'mapping', distance: mapDistance, rect: mapRect },
-        { tab: 'records', distance: recordDistance, rect: recordRect },
-        { tab: 'analytics', distance: analyticsDistance, rect: analyticsRect }
-      ];
+      // Records section
+      if (recordListElement) {
+        const recordRect = recordListElement.getBoundingClientRect();
+        const recordDistance = Math.abs(recordRect.top + recordRect.height / 2 - viewportCenter);
+        distances.push({ tab: 'records', distance: recordDistance, rect: recordRect });
+      }
+      
+      // Analytics section
+      if (analyticsElement) {
+        const analyticsRect = analyticsElement.getBoundingClientRect();
+        const analyticsDistance = Math.abs(analyticsRect.top + analyticsRect.height / 2 - viewportCenter);
+        distances.push({ tab: 'analytics', distance: analyticsDistance, rect: analyticsRect });
+      }
+      
+      // Profile section
+      if (profileElement) {
+        const profileRect = profileElement.getBoundingClientRect();
+        const profileDistance = Math.abs(profileRect.top + profileRect.height / 2 - viewportCenter);
+        distances.push({ tab: 'profile', distance: profileDistance, rect: profileRect });
+      }
+      
+      // If no sections found, don't update
+      if (distances.length === 0) return;
       
       // Sort by distance and check which is in view
       distances.sort((a, b) => a.distance - b.distance);
@@ -196,8 +212,12 @@ export default function MenuContent() {
     // Initial check
     handleScroll();
     
+    // Also check on a short interval to catch delayed rendering
+    const interval = setInterval(handleScroll, 500);
+    
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      clearInterval(interval);
     };
   }, []);
 
@@ -220,6 +240,11 @@ export default function MenuContent() {
     // Handle Mapping tab - scroll to top
     if (tabId === 'mapping') {
       scrollToTop();
+    }
+    
+    // Handle Profile tab - scroll to profile section
+    if (tabId === 'profile') {
+      scrollToProfile();
     }
   };
 
@@ -246,18 +271,37 @@ export default function MenuContent() {
   const scrollToAnalytics = () => {
     const analyticsElement = document.querySelector('[data-analytics]');
     if (analyticsElement) {
-      // Scroll to center the analytics section in the viewport
-      analyticsElement.scrollIntoView({ 
-        behavior: 'smooth',
-        block: 'center',
-        inline: 'nearest'
+      // Wait for next frame to ensure element is fully rendered and positioned
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // Calculate absolute position using offsetTop (more reliable than getBoundingClientRect)
+          let elementTop = 0;
+          let element = analyticsElement;
+          while (element) {
+            elementTop += element.offsetTop;
+            element = element.offsetParent;
+          }
+          const offset = 10; // Offset from top of viewport
+          window.scrollTo({ 
+            top: elementTop - offset, 
+            behavior: 'smooth' 
+          });
+        });
       });
     } else {
-      // Fallback: scroll to bottom of page
-      window.scrollTo({ 
-        top: document.body.scrollHeight, 
-        behavior: 'smooth' 
-      });
+      // If element not found, wait a bit and try again (handles initial page load)
+      setTimeout(() => {
+        const retryElement = document.querySelector('[data-analytics]');
+        if (retryElement) {
+          scrollToAnalytics();
+        } else {
+          // Fallback: scroll to bottom of page
+          window.scrollTo({ 
+            top: document.body.scrollHeight, 
+            behavior: 'smooth' 
+          });
+        }
+      }, 100);
     }
   };
 
@@ -267,6 +311,44 @@ export default function MenuContent() {
       top: 0, 
       behavior: 'smooth' 
     });
+  };
+
+  // Function to scroll to profile section
+  const scrollToProfile = () => {
+    const profileElement = document.querySelector('[data-profile]');
+    if (profileElement) {
+      // Wait for next frame to ensure element is fully rendered and positioned
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // Calculate absolute position using offsetTop (more reliable than getBoundingClientRect)
+          let elementTop = 0;
+          let element = profileElement;
+          while (element) {
+            elementTop += element.offsetTop;
+            element = element.offsetParent;
+          }
+          const offset = 10; // Offset from top of viewport
+          window.scrollTo({ 
+            top: elementTop - offset, 
+            behavior: 'smooth' 
+          });
+        });
+      });
+    } else {
+      // If element not found, wait a bit and try again (handles initial page load)
+      setTimeout(() => {
+        const retryElement = document.querySelector('[data-profile]');
+        if (retryElement) {
+          scrollToProfile();
+        } else {
+          // Fallback: scroll to bottom of page
+          window.scrollTo({ 
+            top: document.body.scrollHeight, 
+            behavior: 'smooth' 
+          });
+        }
+      }, 100);
+    }
   };
 
   return (
