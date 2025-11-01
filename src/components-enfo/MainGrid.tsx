@@ -19,6 +19,8 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Button from '@mui/material/Button';
 import Badge from '@mui/material/Badge';
+import Avatar from '@mui/material/Avatar';
+import Chip from '@mui/material/Chip';
 import MapOutlinedIcon from '@mui/icons-material/MapOutlined';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import SatelliteAltOutlinedIcon from '@mui/icons-material/SatelliteAltOutlined';
@@ -29,9 +31,12 @@ import { getWildlifeRecords } from '../services/wildlifeRecords';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { useTheme } from '@mui/material/styles';
 import { motion } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../services/supabase';
 
 export default function MainGrid() {
   const theme = useTheme();
+  const { user, session } = useAuth();
   
   // State to track selected map skin
   const [skin, setSkin] = useState<"streets" | "dark" | "satellite">("streets");
@@ -43,6 +48,21 @@ export default function MainGrid() {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
   // State for municipality filter in analytics (Top Barangays)
   const [selectedMunicipality, setSelectedMunicipality] = useState<string | null>(null);
+  
+  // State for user profile data
+  const [userProfile, setUserProfile] = useState<{
+    userId: string;
+    role: string;
+    dateCreated: string;
+    contactNumber: string;
+    avatarPhoto: string | null;
+    firstName: string;
+    lastName: string;
+    gender: string;
+    email: string;
+  } | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
   
   // Fetch wildlife records for analytics
   useEffect(() => {
@@ -57,6 +77,77 @@ export default function MainGrid() {
     
     fetchRecords();
   }, []);
+
+  // Fetch user profile data - only when user ID changes
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      // If no user or session, clear profile
+      if (!user || !session) {
+        setUserProfile(null);
+        setProfileLoading(false);
+        setLoadedUserId(null);
+        return;
+      }
+
+      // If we already loaded profile for this user ID, don't refetch
+      if (loadedUserId === user.id && userProfile !== null) {
+        setProfileLoading(false);
+        return;
+      }
+
+      // Only fetch if user ID changed or we don't have profile data
+      if (loadedUserId === user.id && userProfile !== null) {
+        return;
+      }
+
+      try {
+        setProfileLoading(true);
+        
+        // Get user metadata from auth
+        const userMetadata = user.user_metadata || {};
+        
+        // Fetch role from users table
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (userError && userError.code !== 'PGRST116') {
+          console.error('Error fetching user role:', userError);
+        }
+
+        const role = userData?.role || userMetadata?.role || 'reporter';
+        const firstName = userMetadata?.first_name || userMetadata?.full_name || '';
+        const lastName = userMetadata?.last_name || '';
+        const gender = userMetadata?.gender || 'Not specified';
+        const contactNumber = userMetadata?.phone || userMetadata?.contact_number || 'Not provided';
+        const avatarPhoto = userMetadata?.avatar_url || null;
+        const dateCreated = user.created_at || new Date().toISOString();
+        // Get email from user object
+        const email = user.email || userMetadata?.email || 'Not provided';
+
+        setUserProfile({
+          userId: user.id,
+          role: role,
+          dateCreated: dateCreated,
+          contactNumber: contactNumber,
+          avatarPhoto: avatarPhoto,
+          firstName: firstName,
+          lastName: lastName,
+          gender: gender,
+          email: email,
+        });
+        setLoadedUserId(user.id);
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [user?.id, session?.access_token]); // Only depend on user ID and session token, not entire objects
 
   // Compute analytics data
   const approvedRecords = wildlifeRecords.filter(r => r.approval_status === 'approved' || r.user_id !== null);
@@ -605,6 +696,170 @@ export default function MainGrid() {
                 </Card>
               </Box>
             </Box>
+          </Card>
+        </Box>
+
+        {/* Profile Section */}
+        <Box 
+          component={motion.div}
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          data-profile sx={{ mt: 2, mb: 3, maxWidth: { xs: '100%', md: '1577px' }, mx: 'auto', minHeight: { xs: 'auto', md: '650px' } }}>
+          <Card sx={{ p: 3.5, boxShadow: 1, minHeight: { xs: 'auto', md: '650px' } }}>
+            <Typography variant="h4" component="h2" gutterBottom sx={{ color: 'primary.main', mb: -3 }}>
+              My Profile
+            </Typography>
+            
+            {profileLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 450 }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  Loading profile...
+                </Typography>
+              </Box>
+            ) : !userProfile ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 450 }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  Please sign in to view your profile
+                </Typography>
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 5, minHeight: { xs: 'auto', md: '550px' }, justifyContent: 'flex-start' }}>
+                {/* Avatar Section - Centered at top */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mb: 2 }}>
+                  <Avatar
+                    src={userProfile.avatarPhoto || undefined}
+                    sx={{ 
+                      width: { xs: 160, md: 200 }, 
+                      height: { xs: 160, md: 200 },
+                      border: '4px solid',
+                      borderColor: '#4caf50',
+                      bgcolor: 'primary.light',
+                      fontSize: { xs: '3.5rem', md: '4.5rem' },
+                      boxShadow: (theme) => theme.palette.mode === 'dark' 
+                        ? '0 8px 24px rgba(76, 175, 80, 0.4)'
+                        : '0 8px 24px rgba(76, 175, 80, 0.25)',
+                    }}
+                  >
+                    {!userProfile.avatarPhoto && (userProfile.firstName?.[0] || userProfile.lastName?.[0] || 'U')}
+                  </Avatar>
+                  <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', textAlign: 'center', mt: 1 }}>
+                    {userProfile.firstName && userProfile.lastName 
+                      ? `${userProfile.firstName} ${userProfile.lastName}`
+                      : userProfile.firstName || 'User'
+                    }
+                  </Typography>
+                  <Chip 
+                    label={userProfile.role.toUpperCase()} 
+                    size="small"
+                    sx={{ 
+                      fontWeight: 600, 
+                      letterSpacing: '0.5px',
+                      color: '#ffffff !important',
+                      backgroundColor: '#4caf50 !important',
+                      '&:hover': {
+                        backgroundColor: '#388e3c !important',
+                        color: '#ffffff !important',
+                      },
+                      // Override MUI default styles to ensure white text always
+                      '&.MuiChip-root': {
+                        backgroundColor: '#4caf50 !important',
+                        color: '#ffffff !important',
+                      },
+                      '&.MuiChip-root:hover': {
+                        backgroundColor: '#388e3c !important',
+                        color: '#ffffff !important',
+                      },
+                      // Override label text color - always white
+                      '& .MuiChip-label': {
+                        color: '#ffffff !important',
+                      }
+                    }}
+                  />
+                </Box>
+                
+                {/* Profile Fields Grid */}
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+                  {/* Personal Information Section */}
+                  <Card variant="outlined" sx={{ p: 3 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
+                      First Name
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1.125rem' }}>
+                      {userProfile.firstName || 'Not provided'}
+                    </Typography>
+                  </Card>
+                  
+                  <Card variant="outlined" sx={{ p: 3 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
+                      Last Name
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1.125rem' }}>
+                      {userProfile.lastName || 'Not provided'}
+                    </Typography>
+                  </Card>
+                  
+                  <Card variant="outlined" sx={{ p: 3 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
+                      Role
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 500, textTransform: 'capitalize', fontSize: '1.125rem' }}>
+                      {userProfile.role}
+                    </Typography>
+                  </Card>
+                  
+                  <Card variant="outlined" sx={{ p: 3 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
+                      User ID
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 500, wordBreak: 'break-all', fontSize: '0.875rem' }}>
+                      {userProfile.userId}
+                    </Typography>
+                  </Card>
+                  
+                  <Card variant="outlined" sx={{ p: 3 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
+                      Gender
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 500, textTransform: 'capitalize', fontSize: '1.125rem' }}>
+                      {userProfile.gender.replace(/_/g, ' ')}
+                    </Typography>
+                  </Card>
+                  
+                  <Card variant="outlined" sx={{ p: 3 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
+                      Date Created
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1.125rem' }}>
+                      {new Date(userProfile.dateCreated).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </Typography>
+                  </Card>
+                  
+                  <Card variant="outlined" sx={{ p: 3 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
+                      Email
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 500, wordBreak: 'break-all', fontSize: '1.125rem' }}>
+                      {userProfile.email}
+                    </Typography>
+                  </Card>
+                  
+                  <Card variant="outlined" sx={{ p: 3 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
+                      Contact Number
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1.125rem' }}>
+                      {userProfile.contactNumber}
+                    </Typography>
+                  </Card>
+                </Box>
+              </Box>
+            )}
           </Card>
         </Box>
       </Box>
