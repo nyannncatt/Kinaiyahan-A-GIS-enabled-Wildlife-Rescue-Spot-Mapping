@@ -21,6 +21,16 @@ import Button from '@mui/material/Button';
 import Badge from '@mui/material/Badge';
 import Avatar from '@mui/material/Avatar';
 import Chip from '@mui/material/Chip';
+import TextField from '@mui/material/TextField';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
 import MapOutlinedIcon from '@mui/icons-material/MapOutlined';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import SatelliteAltOutlinedIcon from '@mui/icons-material/SatelliteAltOutlined';
@@ -63,6 +73,19 @@ export default function MainGrid() {
   } | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
+  
+  // State for edit mode
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedProfile, setEditedProfile] = useState<{
+    firstName: string;
+    lastName: string;
+    gender: string;
+    email: string;
+    contactNumber: string;
+  } | null>(null);
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
   
   // Fetch wildlife records for analytics
   useEffect(() => {
@@ -148,6 +171,124 @@ export default function MainGrid() {
 
     fetchUserProfile();
   }, [user?.id, session?.access_token]); // Only depend on user ID and session token, not entire objects
+
+  // Handle edit mode toggle
+  const handleEditClick = () => {
+    if (userProfile) {
+      setEditedProfile({
+        firstName: userProfile.firstName || '',
+        lastName: userProfile.lastName || '',
+        gender: userProfile.gender || 'Not specified',
+        email: userProfile.email || '', // Keep for display but won't be updated
+        contactNumber: userProfile.contactNumber || '',
+      });
+      setIsEditMode(true);
+      setUpdateError(null);
+      setUpdateSuccess(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setEditedProfile(null);
+    setUpdateError(null);
+    setUpdateSuccess(false);
+  };
+
+  // Handle profile update
+  const handleSaveProfile = async () => {
+    if (!editedProfile || !user) {
+      return;
+    }
+
+    setUpdatingProfile(true);
+    setUpdateError(null);
+    setUpdateSuccess(false);
+
+    try {
+      // Prepare update object (email is not editable, so we don't update it)
+      const updateData: any = {
+        data: {
+          first_name: editedProfile.firstName,
+          last_name: editedProfile.lastName,
+          gender: editedProfile.gender,
+          phone: editedProfile.contactNumber,
+          contact_number: editedProfile.contactNumber,
+        }
+      };
+
+      // Update user metadata in Supabase Auth (email stays the same)
+      const { data: updatedUser, error: updateError } = await supabase.auth.updateUser(updateData);
+
+      if (updateError) throw updateError;
+
+      // Also update the users table in the database
+      // Use upsert to handle both insert and update cases
+      // Note: email is stored in auth.users, not in the public.users table
+      // Only update columns that exist in the users table
+      // Role is required (NOT NULL), so we must include it
+      const { data: dbData, error: dbUpdateError } = await supabase
+        .from('users')
+        .upsert({
+          id: user.id,
+          first_name: editedProfile.firstName,
+          last_name: editedProfile.lastName,
+          gender: editedProfile.gender,
+          contact_number: editedProfile.contactNumber,
+          role: userProfile?.role || 'reporter', // Role is required (NOT NULL constraint)
+        }, { 
+          onConflict: 'id',
+        });
+
+      if (dbUpdateError) {
+        console.error('Error updating users table:', dbUpdateError);
+        console.error('Error details:', JSON.stringify(dbUpdateError, null, 2));
+        // Show error to user
+        setUpdateError(`Profile updated in auth metadata, but database update failed: ${dbUpdateError.message}. Check console for details.`);
+      } else {
+        console.log('Successfully updated users table:', dbData);
+      }
+
+      // Update local state immediately
+      setUserProfile(prev => prev ? {
+        ...prev,
+        firstName: editedProfile.firstName,
+        lastName: editedProfile.lastName,
+        gender: editedProfile.gender,
+        email: updatedUser.user?.email || editedProfile.email,
+        contactNumber: editedProfile.contactNumber,
+      } : null);
+
+      setUpdateSuccess(true);
+      setIsEditMode(false);
+      
+      // Force refresh by clearing loadedUserId to trigger refetch on next render
+      setLoadedUserId(null);
+
+      // Refresh the session to get updated user data
+      const { data: { session: newSession } } = await supabase.auth.getSession();
+      if (newSession?.user) {
+        // Update profile from fresh session data
+        const userMetadata = newSession.user.user_metadata || {};
+        setUserProfile(prev => prev ? {
+          ...prev,
+          firstName: userMetadata.first_name || userMetadata.full_name || prev.firstName,
+          lastName: userMetadata.last_name || prev.lastName,
+          gender: userMetadata.gender || prev.gender,
+          email: newSession.user.email || prev.email,
+          contactNumber: userMetadata.phone || userMetadata.contact_number || prev.contactNumber,
+        } : null);
+      }
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setUpdateSuccess(false), 3000);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setUpdateError(error instanceof Error ? error.message : 'Failed to update profile');
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
 
   // Compute analytics data
   const approvedRecords = wildlifeRecords.filter(r => r.approval_status === 'approved' || r.user_id !== null);
@@ -707,10 +848,82 @@ export default function MainGrid() {
           viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           data-profile sx={{ mt: 2, mb: 3, maxWidth: { xs: '100%', md: '1577px' }, mx: 'auto', minHeight: { xs: 'auto', md: '650px' } }}>
-          <Card sx={{ p: 3.5, boxShadow: 1, minHeight: { xs: 'auto', md: '650px' } }}>
-            <Typography variant="h4" component="h2" gutterBottom sx={{ color: 'primary.main', mb: -3 }}>
-              My Profile
-            </Typography>
+          <Card sx={{ p: 3.5, boxShadow: 1, minHeight: { xs: 'auto', md: '650px' }, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: -6, flexShrink: 0 }}>
+              <Typography variant="h4" component="h2" sx={{ color: 'primary.main', mb: 3 }}>
+                My Profile
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, mb: 3, minHeight: '32.5px', alignItems: 'center' }}>
+                {!isEditMode && userProfile && (
+                  <Box
+                    component={motion.div}
+                    key="edit-button"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Button
+                      variant="outlined"
+                      startIcon={<EditIcon />}
+                      onClick={handleEditClick}
+                      size="small"
+                    >
+                      Edit
+                    </Button>
+                  </Box>
+                )}
+                {isEditMode && (
+                  <Box
+                    component={motion.div}
+                    key="action-buttons"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ display: 'flex', gap: 8 }}
+                  >
+                    <Button
+                      variant="outlined"
+                      startIcon={<CancelIcon />}
+                      onClick={handleCancelEdit}
+                      disabled={updatingProfile}
+                      size="small"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="contained"
+                      startIcon={updatingProfile ? <CircularProgress size={16} /> : <SaveIcon />}
+                      onClick={handleSaveProfile}
+                      disabled={updatingProfile}
+                      size="small"
+                      sx={{
+                        backgroundColor: '#4caf50',
+                        '&:hover': {
+                          backgroundColor: '#388e3c',
+                        }
+                      }}
+                    >
+                      {updatingProfile ? 'Saving...' : 'Save'}
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+            
+            {(updateSuccess || updateError) && (
+              <Box sx={{ mb: 2, flexShrink: 0, minHeight: updateSuccess && updateError ? '104px' : '52px' }}>
+                {updateSuccess && (
+                  <Alert severity="success" sx={{ mb: 1 }}>
+                    Profile updated successfully!
+                  </Alert>
+                )}
+                {updateError && (
+                  <Alert severity="error">
+                    {updateError}
+                  </Alert>
+                )}
+              </Box>
+            )}
             
             {profileLoading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 450 }}>
@@ -725,7 +938,14 @@ export default function MainGrid() {
                 </Typography>
               </Box>
             ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 5, minHeight: { xs: 'auto', md: '550px' }, justifyContent: 'flex-start' }}>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: 5, 
+                minHeight: { xs: 'auto', md: '550px' },
+                flex: 1,
+                justifyContent: 'flex-start' 
+              }}>
                 {/* Avatar Section - Centered at top */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mb: 2 }}>
                   <Avatar
@@ -781,25 +1001,101 @@ export default function MainGrid() {
                 
                 {/* Profile Fields Grid */}
                 <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
-                  {/* Personal Information Section */}
-                  <Card variant="outlined" sx={{ p: 3 }}>
+                  {/* First Name */}
+                  <Card variant="outlined" sx={{ p: 3, transition: 'all 0.3s ease' }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
                       First Name
                     </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1.125rem' }}>
-                      {userProfile.firstName || 'Not provided'}
-                    </Typography>
+                    <Box
+                      component={motion.div}
+                      initial={false}
+                      key={isEditMode ? 'edit' : 'view'}
+                      animate={{ opacity: [0, 1] }}
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    >
+                      {isEditMode && editedProfile ? (
+                        <TextField
+                          fullWidth
+                          size="small"
+                          value={editedProfile.firstName}
+                          onChange={(e) => setEditedProfile({ ...editedProfile, firstName: e.target.value })}
+                          variant="standard"
+                          sx={{
+                            '& .MuiInput-input': {
+                              fontWeight: 500,
+                              fontSize: '1.125rem',
+                              padding: 0,
+                              marginTop: 0.5,
+                            },
+                            '& .MuiInput-underline:before': {
+                              borderBottom: 'none',
+                            },
+                            '& .MuiInput-underline:hover:before': {
+                              borderBottom: '1px solid rgba(0, 0, 0, 0.42)',
+                            },
+                            '& .MuiInput-underline:after': {
+                              borderBottom: '2px solid',
+                              borderBottomColor: 'primary.main',
+                            },
+                            mt: -0.5,
+                          }}
+                        />
+                      ) : (
+                        <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1.125rem' }}>
+                          {userProfile.firstName || 'Not provided'}
+                        </Typography>
+                      )}
+                    </Box>
                   </Card>
                   
-                  <Card variant="outlined" sx={{ p: 3 }}>
+                  {/* Last Name */}
+                  <Card variant="outlined" sx={{ p: 3, transition: 'all 0.3s ease' }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
                       Last Name
                     </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1.125rem' }}>
-                      {userProfile.lastName || 'Not provided'}
-                    </Typography>
+                    <Box
+                      component={motion.div}
+                      initial={false}
+                      key={isEditMode ? 'edit' : 'view'}
+                      animate={{ opacity: [0, 1] }}
+                      transition={{ duration: 0.3, delay: 0.05, ease: 'easeInOut' }}
+                    >
+                      {isEditMode && editedProfile ? (
+                        <TextField
+                          fullWidth
+                          size="small"
+                          value={editedProfile.lastName}
+                          onChange={(e) => setEditedProfile({ ...editedProfile, lastName: e.target.value })}
+                          variant="standard"
+                          sx={{
+                            '& .MuiInput-input': {
+                              fontWeight: 500,
+                              fontSize: '1.125rem',
+                              padding: 0,
+                              marginTop: 0.5,
+                            },
+                            '& .MuiInput-underline:before': {
+                              borderBottom: 'none',
+                            },
+                            '& .MuiInput-underline:hover:before': {
+                              borderBottom: '1px solid rgba(0, 0, 0, 0.42)',
+                            },
+                            '& .MuiInput-underline:after': {
+                              borderBottom: '2px solid',
+                              borderBottomColor: 'primary.main',
+                            },
+                            mt: -0.5,
+                          }}
+                        />
+                      ) : (
+                        <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1.125rem' }}>
+                          {userProfile.lastName || 'Not provided'}
+                        </Typography>
+                      )}
+                    </Box>
                   </Card>
                   
+                  {/* Role - Not Editable */}
                   <Card variant="outlined" sx={{ p: 3 }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
                       Role
@@ -809,6 +1105,7 @@ export default function MainGrid() {
                     </Typography>
                   </Card>
                   
+                  {/* User ID - Not Editable */}
                   <Card variant="outlined" sx={{ p: 3 }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
                       User ID
@@ -818,15 +1115,110 @@ export default function MainGrid() {
                     </Typography>
                   </Card>
                   
-                  <Card variant="outlined" sx={{ p: 3 }}>
+                  {/* Gender */}
+                  <Card variant="outlined" sx={{ p: 3, transition: 'all 0.3s ease' }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
                       Gender
                     </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 500, textTransform: 'capitalize', fontSize: '1.125rem' }}>
-                      {userProfile.gender.replace(/_/g, ' ')}
-                    </Typography>
+                    <Box
+                      component={motion.div}
+                      initial={false}
+                      key={isEditMode ? 'edit' : 'view'}
+                      animate={{ opacity: [0, 1] }}
+                      transition={{ duration: 0.3, delay: 0.1, ease: 'easeInOut' }}
+                    >
+                      {isEditMode && editedProfile ? (
+                        <FormControl fullWidth sx={{ mt: -0.5 }}>
+                          <Select
+                            value={editedProfile.gender}
+                            onChange={(e) => setEditedProfile({ ...editedProfile, gender: e.target.value })}
+                            sx={{
+                              '& .MuiSelect-select': {
+                                fontWeight: 500,
+                                fontSize: '1.125rem',
+                                padding: '6px 14px',
+                                textTransform: 'capitalize',
+                                color: 'text.primary',
+                                backgroundColor: 'transparent',
+                                '&:focus': {
+                                  backgroundColor: 'transparent',
+                                },
+                              },
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                border: 'none',
+                                borderBottom: '2px solid',
+                                borderColor: 'divider',
+                                borderRadius: 0,
+                              },
+                              '&:hover .MuiOutlinedInput-notchedOutline': {
+                                borderColor: 'primary.main',
+                                borderBottomWidth: '2px',
+                              },
+                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                borderColor: 'primary.main',
+                                borderBottomWidth: '2px',
+                              },
+                              '& .MuiSvgIcon-root': {
+                                color: 'text.secondary',
+                              },
+                            }}
+                            MenuProps={{
+                              anchorOrigin: {
+                                vertical: 'bottom',
+                                horizontal: 'left',
+                              },
+                              transformOrigin: {
+                                vertical: 'top',
+                                horizontal: 'left',
+                              },
+                              PaperProps: {
+                                sx: {
+                                  maxHeight: 200,
+                                  mt: 1,
+                                  borderRadius: 2,
+                                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+                                  border: '1px solid',
+                                  borderColor: 'divider',
+                                  '& .MuiMenuItem-root': {
+                                    fontSize: '1rem',
+                                    py: 1.25,
+                                    px: 2,
+                                    textTransform: 'capitalize',
+                                    transition: 'all 0.2s ease',
+                                    '&:hover': {
+                                      backgroundColor: 'primary.light',
+                                      color: 'primary.contrastText',
+                                    },
+                                    '&.Mui-selected': {
+                                      backgroundColor: 'primary.main',
+                                      color: 'white',
+                                      '&:hover': {
+                                        backgroundColor: 'primary.dark',
+                                      },
+                                    },
+                                  },
+                                },
+                              },
+                              disableAutoFocusItem: true,
+                              disableScrollLock: true,
+                            }}
+                          >
+                            <MenuItem value="male">Male</MenuItem>
+                            <MenuItem value="female">Female</MenuItem>
+                            <MenuItem value="other">Other</MenuItem>
+                            <MenuItem value="prefer_not_to_say">Prefer Not to Say</MenuItem>
+                            <MenuItem value="Not specified">Not specified</MenuItem>
+                          </Select>
+                        </FormControl>
+                      ) : (
+                        <Typography variant="body1" sx={{ fontWeight: 500, textTransform: 'capitalize', fontSize: '1.125rem' }}>
+                          {userProfile.gender.replace(/_/g, ' ')}
+                        </Typography>
+                      )}
+                    </Box>
                   </Card>
                   
+                  {/* Date Created - Not Editable */}
                   <Card variant="outlined" sx={{ p: 3 }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
                       Date Created
@@ -840,22 +1232,61 @@ export default function MainGrid() {
                     </Typography>
                   </Card>
                   
+                  {/* Email - Read Only */}
                   <Card variant="outlined" sx={{ p: 3 }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
                       Email
                     </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 500, wordBreak: 'break-all', fontSize: '1.125rem' }}>
+                    <Typography variant="body1" sx={{ fontWeight: 500, wordBreak: 'break-all', fontSize: '1.125rem', color: 'text.secondary' }}>
                       {userProfile.email}
                     </Typography>
                   </Card>
                   
-                  <Card variant="outlined" sx={{ p: 3 }}>
+                  {/* Contact Number */}
+                  <Card variant="outlined" sx={{ p: 3, transition: 'all 0.3s ease' }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
                       Contact Number
                     </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1.125rem' }}>
-                      {userProfile.contactNumber}
-                    </Typography>
+                    <Box
+                      component={motion.div}
+                      initial={false}
+                      key={isEditMode ? 'edit' : 'view'}
+                      animate={{ opacity: [0, 1] }}
+                      transition={{ duration: 0.3, delay: 0.15, ease: 'easeInOut' }}
+                    >
+                      {isEditMode && editedProfile ? (
+                        <TextField
+                          fullWidth
+                          size="small"
+                          value={editedProfile.contactNumber}
+                          onChange={(e) => setEditedProfile({ ...editedProfile, contactNumber: e.target.value })}
+                          variant="standard"
+                          sx={{
+                            '& .MuiInput-input': {
+                              fontWeight: 500,
+                              fontSize: '1.125rem',
+                              padding: 0,
+                              marginTop: 0.5,
+                            },
+                            '& .MuiInput-underline:before': {
+                              borderBottom: 'none',
+                            },
+                            '& .MuiInput-underline:hover:before': {
+                              borderBottom: '1px solid rgba(0, 0, 0, 0.42)',
+                            },
+                            '& .MuiInput-underline:after': {
+                              borderBottom: '2px solid',
+                              borderBottomColor: 'primary.main',
+                            },
+                            mt: -0.5,
+                          }}
+                        />
+                      ) : (
+                        <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1.125rem' }}>
+                          {userProfile.contactNumber}
+                        </Typography>
+                      )}
+                    </Box>
                   </Card>
                 </Box>
               </Box>
