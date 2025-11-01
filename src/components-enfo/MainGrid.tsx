@@ -29,6 +29,9 @@ import InputLabel from '@mui/material/InputLabel';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import MapOutlinedIcon from '@mui/icons-material/MapOutlined';
@@ -86,6 +89,13 @@ export default function MainGrid() {
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [updateSuccess, setUpdateSuccess] = useState(false);
+  
+  // State for avatar upload
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  
+  // State for User ID visibility (default to hidden)
+  const [showUserId, setShowUserId] = useState(false);
   
   // Fetch wildlife records for analytics
   useEffect(() => {
@@ -182,6 +192,8 @@ export default function MainGrid() {
         email: userProfile.email || '', // Keep for display but won't be updated
         contactNumber: userProfile.contactNumber || '',
       });
+      setAvatarFile(null);
+      setAvatarPreview(null);
       setIsEditMode(true);
       setUpdateError(null);
       setUpdateSuccess(false);
@@ -191,8 +203,31 @@ export default function MainGrid() {
   const handleCancelEdit = () => {
     setIsEditMode(false);
     setEditedProfile(null);
+    setAvatarFile(null);
+    setAvatarPreview(null);
     setUpdateError(null);
     setUpdateSuccess(false);
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setAvatarFile(file);
+    if (file) {
+      setAvatarPreview(URL.createObjectURL(file));
+    } else {
+      setAvatarPreview(null);
+    }
+  };
+
+  const uploadAvatar = async (userId: string): Promise<string | null> => {
+    if (!avatarFile) return null;
+    const ext = avatarFile.name.split('.').pop();
+    const fileName = `${userId}-${Date.now()}.${ext}`;
+    const filePath = `avatars/${fileName}`;
+    const { error: upErr } = await supabase.storage.from('wildlife-photos').upload(filePath, avatarFile);
+    if (upErr) throw upErr;
+    const { data: urlData } = supabase.storage.from('wildlife-photos').getPublicUrl(filePath);
+    return urlData.publicUrl || null;
   };
 
   // Handle profile update
@@ -206,6 +241,12 @@ export default function MainGrid() {
     setUpdateSuccess(false);
 
     try {
+      // Upload avatar if a new file was selected
+      let avatarUrl: string | null = null;
+      if (avatarFile) {
+        avatarUrl = await uploadAvatar(user.id);
+      }
+
       // Prepare update object (email is not editable, so we don't update it)
       const updateData: any = {
         data: {
@@ -214,6 +255,7 @@ export default function MainGrid() {
           gender: editedProfile.gender,
           phone: editedProfile.contactNumber,
           contact_number: editedProfile.contactNumber,
+          ...(avatarUrl && { avatar_url: avatarUrl }),
         }
       };
 
@@ -227,16 +269,23 @@ export default function MainGrid() {
       // Note: email is stored in auth.users, not in the public.users table
       // Only update columns that exist in the users table
       // Role is required (NOT NULL), so we must include it
+      const updatePayload: any = {
+        id: user.id,
+        first_name: editedProfile.firstName,
+        last_name: editedProfile.lastName,
+        gender: editedProfile.gender,
+        contact_number: editedProfile.contactNumber,
+        role: userProfile?.role || 'reporter', // Role is required (NOT NULL constraint)
+      };
+
+      // Only include avatar_url if it was uploaded
+      if (avatarUrl) {
+        updatePayload.avatar_url = avatarUrl;
+      }
+
       const { data: dbData, error: dbUpdateError } = await supabase
         .from('users')
-        .upsert({
-          id: user.id,
-          first_name: editedProfile.firstName,
-          last_name: editedProfile.lastName,
-          gender: editedProfile.gender,
-          contact_number: editedProfile.contactNumber,
-          role: userProfile?.role || 'reporter', // Role is required (NOT NULL constraint)
-        }, { 
+        .upsert(updatePayload, { 
           onConflict: 'id',
         });
 
@@ -257,7 +306,11 @@ export default function MainGrid() {
         gender: editedProfile.gender,
         email: updatedUser.user?.email || editedProfile.email,
         contactNumber: editedProfile.contactNumber,
+        avatarPhoto: avatarUrl || prev.avatarPhoto,
       } : null);
+      
+      setAvatarFile(null);
+      setAvatarPreview(null);
 
       setUpdateSuccess(true);
       setIsEditMode(false);
@@ -948,22 +1001,74 @@ export default function MainGrid() {
               }}>
                 {/* Avatar Section - Centered at top */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mb: 2 }}>
-                  <Avatar
-                    src={userProfile.avatarPhoto || undefined}
-                    sx={{ 
-                      width: { xs: 160, md: 200 }, 
-                      height: { xs: 160, md: 200 },
-                      border: '4px solid',
-                      borderColor: '#4caf50',
-                      bgcolor: 'primary.light',
-                      fontSize: { xs: '3.5rem', md: '4.5rem' },
-                      boxShadow: (theme) => theme.palette.mode === 'dark' 
-                        ? '0 8px 24px rgba(76, 175, 80, 0.4)'
-                        : '0 8px 24px rgba(76, 175, 80, 0.25)',
-                    }}
-                  >
-                    {!userProfile.avatarPhoto && (userProfile.firstName?.[0] || userProfile.lastName?.[0] || 'U')}
-                  </Avatar>
+                  <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                    <Avatar
+                      src={avatarPreview || userProfile.avatarPhoto || undefined}
+                      sx={{ 
+                        width: { xs: 160, md: 200 }, 
+                        height: { xs: 160, md: 200 },
+                        border: '4px solid',
+                        borderColor: '#4caf50',
+                        bgcolor: 'primary.light',
+                        fontSize: { xs: '3.5rem', md: '4.5rem' },
+                        boxShadow: (theme) => theme.palette.mode === 'dark' 
+                          ? '0 8px 24px rgba(76, 175, 80, 0.4)'
+                          : '0 8px 24px rgba(76, 175, 80, 0.25)',
+                      }}
+                    >
+                      {!avatarPreview && !userProfile.avatarPhoto && (userProfile.firstName?.[0] || userProfile.lastName?.[0] || 'U')}
+                    </Avatar>
+                    {isEditMode && (
+                      <Box
+                        component="label"
+                        sx={{
+                          position: 'absolute',
+                          bottom: 0,
+                          right: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.5,
+                          bgcolor: '#4caf50',
+                          color: '#ffffff !important',
+                          border: '3px solid',
+                          borderColor: 'background.paper',
+                          borderRadius: 2,
+                          px: 1,
+                          py: 0.5,
+                          cursor: 'pointer',
+                          '&:hover': {
+                            bgcolor: '#388e3c',
+                            color: '#ffffff !important',
+                          },
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                        }}
+                      >
+                        <PhotoCameraIcon 
+                          sx={{ 
+                            fontSize: { xs: 16, md: 20 },
+                            color: '#ffffff !important',
+                          }} 
+                        />
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: '#ffffff !important',
+                            fontWeight: 600,
+                            fontSize: { xs: '0.7rem', md: '0.75rem' },
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Edit
+                        </Typography>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          onChange={handleAvatarChange}
+                        />
+                      </Box>
+                    )}
+                  </Box>
                   <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', textAlign: 'center', mt: 1 }}>
                     {userProfile.firstName && userProfile.lastName 
                       ? `${userProfile.firstName} ${userProfile.lastName}`
@@ -1028,10 +1133,12 @@ export default function MainGrid() {
                               marginTop: 0.5,
                             },
                             '& .MuiInput-underline:before': {
-                              borderBottom: 'none',
+                              borderBottom: '1px solid',
+                              borderBottomColor: 'divider',
                             },
                             '& .MuiInput-underline:hover:before': {
-                              borderBottom: '1px solid rgba(0, 0, 0, 0.42)',
+                              borderBottom: '2px solid',
+                              borderBottomColor: 'primary.main',
                             },
                             '& .MuiInput-underline:after': {
                               borderBottom: '2px solid',
@@ -1075,10 +1182,12 @@ export default function MainGrid() {
                               marginTop: 0.5,
                             },
                             '& .MuiInput-underline:before': {
-                              borderBottom: 'none',
+                              borderBottom: '1px solid',
+                              borderBottomColor: 'divider',
                             },
                             '& .MuiInput-underline:hover:before': {
-                              borderBottom: '1px solid rgba(0, 0, 0, 0.42)',
+                              borderBottom: '2px solid',
+                              borderBottomColor: 'primary.main',
                             },
                             '& .MuiInput-underline:after': {
                               borderBottom: '2px solid',
@@ -1097,9 +1206,16 @@ export default function MainGrid() {
                   
                   {/* Role - Not Editable */}
                   <Card variant="outlined" sx={{ p: 3 }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
-                      Role
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                      <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                        Role
+                      </Typography>
+                      {isEditMode && (
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', fontStyle: 'italic' }}>
+                          Cannot be edited
+                        </Typography>
+                      )}
+                    </Box>
                     <Typography variant="body1" sx={{ fontWeight: 500, textTransform: 'capitalize', fontSize: '1.125rem' }}>
                       {userProfile.role}
                     </Typography>
@@ -1107,11 +1223,40 @@ export default function MainGrid() {
                   
                   {/* User ID - Not Editable */}
                   <Card variant="outlined" sx={{ p: 3 }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
-                      User ID
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                          User ID
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          onClick={() => setShowUserId(!showUserId)}
+                          sx={{
+                            padding: 0,
+                            minWidth: 'auto',
+                            width: 'auto',
+                            height: 'auto',
+                            color: 'text.secondary',
+                            '&:hover': {
+                              color: 'primary.main',
+                            },
+                          }}
+                        >
+                          {showUserId ? (
+                            <VisibilityIcon sx={{ fontSize: '0.875rem' }} />
+                          ) : (
+                            <VisibilityOffIcon sx={{ fontSize: '0.875rem' }} />
+                          )}
+                        </IconButton>
+                      </Box>
+                      {isEditMode && (
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', fontStyle: 'italic' }}>
+                          Cannot be edited
+                        </Typography>
+                      )}
+                    </Box>
                     <Typography variant="body1" sx={{ fontWeight: 500, wordBreak: 'break-all', fontSize: '0.875rem' }}>
-                      {userProfile.userId}
+                      {showUserId ? userProfile.userId : '••••••••••••'}
                     </Typography>
                   </Card>
                   
@@ -1220,9 +1365,16 @@ export default function MainGrid() {
                   
                   {/* Date Created - Not Editable */}
                   <Card variant="outlined" sx={{ p: 3 }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
-                      Date Created
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                      <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                        Date Created
+                      </Typography>
+                      {isEditMode && (
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', fontStyle: 'italic' }}>
+                          Cannot be edited
+                        </Typography>
+                      )}
+                    </Box>
                     <Typography variant="body1" sx={{ fontWeight: 500, fontSize: '1.125rem' }}>
                       {new Date(userProfile.dateCreated).toLocaleDateString('en-US', {
                         year: 'numeric',
@@ -1234,9 +1386,16 @@ export default function MainGrid() {
                   
                   {/* Email - Read Only */}
                   <Card variant="outlined" sx={{ p: 3 }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.875rem' }}>
-                      Email
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                      <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                        Email
+                      </Typography>
+                      {isEditMode && (
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', fontStyle: 'italic' }}>
+                          Cannot be edited
+                        </Typography>
+                      )}
+                    </Box>
                     <Typography variant="body1" sx={{ fontWeight: 500, wordBreak: 'break-all', fontSize: '1.125rem', color: 'text.secondary' }}>
                       {userProfile.email}
                     </Typography>
@@ -1269,10 +1428,12 @@ export default function MainGrid() {
                               marginTop: 0.5,
                             },
                             '& .MuiInput-underline:before': {
-                              borderBottom: 'none',
+                              borderBottom: '1px solid',
+                              borderBottomColor: 'divider',
                             },
                             '& .MuiInput-underline:hover:before': {
-                              borderBottom: '1px solid rgba(0, 0, 0, 0.42)',
+                              borderBottom: '2px solid',
+                              borderBottomColor: 'primary.main',
                             },
                             '& .MuiInput-underline:after': {
                               borderBottom: '2px solid',
