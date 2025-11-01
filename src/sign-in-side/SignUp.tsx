@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { Box, Button, TextField, Typography, Avatar, MenuItem, InputLabel, FormControl, Select, Alert, CircularProgress, Link, Card as MuiCard, Fade, Slide } from '@mui/material';
-import { CloudUpload } from '@mui/icons-material';
+import { Box, Button, TextField, Typography, Avatar, MenuItem, InputLabel, FormControl, Select, Alert, CircularProgress, Link, Card as MuiCard, Fade, Slide, Modal, Backdrop } from '@mui/material';
+import { CloudUpload, CheckCircle } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { supabase } from '../services/supabase';
 
@@ -37,10 +37,22 @@ export default function SignUp() {
   const [emailWarning, setEmailWarning] = useState<string | null>(null);
   const [passwordWarning, setPasswordWarning] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [countdown, setCountdown] = useState(4);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
+  }, []);
+
+  // Cleanup countdown timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+    };
   }, []);
 
   const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,15 +138,40 @@ export default function SignUp() {
             last_name: lastName,
             contact_number: contactNumber || null,
             avatar_url: avatarUrl || null,
-            gender: gender
+            gender: gender,
+            email: email
           }, { onConflict: 'id' });
         if (upsertErr) throw upsertErr;
       }
 
       // Do not keep user logged in after signup: sign out and send to login
       try { await supabase.auth.signOut(); } catch {}
-      setSuccess('Account created! Please sign in.');
-      navigate('/login');
+      
+      // Show success modal
+      setShowSuccessModal(true);
+      setCountdown(4);
+      
+      // Clear any existing timers
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+      
+      // Countdown timer
+      timerRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+      // Redirect after 4 seconds
+      redirectTimerRef.current = setTimeout(() => {
+        if (timerRef.current) clearInterval(timerRef.current);
+        setShowSuccessModal(false);
+        navigate('/login');
+      }, 4000);
     } catch (err: any) {
       setError(err.message || 'Sign up failed');
     } finally {
@@ -477,6 +514,91 @@ export default function SignUp() {
           </Box>
           </Card>
         </Fade>
+
+        {/* Success Modal */}
+        <Modal
+          open={showSuccessModal}
+          closeAfterTransition
+          BackdropComponent={Backdrop}
+          BackdropProps={{
+            timeout: 500,
+          }}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Fade in={showSuccessModal}>
+            <Box
+              sx={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: { xs: '90%', sm: 400 },
+                bgcolor: 'background.paper',
+                borderRadius: 3,
+                boxShadow: 24,
+                p: 4,
+                textAlign: 'center',
+                outline: 'none',
+              }}
+            >
+              <CheckCircle sx={{ fontSize: 64, color: '#4caf50', mb: 2 }} />
+              <Typography variant="h5" component="h2" sx={{ mb: 2, fontWeight: 700, color: '#2e7d32' }}>
+                Account Created Successfully!
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary' }}>
+                Redirecting to login page in {countdown} second{countdown !== 1 ? 's' : ''}...
+              </Typography>
+              <Box sx={{ position: 'relative', display: 'inline-flex', mb: 2 }}>
+                <CircularProgress 
+                  variant="determinate" 
+                  value={(4 - countdown) / 4 * 100} 
+                  size={60}
+                  thickness={4}
+                  sx={{
+                    color: '#4caf50',
+                  }}
+                />
+                <Box
+                  sx={{
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    right: 0,
+                    position: 'absolute',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Typography variant="h6" component="div" sx={{ fontWeight: 700, color: '#2e7d32' }}>
+                    {countdown}
+                  </Typography>
+                </Box>
+              </Box>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  if (timerRef.current) clearInterval(timerRef.current);
+                  if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+                  setShowSuccessModal(false);
+                  setCountdown(4);
+                  navigate('/login');
+                }}
+                sx={{
+                  mt: 2,
+                  bgcolor: '#2e7d32',
+                  '&:hover': { bgcolor: '#1b5e20' },
+                }}
+              >
+                Go to Login Now
+              </Button>
+            </Box>
+          </Fade>
+        </Modal>
       </Box>
       {/* Confirmation dialog removed for Option B */}
     </>
