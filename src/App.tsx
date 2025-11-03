@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import Enforcement from "./pages/Enforcement";
 import Cenro from "./pages/Cenro";
+import Admin from "./pages/Admin";
 import PublicReport from "./pages/PublicReport";
 import SignIn from "./sign-in-side/SignInSide";
 import SignUp from "./sign-in-side/SignUp";
@@ -48,6 +49,7 @@ function App() {
     <Routes>
       <Route path="/login" element={<SignIn />} />
       <Route path="/enforcement" element={<RequireAuth><Enforcement /></RequireAuth>} />
+      <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
       <Route path="/signup" element={<SignUp />} />
       {/* Alias: show /cenro URL but render Enforcement view (CENRO is view-only in components) */}
       <Route path="/cenro" element={<RequireAuth><Enforcement /></RequireAuth>} />
