@@ -166,23 +166,23 @@ export default function UserManagement() {
         {paddedEntries.map((entry, idx) => {
           const isPlaceholder = !entry.name && !entry.email && !entry.contactNumber;
           const isAdmin = entry.role === 'admin';
-          const actionButtons = (
+          const actionButtons = !isPlaceholder ? (
             <Stack direction="row" sx={{ gap: 1, alignItems: 'center' }}>
-              <Tooltip title={isAdmin || isPlaceholder ? (isAdmin ? 'Cannot edit admin role' : '') : ''}>
+              <Tooltip title={isAdmin ? 'Cannot edit admin role' : ''}>
                 <span>
-                  <Button size="small" variant="outlined" disabled={isAdmin || isPlaceholder} onClick={() => openEdit(entry.id, entry.role)}>Edit Role</Button>
+                  <Button size="small" variant="outlined" disabled={isAdmin} onClick={() => openEdit(entry.id, entry.role)}>Edit Role</Button>
                 </span>
               </Tooltip>
-              <Tooltip title={isAdmin || isPlaceholder ? (isAdmin ? 'Cannot delete admin' : '') : ''}>
+              <Tooltip title={isAdmin ? 'Cannot delete admin' : ''}>
                 <span>
-                  <Button size="small" variant="outlined" color="error" disabled={isAdmin || isPlaceholder}>Delete User</Button>
+                  <Button size="small" variant="outlined" color="error" disabled={isAdmin}>Delete User</Button>
                 </span>
               </Tooltip>
             </Stack>
-          );
+          ) : null;
           return (
             <React.Fragment key={`row-${entry.id || idx}`}>
-              <ListItem secondaryAction={actionButtons} sx={{
+              <ListItem secondaryAction={actionButtons as any} sx={{
                 '& .MuiListItemSecondaryAction-root': { right: 16 },
                 py: 2,
               }}>
