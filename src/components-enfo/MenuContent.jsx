@@ -149,6 +149,7 @@ const utilityItems = [
 export default function MenuContent() {
   const [activeTab, setActiveTab] = useState('mapping');
   const theme = useTheme();
+  const isAdminRoute = typeof window !== 'undefined' && window.location && window.location.pathname.startsWith('/admin');
 
   // Track scroll position to update active tab
   useEffect(() => {
@@ -375,7 +376,11 @@ export default function MenuContent() {
       <Box sx={{ flex: 1, px: 2, mt: 5 }}>
         <SectionTitle>MAIN</SectionTitle>
         <List dense>
-          {mainNavigationItems.map((item) => (
+          {mainNavigationItems.map((item) => {
+            const isMapping = item.id === 'mapping';
+            const text = isAdminRoute && isMapping ? 'User Management' : item.text;
+            const description = isAdminRoute && isMapping ? 'Manage users and roles' : item.description;
+            return (
             <ListItem key={item.id} disablePadding sx={{ display: 'block' }}>
               <TabButton
                 active={activeTab === item.id}
@@ -393,20 +398,21 @@ export default function MenuContent() {
                         fontWeight: activeTab === item.id ? 600 : 500,
                         fontSize: '14px'
                       }}>
-                        {item.text}
+                        {text}
                       </Typography>
                       <Typography variant="caption" sx={{ 
                         color: 'text.secondary',
                         fontSize: '11px'
                       }}>
-                        {item.description}
+                        {description}
                       </Typography>
                     </Box>
                   }
                 />
               </TabButton>
             </ListItem>
-          ))}
+            );
+          })}
         </List>
       </Box>
 

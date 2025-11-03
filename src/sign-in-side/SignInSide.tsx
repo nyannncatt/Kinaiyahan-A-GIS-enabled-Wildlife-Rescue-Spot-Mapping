@@ -1,10 +1,49 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Box, CssBaseline } from "@mui/material";
 import AppTheme from "../shared-theme/AppTheme";
 import ColorModeSelect from "../shared-theme/ColorModeSelect";
 import SignInCard from "./components/SignInCard";
 import Content from "./components/Content";
+import { useAuth } from "../context/AuthContext";
+import { supabase } from "../services/supabase";
 
 export default function SignInSide(props: { disableCustomTheme?: boolean }) {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+
+  // If user is logged in, redirect to appropriate page based on role
+  useEffect(() => {
+    if (!loading && user) {
+      const redirectUser = async () => {
+        try {
+          const { data: userData } = await supabase
+            .from("users")
+            .select("role")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          const role = userData?.role || user?.user_metadata?.role || null;
+          
+          if (role === "enforcement") {
+            navigate("/enforcement", { replace: true });
+          } else if (role === "cenro") {
+            navigate("/cenro", { replace: true });
+          } else if (role === "admin") {
+            navigate("/admin", { replace: true });
+          } else {
+            navigate("/enforcement", { replace: true }); // Default fallback
+          }
+        } catch (error) {
+          console.error("Error getting user role:", error);
+          navigate("/enforcement", { replace: true }); // Default fallback
+        }
+      };
+
+      redirectUser();
+    }
+  }, [user, loading, navigate]);
+
   return (
     <AppTheme {...props}>
       <CssBaseline enableColorScheme />

@@ -95,6 +95,7 @@ export default function SignInCard() {
 
       if (role === 'enforcement') navigate('/enforcement');
       else if (role === 'cenro') navigate('/cenro');
+      else if (role === 'admin') navigate('/admin');
     } catch (err) {
       const msg = err?.message ? String(err.message) : "Invalid email or password";
       const lower = msg.toLowerCase();
