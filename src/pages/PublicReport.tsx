@@ -1239,7 +1239,7 @@ export default function PublicReport() {
                         mb: 2
                       }}
                     >
-                      {photoFile ? photoFile.name : 'Upload from gallery or capture with GPS location'}
+                      {photoFile ? photoFile.name : 'Capture photo with GPS location'}
                     </Typography>
                     
                     {/* GPS Location Info */}
