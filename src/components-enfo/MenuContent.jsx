@@ -454,13 +454,13 @@ export default function MenuContent() {
                         fontWeight: activeTab === 'audit' ? 600 : 500,
                         fontSize: '14px'
                       }}>
-                        Recent Logins
+                        Login Logs
                       </Typography>
                       <Typography variant="caption" sx={{ 
                         color: 'text.secondary',
                         fontSize: '11px'
                       }}>
-                        Latest sign-ins per user
+                        Latest login entries
                       </Typography>
                     </Box>
                   }

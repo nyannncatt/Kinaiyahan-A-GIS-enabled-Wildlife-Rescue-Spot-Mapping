@@ -12,7 +12,8 @@ import FormLabel from "@mui/material/FormLabel";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { styled } from "@mui/material/styles";
-import { FormControl, InputAdornment, Alert, Divider, SvgIcon } from "@mui/material";
+import { FormControl, InputAdornment, Alert, Divider, SvgIcon, Snackbar } from "@mui/material";
+import MuiAlert from "@mui/material/Alert";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import ForgotPassword from "./ForgotPassword";
@@ -50,6 +51,8 @@ export default function SignInCard() {
   const [loginError, setLoginError] = useState("");
   const [open, setOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [logToastOpen, setLogToastOpen] = useState(false);
+  const [logToastMessage, setLogToastMessage] = useState("");
   const navigate = useNavigate();
 
   const handleClickOpen = () => setOpen(true);
@@ -92,6 +95,32 @@ export default function SignInCard() {
         role = userData?.role ?? null;
       } catch {}
       if (!role) role = user?.user_metadata?.role ?? null;
+
+      // Record login (RPC with fallback direct insert); non-blocking
+      try {
+        let ok = false;
+        try {
+          const { error: logErr } = await supabase.rpc('log_login');
+          if (logErr) throw logErr;
+          ok = true;
+          console.info('login_logs: recorded via rpc for', user.id);
+        } catch (rpcErr) {
+          console.warn('login_logs rpc failed, trying direct insert', rpcErr);
+          const { error: insErr } = await supabase
+            .from('login_logs')
+            .insert({ user_id: user.id }, { returning: 'minimal' });
+          if (insErr) throw insErr;
+          ok = true;
+          console.info('login_logs: recorded via direct insert for', user.id);
+        }
+        if (ok) {
+          await new Promise((r) => setTimeout(r, 150));
+        }
+      } catch (e2) {
+        const msg = e2?.message ? String(e2.message) : 'Failed to record login';
+        setLogToastMessage(msg);
+        setLogToastOpen(true);
+      }
 
       if (role === 'enforcement') navigate('/enforcement');
       else if (role === 'cenro') navigate('/cenro');
@@ -204,6 +233,16 @@ export default function SignInCard() {
       </Card>
 
       <ForgotPassword open={open} handleClose={handleClose} />
+      <Snackbar
+        open={logToastOpen}
+        autoHideDuration={3000}
+        onClose={() => setLogToastOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <MuiAlert onClose={() => setLogToastOpen(false)} severity="warning" sx={{ width: '100%' }}>
+          {logToastMessage}
+        </MuiAlert>
+      </Snackbar>
     </>
   );
 }

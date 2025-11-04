@@ -318,23 +318,51 @@ export default function UserManagement() {
     return () => { mounted = false; };
   }, [reportsPage]);
 
-  // Load login logs via RPC (Option A)
+  // Load login logs from login_logs table joined with users
   React.useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         setLoginLogsLoading(true);
         setLoginLogsError(null);
-        const { data, error } = await supabase.rpc('get_recent_logins', { limit_count: 200 });
-        if (error) throw error;
+        // 1) Fetch latest login events
+        const { data: logs, error: logErr } = await supabase
+          .from('login_logs')
+          .select('user_id, login_date_and_time')
+          .order('login_date_and_time', { ascending: false })
+          .limit(200);
+        if (logErr) throw logErr;
+
+        const userIds = Array.from(new Set((logs ?? []).map((l: any) => l.user_id).filter(Boolean)));
+
+        // 2) Fetch user details for those IDs
+        let usersById: Record<string, any> = {};
+        if (userIds.length > 0) {
+          const { data: usersRows, error: usersErr } = await supabase
+            .from('users')
+            .select('id, first_name, last_name, email, role')
+            .in('id', userIds);
+          if (usersErr) throw usersErr;
+          usersById = (usersRows || []).reduce((acc: any, u: any) => {
+            acc[u.id] = u; return acc;
+          }, {} as Record<string, any>);
+        }
+
+        const mapped: LoginLogEntry[] = (logs ?? []).map((l: any) => {
+          const u = usersById[l.user_id] || {};
+          const name = [u.first_name, u.last_name].filter(Boolean).join(' ').trim() || u.email || '';
+          const role = u.role || '';
+          return {
+            id: l.user_id || '',
+            name,
+            role,
+            // store raw ISO timestamp; render formats below will compute date/time correctly
+            date: l.login_date_and_time || '',
+            time: '',
+          };
+        });
+
         if (!mounted) return;
-        const mapped: LoginLogEntry[] = (data ?? []).map((r: any) => ({
-          id: r.id ?? '',
-          name: r.name ?? r.email ?? '',
-          role: r.role ?? '',
-          date: r.date ?? '',
-          time: r.login_time ?? '',
-        }));
         setLoginLogs(mapped);
         setTotalAuditCount(mapped.length);
       } catch (e: any) {
@@ -709,7 +737,7 @@ export default function UserManagement() {
       <Box sx={{ height: 320 }} />
       <Box data-audit>
         <Typography component="h3" variant="h6" sx={{ mb: 1, mt: 2 }}>
-          Recent Logins
+          Login Logs
         </Typography>
         {loginLogsLoading && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
@@ -732,14 +760,23 @@ export default function UserManagement() {
           border: '1px solid',
           borderColor: 'divider',
           borderBottom: 'none',
-          typography: 'subtitle2',
           color: 'text.secondary',
         }}>
-          <Box sx={{ width: 140, textAlign: 'center' }}>ID</Box>
-          <Box sx={{ flex: 1.2, textAlign: 'center' }}>Name</Box>
-          <Box sx={{ flex: 1.2, textAlign: 'center' }}>Role</Box>
-          <Box sx={{ flex: 1.2, textAlign: 'center' }}>Date</Box>
-          <Box sx={{ flex: 1.2, textAlign: 'center' }}>Time</Box>
+          <Box sx={{ width: 140, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Typography variant="body2" sx={{ lineHeight: 1.4 }}>ID</Typography>
+          </Box>
+          <Box sx={{ flex: 1.2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Typography variant="body2" sx={{ lineHeight: 1.4 }}>Name</Typography>
+          </Box>
+          <Box sx={{ flex: 1.2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Typography variant="body2" sx={{ lineHeight: 1.4 }}>Role</Typography>
+          </Box>
+          <Box sx={{ flex: 1.2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Typography variant="body2" sx={{ lineHeight: 1.4 }}>Date</Typography>
+          </Box>
+          <Box sx={{ flex: 1.2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Typography variant="body2" sx={{ lineHeight: 1.4 }}>Time</Typography>
+          </Box>
         </Box>
 
         <List dense sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
