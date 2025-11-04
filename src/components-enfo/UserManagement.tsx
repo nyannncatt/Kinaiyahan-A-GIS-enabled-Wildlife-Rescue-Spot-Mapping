@@ -29,8 +29,19 @@ interface LoginEntry {
   role: 'admin' | 'enforcement' | 'cenro' | 'reporter' | 'suspended' | 'pending';
 }
 
+interface ReportEntry {
+  id: string;
+  species: string;
+  barangay: string;
+  municipality: string;
+  reporterName: string;
+  contactNumber: string;
+  date: string;
+}
+
 const PLACEHOLDER: LoginEntry = { id: '', name: '', email: '', contactNumber: '', role: 'reporter' };
 const PENDING_PLACEHOLDER: LoginEntry = { id: '', name: '', email: '', contactNumber: '', role: 'pending' };
+const REPORT_PLACEHOLDER: ReportEntry = { id: '', species: '', barangay: '', municipality: '', reporterName: '', contactNumber: '', date: '' };
 
 export default function UserManagement() {
   const [entries, setEntries] = React.useState<LoginEntry[]>([]);
@@ -46,6 +57,17 @@ export default function UserManagement() {
   const [pendingError, setPendingError] = React.useState<string | null>(null);
   const [pendingPage, setPendingPage] = React.useState(0);
   const [totalPendingCount, setTotalPendingCount] = React.useState(0);
+
+  // Reports list state
+  const [reports, setReports] = React.useState<ReportEntry[]>([]);
+  const [reportsLoading, setReportsLoading] = React.useState(true);
+  const [reportsError, setReportsError] = React.useState<string | null>(null);
+  const [reportsPage, setReportsPage] = React.useState(0);
+  const [totalReportsCount, setTotalReportsCount] = React.useState(0);
+
+  // Audit logs (UI-only scaffold; fetch when backend ready)
+  const [auditPage, setAuditPage] = React.useState(0);
+  const [totalAuditCount, setTotalAuditCount] = React.useState(0);
 
   // Role modal state
   const [editUserId, setEditUserId] = React.useState<string | null>(null);
@@ -243,6 +265,46 @@ export default function UserManagement() {
     })();
     return () => { mounted = false; };
   }, [pendingPage]);
+
+  // Load reports list
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setReportsLoading(true);
+        setReportsError(null);
+        const from = reportsPage * pageSize;
+        const to = from + pageSize - 1;
+        const { data, error, count } = await supabase
+          .from('wildlife_records')
+          .select('id,species_name,barangay,municipality,reporter_name,contact_number,created_at', { count: 'exact' })
+          .order('created_at', { ascending: false, nullsFirst: false })
+          .range(from, to);
+
+        if (error) throw error;
+        if (!mounted) return;
+
+        const mapped: ReportEntry[] = (data ?? []).map((r: any) => ({
+          id: r.id ?? '',
+          species: r.species_name ?? '',
+          barangay: r.barangay ?? '',
+          municipality: r.municipality ?? '',
+          reporterName: r.reporter_name ?? '',
+          contactNumber: r.contact_number ?? '',
+          date: r.created_at ? new Date(r.created_at).toLocaleDateString() : '',
+        }));
+        setReports(mapped);
+        setTotalReportsCount(count ?? 0);
+      } catch (e: any) {
+        if (!mounted) return;
+        setReportsError(e?.message || 'Failed to load reports');
+        setReports([]);
+      } finally {
+        if (mounted) setReportsLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [reportsPage]);
 
   const paddedEntries: LoginEntry[] = [
     ...entries,
@@ -510,6 +572,162 @@ export default function UserManagement() {
           <Button size="small" variant="outlined" disabled={pendingPage === 0 || pendingLoading} onClick={() => setPendingPage(p => Math.max(0, p - 1))}>Previous</Button>
           <Button size="small" variant="outlined" disabled={(pendingPage + 1) >= Math.ceil((totalPendingCount || 0) / pageSize) || pendingLoading} onClick={() => setPendingPage(p => p + 1)}>Next</Button>
         </Stack>
+      </Box>
+
+      {/* Reports Logs */}
+      <Box sx={{ height: 320 }} />
+      <Box data-analytics>
+        <Typography component="h3" variant="h6" sx={{ mb: 1, mt: 2 }}>
+          Reports Logs
+        </Typography>
+      {reportsLoading && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
+          <CircularProgress size={18} />
+          <Typography variant="body2">Loading reports…</Typography>
+        </Box>
+      )}
+      {reportsError && (
+        <Alert severity="error" sx={{ mb: 1 }}>{reportsError}</Alert>
+      )}
+      {/* Header row */}
+      <Box sx={{
+        display: 'flex',
+        gap: 2,
+        px: 2,
+        py: 1.6,
+        bgcolor: 'background.paper',
+        borderTopLeftRadius: 8,
+        borderTopRightRadius: 8,
+        border: '1px solid',
+        borderColor: 'divider',
+        borderBottom: 'none',
+        typography: 'subtitle2',
+        color: 'text.secondary',
+      }}>
+        <Box sx={{ width: 140, textAlign: 'center' }}>ID</Box>
+        <Box sx={{ flex: 1.2, textAlign: 'center' }}>Species</Box>
+        <Box sx={{ flex: 1.2, textAlign: 'center' }}>Barangay</Box>
+        <Box sx={{ flex: 1.2, textAlign: 'center' }}>Municipality</Box>
+        <Box sx={{ flex: 1.2, textAlign: 'center' }}>Reporter Name</Box>
+        <Box sx={{ flex: 1.2, textAlign: 'center' }}>Contact Number</Box>
+        <Box sx={{ flex: 1, textAlign: 'center' }}>Date</Box>
+      </Box>
+
+      <List dense sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
+        {[...reports, ...Array(Math.max(0, 10 - reports.length)).fill(REPORT_PLACEHOLDER)].map((entry, idx) => {
+          const isPlaceholder = !entry.id && !entry.species && !entry.reporterName;
+          return (
+            <React.Fragment key={`report-row-${entry.id || idx}`}>
+              <ListItem sx={{ py: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
+                  <Box sx={{ width: 140, textAlign: 'center' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{entry.id || '\u00A0'}</Typography>
+                  </Box>
+                  <Box sx={{ flex: 1.2, textAlign: 'center' }}>
+                    <Typography variant="body1" sx={{ lineHeight: 1.4 }}>{entry.species || '\u00A0'}</Typography>
+                  </Box>
+                  <Box sx={{ flex: 1.2, textAlign: 'center' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.4 }}>{entry.barangay || '\u00A0'}</Typography>
+                  </Box>
+                  <Box sx={{ flex: 1.2, textAlign: 'center' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.4 }}>{entry.municipality || '\u00A0'}</Typography>
+                  </Box>
+                  <Box sx={{ flex: 1.2, textAlign: 'center' }}>
+                    <Typography variant="body1" sx={{ lineHeight: 1.4 }}>{entry.reporterName || '\u00A0'}</Typography>
+                  </Box>
+                  <Box sx={{ flex: 1.2, textAlign: 'center' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.4 }}>{entry.contactNumber || '\u00A0'}</Typography>
+                  </Box>
+                  <Box sx={{ flex: 1, textAlign: 'center' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.4 }}>{entry.date || '\u00A0'}</Typography>
+                  </Box>
+                </Box>
+              </ListItem>
+              {idx < (Math.max(10, reports.length) - 1) && <Divider component="li" />}
+            </React.Fragment>
+          );
+        })}
+      </List>
+      {/* Reports pagination */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          Page {reportsPage + 1} of {Math.max(1, Math.ceil((totalReportsCount || 0) / pageSize))}
+        </Typography>
+        <Stack direction="row" sx={{ gap: 1 }}>
+          <Button size="small" variant="outlined" disabled={reportsPage === 0 || reportsLoading} onClick={() => setReportsPage(p => Math.max(0, p - 1))}>Previous</Button>
+          <Button size="small" variant="outlined" disabled={(reportsPage + 1) >= Math.ceil((totalReportsCount || 0) / pageSize) || reportsLoading} onClick={() => setReportsPage(p => p + 1)}>Next</Button>
+        </Stack>
+      </Box>
+      </Box>
+
+      {/* Audit Logs */}
+      <Box sx={{ height: 320 }} />
+      <Box data-audit>
+        <Typography component="h3" variant="h6" sx={{ mb: 1, mt: 2 }}>
+          Audit Logs
+        </Typography>
+        {/* Header row */}
+        <Box sx={{
+          display: 'flex',
+          gap: 2,
+          px: 2,
+          py: 1.6,
+          bgcolor: 'background.paper',
+          borderTopLeftRadius: 8,
+          borderTopRightRadius: 8,
+          border: '1px solid',
+          borderColor: 'divider',
+          borderBottom: 'none',
+          typography: 'subtitle2',
+          color: 'text.secondary',
+        }}>
+          <Box sx={{ width: 140, textAlign: 'center' }}>Date</Box>
+          <Box sx={{ width: 120, textAlign: 'center' }}>Time</Box>
+          <Box sx={{ flex: 1.2, textAlign: 'center' }}>IP Address</Box>
+          <Box sx={{ flex: 1.2, textAlign: 'center' }}>User</Box>
+          <Box sx={{ flex: 1.2, textAlign: 'center' }}>Section</Box>
+          <Box sx={{ flex: 1.2, textAlign: 'center' }}>Action</Box>
+        </Box>
+
+        <List dense sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
+          {Array.from({ length: 10 }).map((_, idx) => (
+            <React.Fragment key={`audit-row-${idx}`}>
+              <ListItem sx={{ py: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
+                  <Box sx={{ width: 140, textAlign: 'center' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{'\u00A0'}</Typography>
+                  </Box>
+                  <Box sx={{ width: 120, textAlign: 'center' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{'\u00A0'}</Typography>
+                  </Box>
+                  <Box sx={{ flex: 1.2, textAlign: 'center' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{'\u00A0'}</Typography>
+                  </Box>
+                  <Box sx={{ flex: 1.2, textAlign: 'center' }}>
+                    <Typography variant="body1" sx={{ lineHeight: 1.4 }}>{'\u00A0'}</Typography>
+                  </Box>
+                  <Box sx={{ flex: 1.2, textAlign: 'center' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{'\u00A0'}</Typography>
+                  </Box>
+                  <Box sx={{ flex: 1.2, textAlign: 'center' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{'\u00A0'}</Typography>
+                  </Box>
+                </Box>
+              </ListItem>
+              {idx < 9 && <Divider component="li" />}
+            </React.Fragment>
+          ))}
+        </List>
+        {/* Audit pagination scaffold to match layout */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            Page {auditPage + 1} of {Math.max(1, Math.ceil((totalAuditCount || 0) / pageSize))}
+          </Typography>
+          <Stack direction="row" sx={{ gap: 1 }}>
+            <Button size="small" variant="outlined" disabled={auditPage === 0} onClick={() => setAuditPage(p => Math.max(0, p - 1))}>Previous</Button>
+            <Button size="small" variant="outlined" disabled={(auditPage + 1) >= Math.max(1, Math.ceil((totalAuditCount || 0) / pageSize))} onClick={() => setAuditPage(p => p + 1)}>Next</Button>
+          </Stack>
+        </Box>
       </Box>
       {/* Edit Role Modal */}
       <Dialog open={Boolean(editUserId)} onClose={closeEdit} fullWidth maxWidth="xs">

@@ -237,6 +237,14 @@ export default function MenuContent() {
     if (tabId === 'analytics') {
       scrollToAnalytics();
     }
+
+    // Handle Audit tab - scroll to audit logs section
+    if (tabId === 'audit') {
+      const auditEl = document.querySelector('[data-audit]');
+      if (auditEl) {
+        auditEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      }
+    }
     
     // Handle Mapping tab - scroll to top
     if (tabId === 'mapping') {
@@ -275,17 +283,11 @@ export default function MenuContent() {
       // Wait for next frame to ensure element is fully rendered and positioned
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          // Calculate absolute position using offsetTop (more reliable than getBoundingClientRect)
-          let elementTop = 0;
-          let element = analyticsElement;
-          while (element) {
-            elementTop += element.offsetTop;
-            element = element.offsetParent;
-          }
-          const offset = 10; // Offset from top of viewport
-          window.scrollTo({ 
-            top: elementTop - offset, 
-            behavior: 'smooth' 
+          // Scroll to center the analytics section in the viewport
+          analyticsElement.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest'
           });
         });
       });
@@ -379,14 +381,17 @@ export default function MenuContent() {
           {mainNavigationItems.map((item) => {
             const isMapping = item.id === 'mapping';
             const isRecords = item.id === 'records';
+            const isAnalytics = item.id === 'analytics';
             const text = isAdminRoute
-              ? (isMapping ? 'User Management' : isRecords ? 'Applications' : item.text)
+              ? (isMapping ? 'User Management' : isRecords ? 'Applications' : isAnalytics ? 'Report Logs' : item.text)
               : item.text;
             const description = isAdminRoute
               ? (isMapping
                   ? 'Manage users and roles'
                   : isRecords
                   ? 'Pending and processed applications'
+                  : isAnalytics
+                  ? 'View wildlife reports and logs'
                   : item.description)
               : item.description;
             return (
@@ -422,6 +427,41 @@ export default function MenuContent() {
             </ListItem>
             );
           })}
+
+          {/* Admin-only: Audit Logs tab */}
+          {isAdminRoute && (
+            <ListItem disablePadding sx={{ display: 'block' }}>
+              <TabButton
+                active={activeTab === 'audit'}
+                onClick={() => handleTabClick('audit')}
+              >
+                <ListItemIcon>
+                  <IconWrapper active={activeTab === 'audit'}>
+                    {/* reuse analytics icon for logs */}
+                    <AnalyticsRoundedIcon sx={{ fontSize: 20 }} />
+                  </IconWrapper>
+                </ListItemIcon>
+                <ListItemText 
+                  primary={
+                    <Box>
+                      <Typography variant="body2" sx={{ 
+                        fontWeight: activeTab === 'audit' ? 600 : 500,
+                        fontSize: '14px'
+                      }}>
+                        Audit Logs
+                      </Typography>
+                      <Typography variant="caption" sx={{ 
+                        color: 'text.secondary',
+                        fontSize: '11px'
+                      }}>
+                        System activity and user actions
+                      </Typography>
+                    </Box>
+                  }
+                />
+              </TabButton>
+            </ListItem>
+          )}
         </List>
       </Box>
 
