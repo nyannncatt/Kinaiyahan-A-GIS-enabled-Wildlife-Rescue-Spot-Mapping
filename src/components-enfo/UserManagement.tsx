@@ -611,9 +611,29 @@ export default function UserManagement() {
           <Typography variant="body2" sx={{ mt: 1 }}>
             Are you sure you want to delete <strong>{userToDelete?.name}</strong>?
           </Typography>
-          <Typography variant="body2" sx={{ mt: 2, color: 'error.main' }}>
-            This action cannot be undone. The user will be permanently removed from the system.
-          </Typography>
+          <Box
+            sx={{
+              mt: 2,
+              p: 1.5,
+              bgcolor: (theme) => theme.palette.mode === 'dark' 
+                ? 'rgba(211, 47, 47, 0.15)' 
+                : 'rgba(211, 47, 47, 0.08)',
+              borderRadius: 1,
+            }}
+          >
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: (theme) => theme.palette.mode === 'dark' 
+                  ? '#ff6b6b' 
+                  : '#c62828',
+                fontWeight: 500,
+                lineHeight: 1.6,
+              }}
+            >
+              This action cannot be undone. The user will be permanently removed from the system.
+            </Typography>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={closeDeleteDialog}>Cancel</Button>
