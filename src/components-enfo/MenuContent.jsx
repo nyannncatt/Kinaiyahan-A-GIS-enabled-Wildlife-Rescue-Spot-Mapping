@@ -378,8 +378,17 @@ export default function MenuContent() {
         <List dense>
           {mainNavigationItems.map((item) => {
             const isMapping = item.id === 'mapping';
-            const text = isAdminRoute && isMapping ? 'User Management' : item.text;
-            const description = isAdminRoute && isMapping ? 'Manage users and roles' : item.description;
+            const isRecords = item.id === 'records';
+            const text = isAdminRoute
+              ? (isMapping ? 'User Management' : isRecords ? 'Applications' : item.text)
+              : item.text;
+            const description = isAdminRoute
+              ? (isMapping
+                  ? 'Manage users and roles'
+                  : isRecords
+                  ? 'Pending and processed applications'
+                  : item.description)
+              : item.description;
             return (
             <ListItem key={item.id} disablePadding sx={{ display: 'block' }}>
               <TabButton

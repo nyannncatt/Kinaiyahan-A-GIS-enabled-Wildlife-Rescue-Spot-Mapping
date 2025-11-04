@@ -83,25 +83,26 @@ export default function ProfileSection() {
         // Get user metadata from auth
         const userMetadata = user.user_metadata || {};
         
-        // Fetch role from users table
+        // Fetch user data from users table (this is the source of truth)
         const { data: userData, error: userError } = await supabase
           .from('users')
-          .select('role')
+          .select('role, first_name, last_name, gender, contact_number, avatar_url, email')
           .eq('id', user.id)
           .single();
 
         if (userError && userError.code !== 'PGRST116') {
-          console.error('Error fetching user role:', userError);
+          console.error('Error fetching user data:', userError);
         }
 
+        // Use data from users table first, fallback to auth metadata
         const role = userData?.role || userMetadata?.role || 'reporter';
-        const firstName = userMetadata?.first_name || userMetadata?.full_name || '';
-        const lastName = userMetadata?.last_name || '';
-        const gender = userMetadata?.gender || 'Not specified';
-        const contactNumber = userMetadata?.phone || userMetadata?.contact_number || 'Not provided';
-        const avatarPhoto = userMetadata?.avatar_url || null;
+        const firstName = userData?.first_name || userMetadata?.first_name || userMetadata?.full_name || '';
+        const lastName = userData?.last_name || userMetadata?.last_name || '';
+        const gender = userData?.gender || userMetadata?.gender || 'Not specified';
+        const contactNumber = userData?.contact_number || userMetadata?.phone || userMetadata?.contact_number || 'Not provided';
+        const avatarPhoto = userData?.avatar_url || userMetadata?.avatar_url || null;
         const dateCreated = user.created_at || new Date().toISOString();
-        const email = user.email || userMetadata?.email || 'Not provided';
+        const email = userData?.email || user.email || userMetadata?.email || 'Not provided';
 
         setUserProfile({
           userId: user.id,

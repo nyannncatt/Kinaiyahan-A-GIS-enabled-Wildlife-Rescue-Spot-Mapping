@@ -27,30 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Ensure user exists in `users` table
-  const ensureUserExists = async (sessionUser: User) => {
-    try {
-      const { data, error } = await supabase
-        .from("users")
-        .select("id, role")
-        .eq("id", sessionUser.id)
-        .single();
-
-      if (error && error.code !== "PGRST116") throw error;
-
-      if (!data) {
-        await supabase
-          .from("users")
-          .insert([{ id: sessionUser.id, role: "reporter" }]);
-        return "reporter";
-      }
-
-      return data.role;
-    } catch (err: any) {
-      console.error("ensureUserExists error:", err.message);
-      return null;
-    }
-  };
+  // Removed ensureUserExists - users must be approved by admin before accessing the app
 
   useEffect(() => {
     const initAuth = async () => {

@@ -47,19 +47,21 @@ export default function SignInCard() {
         return;
       }
 
-      // Try to get role from public.users first, then fall back to auth metadata
-      let role: string | null = null;
-      try {
-        const { data: userData } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", user.id)
-          .maybeSingle();
-        role = userData?.role ?? null;
-      } catch {}
-      if (!role) {
-        role = (user.user_metadata as any)?.role ?? null;
+      // Get role STRICTLY from public.users - if user exists in auth but not in public.users = invalid
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      // If query fails or no row found, user is not approved - sign out immediately
+      if (userError || !userData || !userData.role) {
+        await supabase.auth.signOut();
+        setLoginError("Invalid credentials");
+        return;
       }
+
+      const role = userData.role;
 
       const go = (path: string) => {
         try {
@@ -77,7 +79,9 @@ export default function SignInCard() {
       } else if (role === "admin") {
         go("/admin");
       } else {
-        setLoginError("No role assigned. Please contact admin.");
+        // Invalid role - sign out
+        await supabase.auth.signOut();
+        setLoginError("Invalid credentials");
       }
     } catch (error: unknown) {
       // ✅ Safe error handling + special case for unconfirmed email
