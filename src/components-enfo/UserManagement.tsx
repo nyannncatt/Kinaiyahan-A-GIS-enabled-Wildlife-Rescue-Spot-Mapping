@@ -43,6 +43,15 @@ const PLACEHOLDER: LoginEntry = { id: '', name: '', email: '', contactNumber: ''
 const PENDING_PLACEHOLDER: LoginEntry = { id: '', name: '', email: '', contactNumber: '', role: 'pending' };
 const REPORT_PLACEHOLDER: ReportEntry = { id: '', species: '', barangay: '', municipality: '', reporterName: '', contactNumber: '', date: '' };
 
+// Login log entry (Option A - no IP)
+interface LoginLogEntry {
+  id: string;
+  name: string;
+  role?: string;
+  date: string;  // ISO string
+  time: string;  // formatted HH:MM:SS
+}
+
 export default function UserManagement() {
   const [entries, setEntries] = React.useState<LoginEntry[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -65,7 +74,10 @@ export default function UserManagement() {
   const [reportsPage, setReportsPage] = React.useState(0);
   const [totalReportsCount, setTotalReportsCount] = React.useState(0);
 
-  // Audit logs (UI-only scaffold; fetch when backend ready)
+  // Login logs (Option A - from auth via RPC)
+  const [loginLogs, setLoginLogs] = React.useState<LoginLogEntry[]>([]);
+  const [loginLogsLoading, setLoginLogsLoading] = React.useState(true);
+  const [loginLogsError, setLoginLogsError] = React.useState<string | null>(null);
   const [auditPage, setAuditPage] = React.useState(0);
   const [totalAuditCount, setTotalAuditCount] = React.useState(0);
 
@@ -306,6 +318,37 @@ export default function UserManagement() {
     return () => { mounted = false; };
   }, [reportsPage]);
 
+  // Load login logs via RPC (Option A)
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoginLogsLoading(true);
+        setLoginLogsError(null);
+        const { data, error } = await supabase.rpc('get_recent_logins', { limit_count: 200 });
+        if (error) throw error;
+        if (!mounted) return;
+        const mapped: LoginLogEntry[] = (data ?? []).map((r: any) => ({
+          id: r.id ?? '',
+          name: r.name ?? r.email ?? '',
+          role: r.role ?? '',
+          date: r.date ?? '',
+          time: r.login_time ?? '',
+        }));
+        setLoginLogs(mapped);
+        setTotalAuditCount(mapped.length);
+      } catch (e: any) {
+        if (!mounted) return;
+        setLoginLogsError(e?.message || 'Failed to load login logs');
+        setLoginLogs([]);
+        setTotalAuditCount(0);
+      } finally {
+        if (mounted) setLoginLogsLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   const paddedEntries: LoginEntry[] = [
     ...entries,
     ...Array(Math.max(0, pageSize - entries.length)).fill(PLACEHOLDER),
@@ -487,6 +530,7 @@ export default function UserManagement() {
 
       {/* Pending Applications */}
       <Box sx={{ height: 320 }} />
+      <Box data-record-list>
       <Typography component="h3" variant="h6" sx={{ mb: 1, mt: 2 }}>
         Pending Applications
       </Typography>
@@ -572,6 +616,7 @@ export default function UserManagement() {
           <Button size="small" variant="outlined" disabled={pendingPage === 0 || pendingLoading} onClick={() => setPendingPage(p => Math.max(0, p - 1))}>Previous</Button>
           <Button size="small" variant="outlined" disabled={(pendingPage + 1) >= Math.ceil((totalPendingCount || 0) / pageSize) || pendingLoading} onClick={() => setPendingPage(p => p + 1)}>Next</Button>
         </Stack>
+      </Box>
       </Box>
 
       {/* Reports Logs */}
@@ -660,12 +705,21 @@ export default function UserManagement() {
       </Box>
       </Box>
 
-      {/* Audit Logs */}
+      {/* Login Logs */}
       <Box sx={{ height: 320 }} />
       <Box data-audit>
         <Typography component="h3" variant="h6" sx={{ mb: 1, mt: 2 }}>
-          Audit Logs
+          Recent Logins
         </Typography>
+        {loginLogsLoading && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
+            <CircularProgress size={18} />
+            <Typography variant="body2">Loading login logs…</Typography>
+          </Box>
+        )}
+        {loginLogsError && (
+          <Alert severity="error" sx={{ mb: 1 }}>{loginLogsError}</Alert>
+        )}
         {/* Header row */}
         <Box sx={{
           display: 'flex',
@@ -681,51 +735,47 @@ export default function UserManagement() {
           typography: 'subtitle2',
           color: 'text.secondary',
         }}>
-          <Box sx={{ width: 140, textAlign: 'center' }}>Date</Box>
-          <Box sx={{ width: 120, textAlign: 'center' }}>Time</Box>
-          <Box sx={{ flex: 1.2, textAlign: 'center' }}>IP Address</Box>
-          <Box sx={{ flex: 1.2, textAlign: 'center' }}>User</Box>
-          <Box sx={{ flex: 1.2, textAlign: 'center' }}>Section</Box>
-          <Box sx={{ flex: 1.2, textAlign: 'center' }}>Action</Box>
+          <Box sx={{ width: 140, textAlign: 'center' }}>ID</Box>
+          <Box sx={{ flex: 1.2, textAlign: 'center' }}>Name</Box>
+          <Box sx={{ flex: 1.2, textAlign: 'center' }}>Role</Box>
+          <Box sx={{ flex: 1.2, textAlign: 'center' }}>Date</Box>
+          <Box sx={{ flex: 1.2, textAlign: 'center' }}>Time</Box>
         </Box>
 
         <List dense sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
-          {Array.from({ length: 10 }).map((_, idx) => (
+          {[...loginLogs.slice(auditPage * pageSize, auditPage * pageSize + pageSize), ...Array(Math.max(0, pageSize - Math.min(pageSize, Math.max(0, loginLogs.length - auditPage * pageSize)))).fill({ id: '', name: '', date: '', time: '' })].map((entry: any, idx) => (
             <React.Fragment key={`audit-row-${idx}`}>
               <ListItem sx={{ py: 2 }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 140, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{'\u00A0'}</Typography>
-                  </Box>
-                  <Box sx={{ width: 120, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{'\u00A0'}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{entry.id || '\u00A0'}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{'\u00A0'}</Typography>
+                    <Typography variant="body1" sx={{ lineHeight: 1.4 }}>{entry.name || '\u00A0'}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
-                    <Typography variant="body1" sx={{ lineHeight: 1.4 }}>{'\u00A0'}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', textTransform: 'capitalize' }}>{entry.role || '\u00A0'}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{'\u00A0'}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{entry.date ? new Date(entry.date).toLocaleDateString() : '\u00A0'}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{'\u00A0'}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{entry.date ? new Date(entry.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }) : '\u00A0'}</Typography>
                   </Box>
                 </Box>
               </ListItem>
-              {idx < 9 && <Divider component="li" />}
+              {idx < (pageSize - 1) && <Divider component="li" />}
             </React.Fragment>
           ))}
         </List>
         {/* Audit pagination scaffold to match layout */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Page {auditPage + 1} of {Math.max(1, Math.ceil((totalAuditCount || 0) / pageSize))}
+            Page {auditPage + 1} of {Math.max(1, Math.ceil((Math.max(0, loginLogs.length) || 0) / pageSize))}
           </Typography>
           <Stack direction="row" sx={{ gap: 1 }}>
-            <Button size="small" variant="outlined" disabled={auditPage === 0} onClick={() => setAuditPage(p => Math.max(0, p - 1))}>Previous</Button>
-            <Button size="small" variant="outlined" disabled={(auditPage + 1) >= Math.max(1, Math.ceil((totalAuditCount || 0) / pageSize))} onClick={() => setAuditPage(p => p + 1)}>Next</Button>
+            <Button size="small" variant="outlined" disabled={auditPage === 0 || loginLogsLoading} onClick={() => setAuditPage(p => Math.max(0, p - 1))}>Previous</Button>
+            <Button size="small" variant="outlined" disabled={(auditPage + 1) >= Math.max(1, Math.ceil((Math.max(0, loginLogs.length) || 0) / pageSize)) || loginLogsLoading} onClick={() => setAuditPage(p => p + 1)}>Next</Button>
           </Stack>
         </Box>
       </Box>
