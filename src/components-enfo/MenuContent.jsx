@@ -475,7 +475,7 @@ export default function MenuContent() {
       <Box sx={{ px: 2, pb: 2 }}>
         <SectionTitle>UTILITY</SectionTitle>
         <List dense>
-          {utilityItems.map((item) => (
+          {(isAdminRoute ? utilityItems.filter((i) => i.id !== 'settings') : utilityItems).map((item) => (
             <ListItem key={item.id} disablePadding sx={{ display: 'block' }}>
               <TabButton
                 active={activeTab === item.id}

@@ -22,7 +22,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/supabase';
 
-export default function ProfileSection() {
+export default function ProfileSection({ fullWidth = false, showTitle = true }: { fullWidth?: boolean; showTitle?: boolean }) {
   const { user, session } = useAuth();
   
   // State for user profile data
@@ -290,13 +290,22 @@ export default function ProfileSection() {
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       data-profile 
-      sx={{ mt: 2, mb: 3, maxWidth: { xs: '100%', md: '1577px' }, mx: 'auto', minHeight: { xs: 'auto', md: '650px' } }}
+      sx={{
+        mt: 2,
+        mb: 3,
+        width: fullWidth ? '100%' : undefined,
+        maxWidth: fullWidth ? { xs: '100%', md: '100%' } : { xs: '100%', md: '1577px' },
+        mx: fullWidth ? 0 : 'auto',
+        minHeight: { xs: 'auto', md: '650px' }
+      }}
     >
       <Card sx={{ p: 3.5, boxShadow: 1, minHeight: { xs: 'auto', md: '650px' }, display: 'flex', flexDirection: 'column', position: 'relative' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: -8, flexShrink: 0 }}>
-          <Typography variant="h4" component="h2" sx={{ color: 'primary.main', mb: 3 }}>
-            My Profile
-          </Typography>
+          {showTitle && (
+            <Typography variant="h4" component="h2" sx={{ color: 'primary.main', mb: 3 }}>
+              My Profile
+            </Typography>
+          )}
           <Box sx={{ display: 'flex', gap: 2, mb: 3, minHeight: '32.5px', alignItems: 'center' }}>
             {!isEditMode && userProfile && (
               <Box

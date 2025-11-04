@@ -12,6 +12,7 @@ import AdminHeader from '../components-enfo/AdminHeader';
 import SideMenu from '../components-enfo/SideMenu';
 import AppTheme from '../shared-theme/AppTheme';
 import UserManagement from '../components-enfo/UserManagement';
+import ProfileSection from '../components-enfo/ProfileSection';
 import {
   chartsCustomizations,
   dataGridCustomizations,
@@ -59,6 +60,14 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
                 Admin Dashboard
               </Typography>
               <UserManagement />
+              {/* My Profile section */}
+              <Box sx={{ height: 320 }} />
+              <Box data-profile>
+                <Typography component="h3" variant="h6" sx={{ mb: 2, mt: 2 }}>
+                  My Profile
+                </Typography>
+                <ProfileSection fullWidth showTitle={false} />
+              </Box>
             </Box>
           </Stack>
         </Box>
