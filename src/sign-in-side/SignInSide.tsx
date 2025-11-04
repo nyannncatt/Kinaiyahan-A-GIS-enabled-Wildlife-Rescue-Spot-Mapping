@@ -12,19 +12,27 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
 
-  // If user is logged in, redirect to appropriate page based on role
+  // If user is logged in, ONLY redirect if they have a role in public.users
+  // If auth user exists but no role in public.users = pending approval = sign out immediately
   useEffect(() => {
     if (!loading && user) {
       const redirectUser = async () => {
         try {
-          const { data: userData } = await supabase
+          const { data: userData, error: userError } = await supabase
             .from("users")
             .select("role")
             .eq("id", user.id)
             .maybeSingle();
 
-          const role = userData?.role || user?.user_metadata?.role || null;
+          // If query fails or no row found, user is not approved - sign out
+          if (userError || !userData || !userData.role) {
+            await supabase.auth.signOut();
+            return; // Stay on login page
+          }
+
+          const role = userData.role;
           
+          // Only redirect if role exists and is valid
           if (role === "enforcement") {
             navigate("/enforcement", { replace: true });
           } else if (role === "cenro") {
@@ -32,11 +40,13 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
           } else if (role === "admin") {
             navigate("/admin", { replace: true });
           } else {
-            navigate("/enforcement", { replace: true }); // Default fallback
+            // Invalid role - sign out
+            await supabase.auth.signOut();
           }
         } catch (error) {
           console.error("Error getting user role:", error);
-          navigate("/enforcement", { replace: true }); // Default fallback
+          // On any error, sign out to prevent unauthorized access
+          await supabase.auth.signOut();
         }
       };
 
