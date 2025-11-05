@@ -7,6 +7,13 @@ import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import IconButton from '@mui/material/IconButton';
+import Menu from '@mui/material/Menu';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
+import SortRoundedIcon from '@mui/icons-material/SortRounded';
+import ClearRoundedIcon from '@mui/icons-material/ClearRounded';
 import { supabase } from '../services/supabase';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
@@ -17,7 +24,7 @@ import DialogActions from '@mui/material/DialogActions';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
+import { MenuItem as MuiMenuItem } from '@mui/material';
 import Snackbar from '@mui/material/Snackbar';
 import MuiAlert from '@mui/material/Alert';
 
@@ -58,7 +65,11 @@ export default function UserManagement() {
   const [error, setError] = React.useState<string | null>(null);
   const [page, setPage] = React.useState(0); // 0-based
   const pageSize = 10;
+  const usersPageSize = 7; // smaller user rows per page to fit viewport
   const [totalCount, setTotalCount] = React.useState(0);
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [sortAnchorEl, setSortAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [sortOption, setSortOption] = React.useState<'name_asc' | 'name_desc' | 'email_asc' | 'role_asc'>('name_asc');
 
   // Pending applications state
   const [pending, setPending] = React.useState<LoginEntry[]>([]);
@@ -66,6 +77,9 @@ export default function UserManagement() {
   const [pendingError, setPendingError] = React.useState<string | null>(null);
   const [pendingPage, setPendingPage] = React.useState(0);
   const [totalPendingCount, setTotalPendingCount] = React.useState(0);
+  const [pendingSearchQuery, setPendingSearchQuery] = React.useState('');
+  const [pendingSortAnchorEl, setPendingSortAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [pendingSortOption, setPendingSortOption] = React.useState<'name_asc' | 'name_desc' | 'email_asc' | 'email_desc' | 'id_asc' | 'id_desc'>('name_asc');
 
   // Reports list state
   const [reports, setReports] = React.useState<ReportEntry[]>([]);
@@ -73,6 +87,9 @@ export default function UserManagement() {
   const [reportsError, setReportsError] = React.useState<string | null>(null);
   const [reportsPage, setReportsPage] = React.useState(0);
   const [totalReportsCount, setTotalReportsCount] = React.useState(0);
+  const [reportsSearchQuery, setReportsSearchQuery] = React.useState('');
+  const [reportsSortAnchorEl, setReportsSortAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [reportsSortOption, setReportsSortOption] = React.useState<'date_desc' | 'date_asc' | 'species_asc' | 'species_desc' | 'municipality_asc'>('date_desc');
 
   // Login logs (Option A - from auth via RPC)
   const [loginLogs, setLoginLogs] = React.useState<LoginLogEntry[]>([]);
@@ -80,6 +97,9 @@ export default function UserManagement() {
   const [loginLogsError, setLoginLogsError] = React.useState<string | null>(null);
   const [auditPage, setAuditPage] = React.useState(0);
   const [totalAuditCount, setTotalAuditCount] = React.useState(0);
+  const [loginSearchQuery, setLoginSearchQuery] = React.useState('');
+  const [loginSortAnchorEl, setLoginSortAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [loginSortOption, setLoginSortOption] = React.useState<'date_desc' | 'date_asc' | 'name_asc' | 'name_desc' | 'role_asc'>('date_desc');
 
   // Role modal state
   const [editUserId, setEditUserId] = React.useState<string | null>(null);
@@ -152,8 +172,8 @@ export default function UserManagement() {
         setTotalPendingCount(count ?? 0);
       }
       // Refresh user list
-      const userFrom = page * pageSize;
-      const userTo = userFrom + pageSize - 1;
+      const userFrom = page * usersPageSize;
+      const userTo = userFrom + usersPageSize - 1;
       const { data: userData, error: userError, count: userCount } = await supabase
         .from('users')
         .select('id,first_name,last_name,email,contact_number,role', { count: 'exact' })
@@ -204,8 +224,8 @@ export default function UserManagement() {
       try {
         setLoading(true);
         setError(null);
-        const from = page * pageSize;
-        const to = from + pageSize - 1;
+        const from = page * usersPageSize;
+        const to = from + usersPageSize - 1;
         const { data, error, count } = await supabase
           .from('users')
           .select('id,first_name,last_name,email,contact_number,role', { count: 'exact' })
@@ -318,6 +338,80 @@ export default function UserManagement() {
     return () => { mounted = false; };
   }, [reportsPage]);
 
+  // Derived: reports search + sort
+  const normalizedReportsQuery = reportsSearchQuery.trim().toLowerCase();
+  const filteredReports = React.useMemo(() => {
+    if (!normalizedReportsQuery) return reports;
+    return reports.filter((r) => {
+      const base = [r.id, r.species, r.barangay, r.municipality, r.reporterName, r.contactNumber]
+        .filter(Boolean)
+        .map((v) => String(v).toLowerCase());
+      const dateTokens = buildDateSearchTokens(r.date);
+      return [...base, ...dateTokens].some((v) => v.includes(normalizedReportsQuery));
+    });
+  }, [reports, normalizedReportsQuery]);
+
+  const sortedReports = React.useMemo(() => {
+    const arr = [...filteredReports];
+    const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
+    switch (reportsSortOption) {
+      case 'species_asc':
+        arr.sort((a, b) => collator.compare(a.species || '', b.species || ''));
+        break;
+      case 'species_desc':
+        arr.sort((a, b) => collator.compare(b.species || '', a.species || ''));
+        break;
+      case 'municipality_asc':
+        arr.sort((a, b) => collator.compare(a.municipality || '', b.municipality || ''));
+        break;
+      case 'date_asc':
+        arr.sort((a, b) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime());
+        break;
+      case 'date_desc':
+      default:
+        arr.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+        break;
+    }
+    return arr;
+  }, [filteredReports, reportsSortOption]);
+
+  // Derived: pending search + sort
+  const normalizedPendingQuery = pendingSearchQuery.trim().toLowerCase();
+  const filteredPending = React.useMemo(() => {
+    if (!normalizedPendingQuery) return pending;
+    return pending.filter((e) => [e.id, e.name, e.email, e.contactNumber]
+      .filter(Boolean)
+      .some((v) => String(v).toLowerCase().includes(normalizedPendingQuery))
+    );
+  }, [pending, normalizedPendingQuery]);
+
+  const sortedPending = React.useMemo(() => {
+    const arr = [...filteredPending];
+    const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
+    switch (pendingSortOption) {
+      case 'name_desc':
+        arr.sort((a, b) => collator.compare(b.name || '', a.name || ''));
+        break;
+      case 'email_asc':
+        arr.sort((a, b) => collator.compare(a.email || '', b.email || ''));
+        break;
+      case 'email_desc':
+        arr.sort((a, b) => collator.compare(b.email || '', a.email || ''));
+        break;
+      case 'id_asc':
+        arr.sort((a, b) => collator.compare(a.id || '', b.id || ''));
+        break;
+      case 'id_desc':
+        arr.sort((a, b) => collator.compare(b.id || '', a.id || ''));
+        break;
+      case 'name_asc':
+      default:
+        arr.sort((a, b) => collator.compare(a.name || '', b.name || ''));
+        break;
+    }
+    return arr;
+  }, [filteredPending, pendingSortOption]);
+
   // Load login logs from login_logs table joined with users
   React.useEffect(() => {
     let mounted = true;
@@ -377,12 +471,99 @@ export default function UserManagement() {
     return () => { mounted = false; };
   }, []);
 
+  // Derived: login logs search + sort
+  const normalizedLoginQuery = loginSearchQuery.trim().toLowerCase();
+  function buildDateSearchTokens(dateStr?: string) {
+    if (!dateStr) return [] as string[];
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return [String(dateStr).toLowerCase()];
+    const y = d.getFullYear();
+    const mPadded = String(d.getMonth() + 1).padStart(2, '0');
+    const dPadded = String(d.getDate()).padStart(2, '0');
+    const mNoPad = String(d.getMonth() + 1);
+    const dNoPad = String(d.getDate());
+    const iso = `${y}-${mPadded}-${dPadded}`;
+    const mdyyyy = `${mPadded}/${dPadded}/${y}`;      // 11/03/2025
+    const mdyyyyNoPad = `${mNoPad}/${dNoPad}/${y}`;    // 11/3/2025
+    const ddmmyyyy = `${dPadded}/${mPadded}/${y}`;
+    const ddmmyyyyNoPad = `${dNoPad}/${mNoPad}/${y}`;
+    const monthLong = d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+    const monthShort = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    return [iso, mdyyyy, mdyyyyNoPad, ddmmyyyy, ddmmyyyyNoPad, monthLong, monthShort].map((s) => s.toLowerCase());
+  }
+
+  const filteredLoginLogs = React.useMemo(() => {
+    if (!normalizedLoginQuery) return loginLogs;
+    return loginLogs.filter((e) => {
+      const base = [e.id, e.name, e.role]
+        .filter(Boolean)
+        .map((v) => String(v).toLowerCase());
+      const dateTokens = buildDateSearchTokens(e.date);
+      return [...base, ...dateTokens].some((v) => v.includes(normalizedLoginQuery));
+    });
+  }, [loginLogs, normalizedLoginQuery]);
+
+  const sortedLoginLogs = React.useMemo(() => {
+    const arr = [...filteredLoginLogs];
+    const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
+    switch (loginSortOption) {
+      case 'name_asc':
+        arr.sort((a, b) => collator.compare(a.name || '', b.name || ''));
+        break;
+      case 'name_desc':
+        arr.sort((a, b) => collator.compare(b.name || '', a.name || ''));
+        break;
+      case 'role_asc':
+        arr.sort((a, b) => collator.compare(a.role || '', b.role || ''));
+        break;
+      case 'date_asc':
+        arr.sort((a, b) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime());
+        break;
+      case 'date_desc':
+      default:
+        arr.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+        break;
+    }
+    return arr;
+  }, [filteredLoginLogs, loginSortOption]);
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredEntries = React.useMemo(() => {
+    if (!normalizedQuery) return entries;
+    return entries.filter((e) =>
+      [e.id, e.name, e.email, e.contactNumber, e.role]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(normalizedQuery))
+    );
+  }, [entries, normalizedQuery]);
+
+  const sortedEntries = React.useMemo(() => {
+    const arr = [...filteredEntries];
+    const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
+    switch (sortOption) {
+      case 'name_desc':
+        arr.sort((a, b) => collator.compare(b.name || '', a.name || ''));
+        break;
+      case 'email_asc':
+        arr.sort((a, b) => collator.compare(a.email || '', b.email || ''));
+        break;
+      case 'role_asc':
+        arr.sort((a, b) => collator.compare(a.role || '', b.role || ''));
+        break;
+      case 'name_asc':
+      default:
+        arr.sort((a, b) => collator.compare(a.name || '', b.name || ''));
+        break;
+    }
+    return arr;
+  }, [filteredEntries, sortOption]);
+
   const paddedEntries: LoginEntry[] = [
-    ...entries,
-    ...Array(Math.max(0, pageSize - entries.length)).fill(PLACEHOLDER),
+    ...sortedEntries.slice(0, usersPageSize),
+    ...Array(Math.max(0, usersPageSize - Math.min(usersPageSize, sortedEntries.length))).fill(PLACEHOLDER),
   ];
 
-  const totalPages = Math.max(1, Math.ceil((totalCount || 0) / pageSize));
+  const totalPages = Math.max(1, Math.ceil((totalCount || 0) / usersPageSize));
 
   // Pending actions by email (no need to copy UUID)
   async function approveByEmail(email: string, role: 'enforcement' | 'cenro') {
@@ -457,7 +638,7 @@ export default function UserManagement() {
   }
 
   return (
-    <Box sx={{ mt: 6, mb: 8 }}>
+    <Box data-map-container sx={{ mt: 2, mb: 2 }}>
       <Typography component="h3" variant="h6" sx={{ mb: 1 }}>
         User Management
       </Typography>
@@ -473,31 +654,96 @@ export default function UserManagement() {
       {!loading && !error && totalCount === 0 && (
         <Alert severity="info" sx={{ mb: 1 }}>No users found or insufficient permissions.</Alert>
       )}
-      {/* Header row */}
+      {/* Controls: search + sort */}
       <Box sx={{
         display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         gap: 2,
-        px: 2,
-        py: 1.6,
-        bgcolor: 'background.paper',
-        borderTopLeftRadius: 8,
-        borderTopRightRadius: 8,
-        border: '1px solid',
-        borderColor: 'divider',
-        borderBottom: 'none',
-        typography: 'subtitle2',
-        color: 'text.secondary',
+        mb: 1.5,
       }}>
-        <Box sx={{ width: 140, textAlign: 'center' }}>ID</Box>
-        <Box sx={{ flex: 1.2, textAlign: 'center' }}>Name</Box>
-        <Box sx={{ flex: 1.6, textAlign: 'center' }}>Email</Box>
-        <Box sx={{ flex: 1.2, textAlign: 'center' }}>Contact</Box>
-        <Box sx={{ width: 140, textAlign: 'center', ml: -0.5 }}>Role</Box>
-        <Box sx={{ width: 280, textAlign: 'center' }}>Actions</Box>
+        <TextField
+          size="small"
+          fullWidth
+          placeholder="Search users (name, email, contact, role, id)…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchRoundedIcon fontSize="small" />
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <InputAdornment position="end">
+                {searchQuery && (
+                  <IconButton aria-label="clear search" size="small" onClick={() => setSearchQuery('')}>
+                    <ClearRoundedIcon fontSize="small" />
+                  </IconButton>
+                )}
+              </InputAdornment>
+            ),
+          }}
+        />
+        <Box>
+          <Button
+            variant="outlined"
+            startIcon={<SortRoundedIcon />}
+            onClick={(e) => setSortAnchorEl(e.currentTarget)}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            Sort
+          </Button>
+          <Menu
+            anchorEl={sortAnchorEl}
+            open={Boolean(sortAnchorEl)}
+            onClose={() => setSortAnchorEl(null)}
+          >
+            <MuiMenuItem onClick={() => { setSortOption('name_asc'); setSortAnchorEl(null); }}>Name (A → Z)</MuiMenuItem>
+            <MuiMenuItem onClick={() => { setSortOption('name_desc'); setSortAnchorEl(null); }}>Name (Z → A)</MuiMenuItem>
+            <MuiMenuItem onClick={() => { setSortOption('email_asc'); setSortAnchorEl(null); }}>Email (A → Z)</MuiMenuItem>
+            <MuiMenuItem onClick={() => { setSortOption('role_asc'); setSortAnchorEl(null); }}>Role (A → Z)</MuiMenuItem>
+          </Menu>
+        </Box>
       </Box>
 
-      <List dense sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
-        {paddedEntries.map((entry, idx) => {
+      {/* Compact table container (no internal scroll) */}
+      <Box sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        borderRadius: 1,
+        border: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'background.paper'
+      }}>
+        {/* Header row */}
+        <Box sx={{
+          display: 'flex',
+          gap: 1.5,
+          px: 1.5,
+          py: 1,
+          borderTopLeftRadius: 8,
+          borderTopRightRadius: 8,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          typography: 'caption',
+          color: 'text.secondary',
+          bgcolor: 'background.paper',
+        }}>
+          <Box sx={{ width: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>ID</Box>
+          <Box sx={{ flex: 1.2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Name</Box>
+          <Box sx={{ flex: 1.6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Email</Box>
+          <Box sx={{ flex: 1.0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Contact</Box>
+          <Box sx={{ width: 139, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Role</Box>
+          <Box sx={{ width: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Actions</Box>
+        </Box>
+
+        <List dense sx={{
+          borderTopLeftRadius: 0,
+          borderTopRightRadius: 0,
+          bgcolor: 'background.paper'
+        }}>
+          {paddedEntries.map((entry, idx) => {
           const isPlaceholder = !entry.name && !entry.email && !entry.contactNumber;
           const isAdmin = entry.role === 'admin';
           const actionButtons = !isPlaceholder ? (
@@ -516,26 +762,26 @@ export default function UserManagement() {
           ) : null;
           return (
             <React.Fragment key={`row-${entry.id || idx}`}>
-              <ListItem sx={{ py: 2 }}>
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
-                  <Box sx={{ width: 140, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{entry.id || '\u00A0'}</Typography>
+              <ListItem sx={{ py: 1 }}>
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', width: '100%' }}>
+                  <Box sx={{ width: 100, textAlign: 'center' }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>{entry.id || '\u00A0'}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
-                    <Typography variant="body1" sx={{ lineHeight: 1.4 }}>{entry.name || '\u00A0'}</Typography>
+                    <Typography variant="body2" sx={{ lineHeight: 1.3 }}>{entry.name || '\u00A0'}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.6, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.4 }}>{entry.email || '\u00A0'}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.3 }}>{entry.email || '\u00A0'}</Typography>
                   </Box>
-                  <Box sx={{ flex: 1.2, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.4 }}>{entry.contactNumber || '\u00A0'}</Typography>
+                  <Box sx={{ flex: 1.1, textAlign: 'center' }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.3 }}>{entry.contactNumber || '\u00A0'}</Typography>
                   </Box>
-                  <Box sx={{ width: 126, textAlign: 'center', ml: -1.10 }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', textTransform: 'capitalize', lineHeight: 1.4, textAlign: 'center' }}>
+                  <Box sx={{ width: 120, textAlign: 'center' }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', textTransform: 'capitalize', lineHeight: 1.3, textAlign: 'center' }}>
                       {isPlaceholder ? '\u00A0' : (entry.role || '\u00A0')}
                     </Typography>
                   </Box>
-                  <Box sx={{ width: 280, display: 'flex', justifyContent: 'center' }}>
+                  <Box sx={{ width: 220, display: 'flex', justifyContent: 'center' }}>
                     {actionButtons}
                   </Box>
                 </Box>
@@ -543,16 +789,26 @@ export default function UserManagement() {
               {idx < paddedEntries.length - 1 && <Divider component="li" />}
             </React.Fragment>
           );
-        })}
-      </List>
-      {/* Pagination controls */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2, mb: 2 }}>
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          })}
+        </List>
+      </Box>
+      {/* Pagination controls (separate, no border) */}
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        rowGap: 1,
+        mt: 1.25,
+        mb: 2,
+        px: 0.5,
+      }}>
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
           Page {page + 1} of {totalPages}
         </Typography>
-        <Stack direction="row" sx={{ gap: 1 }}>
-          <Button size="small" variant="outlined" disabled={page === 0 || loading} onClick={() => setPage(p => Math.max(0, p - 1))}>Previous</Button>
-          <Button size="small" variant="outlined" disabled={(page + 1) >= totalPages || loading} onClick={() => setPage(p => p + 1)}>Next</Button>
+        <Stack direction="row" sx={{ gap: 0.75 }}>
+          <Button size="small" variant="outlined" sx={{ px: 1.25, minWidth: 'auto' }} disabled={page === 0 || loading} onClick={() => setPage(p => Math.max(0, p - 1))}>Prev</Button>
+          <Button size="small" variant="outlined" sx={{ px: 1.25, minWidth: 'auto' }} disabled={(page + 1) >= totalPages || loading} onClick={() => setPage(p => p + 1)}>Next</Button>
         </Stack>
       </Box>
 
@@ -562,6 +818,60 @@ export default function UserManagement() {
       <Typography component="h3" variant="h6" sx={{ mb: 1, mt: 2 }}>
         Pending Applications
       </Typography>
+      {/* Applications controls: search + sort */}
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 2,
+        mb: 1.5,
+      }}>
+        <TextField
+          size="small"
+          fullWidth
+          placeholder="Search applications (name, email, contact, id)…"
+          value={pendingSearchQuery}
+          onChange={(e) => setPendingSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchRoundedIcon fontSize="small" />
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <InputAdornment position="end">
+                {pendingSearchQuery && (
+                  <IconButton aria-label="clear search" size="small" onClick={() => setPendingSearchQuery('')}>
+                    <ClearRoundedIcon fontSize="small" />
+                  </IconButton>
+                )}
+              </InputAdornment>
+            ),
+          }}
+        />
+        <Box>
+          <Button
+            variant="outlined"
+            startIcon={<SortRoundedIcon />}
+            onClick={(e) => setPendingSortAnchorEl(e.currentTarget)}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            Sort
+          </Button>
+          <Menu
+            anchorEl={pendingSortAnchorEl}
+            open={Boolean(pendingSortAnchorEl)}
+            onClose={() => setPendingSortAnchorEl(null)}
+          >
+            <MuiMenuItem onClick={() => { setPendingSortOption('name_asc'); setPendingSortAnchorEl(null); }}>Name (A → Z)</MuiMenuItem>
+            <MuiMenuItem onClick={() => { setPendingSortOption('name_desc'); setPendingSortAnchorEl(null); }}>Name (Z → A)</MuiMenuItem>
+            <MuiMenuItem onClick={() => { setPendingSortOption('email_asc'); setPendingSortAnchorEl(null); }}>Email (A → Z)</MuiMenuItem>
+            <MuiMenuItem onClick={() => { setPendingSortOption('email_desc'); setPendingSortAnchorEl(null); }}>Email (Z → A)</MuiMenuItem>
+            <MuiMenuItem onClick={() => { setPendingSortOption('id_asc'); setPendingSortAnchorEl(null); }}>ID (A → Z)</MuiMenuItem>
+            <MuiMenuItem onClick={() => { setPendingSortOption('id_desc'); setPendingSortAnchorEl(null); }}>ID (Z → A)</MuiMenuItem>
+          </Menu>
+        </Box>
+      </Box>
       {pendingLoading && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
           <CircularProgress size={18} />
@@ -595,7 +905,7 @@ export default function UserManagement() {
       </Box>
 
       <List dense sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
-        {[...pending, ...Array(Math.max(0, 10 - pending.length)).fill(PENDING_PLACEHOLDER)].map((entry, idx) => {
+        {[...sortedPending, ...Array(Math.max(0, 10 - sortedPending.length)).fill(PENDING_PLACEHOLDER)].map((entry, idx) => {
           const isPlaceholder = !entry.name && !entry.email && !entry.contactNumber;
           return (
             <React.Fragment key={`pending-row-${entry.id || idx}`}>
@@ -653,6 +963,59 @@ export default function UserManagement() {
         <Typography component="h3" variant="h6" sx={{ mb: 1, mt: 2 }}>
           Reports Logs
         </Typography>
+        {/* Reports controls: search + sort */}
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 2,
+          mb: 1.5,
+        }}>
+          <TextField
+            size="small"
+            fullWidth
+            placeholder="Search reports (species, barangay, municipality, reporter, contact, id)…"
+            value={reportsSearchQuery}
+            onChange={(e) => setReportsSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchRoundedIcon fontSize="small" />
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment position="end">
+                  {reportsSearchQuery && (
+                    <IconButton aria-label="clear search" size="small" onClick={() => setReportsSearchQuery('')}>
+                      <ClearRoundedIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Box>
+            <Button
+              variant="outlined"
+              startIcon={<SortRoundedIcon />}
+              onClick={(e) => setReportsSortAnchorEl(e.currentTarget)}
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              Sort
+            </Button>
+            <Menu
+              anchorEl={reportsSortAnchorEl}
+              open={Boolean(reportsSortAnchorEl)}
+              onClose={() => setReportsSortAnchorEl(null)}
+            >
+              <MuiMenuItem onClick={() => { setReportsSortOption('date_desc'); setReportsSortAnchorEl(null); }}>Date (Newest)</MuiMenuItem>
+              <MuiMenuItem onClick={() => { setReportsSortOption('date_asc'); setReportsSortAnchorEl(null); }}>Date (Oldest)</MuiMenuItem>
+              <MuiMenuItem onClick={() => { setReportsSortOption('species_asc'); setReportsSortAnchorEl(null); }}>Species (A → Z)</MuiMenuItem>
+              <MuiMenuItem onClick={() => { setReportsSortOption('species_desc'); setReportsSortAnchorEl(null); }}>Species (Z → A)</MuiMenuItem>
+              <MuiMenuItem onClick={() => { setReportsSortOption('municipality_asc'); setReportsSortAnchorEl(null); }}>Municipality (A → Z)</MuiMenuItem>
+            </Menu>
+          </Box>
+        </Box>
       {reportsLoading && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
           <CircularProgress size={18} />
@@ -687,7 +1050,15 @@ export default function UserManagement() {
       </Box>
 
       <List dense sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
-        {[...reports, ...Array(Math.max(0, 10 - reports.length)).fill(REPORT_PLACEHOLDER)].map((entry, idx) => {
+        {(() => {
+          const start = reportsPage * pageSize;
+          const current = sortedReports.slice(start, start + pageSize);
+          const padded = [
+            ...current,
+            ...Array(Math.max(0, pageSize - current.length)).fill(REPORT_PLACEHOLDER)
+          ];
+          return padded;
+        })().map((entry, idx) => {
           const isPlaceholder = !entry.id && !entry.species && !entry.reporterName;
           return (
             <React.Fragment key={`report-row-${entry.id || idx}`}>
@@ -724,11 +1095,11 @@ export default function UserManagement() {
       {/* Reports pagination */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Page {reportsPage + 1} of {Math.max(1, Math.ceil((totalReportsCount || 0) / pageSize))}
+          Page {reportsPage + 1} of {Math.max(1, Math.ceil((Math.max(0, sortedReports.length) || 0) / pageSize))}
         </Typography>
         <Stack direction="row" sx={{ gap: 1 }}>
           <Button size="small" variant="outlined" disabled={reportsPage === 0 || reportsLoading} onClick={() => setReportsPage(p => Math.max(0, p - 1))}>Previous</Button>
-          <Button size="small" variant="outlined" disabled={(reportsPage + 1) >= Math.ceil((totalReportsCount || 0) / pageSize) || reportsLoading} onClick={() => setReportsPage(p => p + 1)}>Next</Button>
+          <Button size="small" variant="outlined" disabled={(reportsPage + 1) >= Math.ceil((Math.max(0, sortedReports.length) || 0) / pageSize) || reportsLoading} onClick={() => setReportsPage(p => p + 1)}>Next</Button>
         </Stack>
       </Box>
       </Box>
@@ -739,6 +1110,59 @@ export default function UserManagement() {
         <Typography component="h3" variant="h6" sx={{ mb: 1, mt: 2 }}>
           Login Logs
         </Typography>
+        {/* Login logs controls: search + sort */}
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 2,
+          mb: 1.5,
+        }}>
+          <TextField
+            size="small"
+            fullWidth
+            placeholder="Search logs (name, role, date, id)…"
+            value={loginSearchQuery}
+            onChange={(e) => setLoginSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchRoundedIcon fontSize="small" />
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment position="end">
+                  {loginSearchQuery && (
+                    <IconButton aria-label="clear search" size="small" onClick={() => setLoginSearchQuery('')}>
+                      <ClearRoundedIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Box>
+            <Button
+              variant="outlined"
+              startIcon={<SortRoundedIcon />}
+              onClick={(e) => setLoginSortAnchorEl(e.currentTarget)}
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              Sort
+            </Button>
+            <Menu
+              anchorEl={loginSortAnchorEl}
+              open={Boolean(loginSortAnchorEl)}
+              onClose={() => setLoginSortAnchorEl(null)}
+            >
+              <MuiMenuItem onClick={() => { setLoginSortOption('date_desc'); setLoginSortAnchorEl(null); }}>Date (Newest)</MuiMenuItem>
+              <MuiMenuItem onClick={() => { setLoginSortOption('date_asc'); setLoginSortAnchorEl(null); }}>Date (Oldest)</MuiMenuItem>
+              <MuiMenuItem onClick={() => { setLoginSortOption('name_asc'); setLoginSortAnchorEl(null); }}>Name (A → Z)</MuiMenuItem>
+              <MuiMenuItem onClick={() => { setLoginSortOption('name_desc'); setLoginSortAnchorEl(null); }}>Name (Z → A)</MuiMenuItem>
+              <MuiMenuItem onClick={() => { setLoginSortOption('role_asc'); setLoginSortAnchorEl(null); }}>Role (A → Z)</MuiMenuItem>
+            </Menu>
+          </Box>
+        </Box>
         {loginLogsLoading && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
             <CircularProgress size={18} />
@@ -780,7 +1204,15 @@ export default function UserManagement() {
         </Box>
 
         <List dense sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
-          {[...loginLogs.slice(auditPage * pageSize, auditPage * pageSize + pageSize), ...Array(Math.max(0, pageSize - Math.min(pageSize, Math.max(0, loginLogs.length - auditPage * pageSize)))).fill({ id: '', name: '', date: '', time: '' })].map((entry: any, idx) => (
+          {(() => {
+            const start = auditPage * pageSize;
+            const current = sortedLoginLogs.slice(start, start + pageSize);
+            const padded = [
+              ...current,
+              ...Array(Math.max(0, pageSize - current.length)).fill({ id: '', name: '', date: '', time: '' })
+            ];
+            return padded;
+          })().map((entry: any, idx) => (
             <React.Fragment key={`audit-row-${idx}`}>
               <ListItem sx={{ py: 2 }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
@@ -808,11 +1240,11 @@ export default function UserManagement() {
         {/* Audit pagination scaffold to match layout */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Page {auditPage + 1} of {Math.max(1, Math.ceil((Math.max(0, loginLogs.length) || 0) / pageSize))}
+            Page {auditPage + 1} of {Math.max(1, Math.ceil((Math.max(0, sortedLoginLogs.length) || 0) / pageSize))}
           </Typography>
           <Stack direction="row" sx={{ gap: 1 }}>
             <Button size="small" variant="outlined" disabled={auditPage === 0 || loginLogsLoading} onClick={() => setAuditPage(p => Math.max(0, p - 1))}>Previous</Button>
-            <Button size="small" variant="outlined" disabled={(auditPage + 1) >= Math.max(1, Math.ceil((Math.max(0, loginLogs.length) || 0) / pageSize)) || loginLogsLoading} onClick={() => setAuditPage(p => p + 1)}>Next</Button>
+            <Button size="small" variant="outlined" disabled={(auditPage + 1) >= Math.max(1, Math.ceil((Math.max(0, sortedLoginLogs.length) || 0) / pageSize)) || loginLogsLoading} onClick={() => setAuditPage(p => p + 1)}>Next</Button>
           </Stack>
         </Box>
       </Box>
@@ -828,8 +1260,8 @@ export default function UserManagement() {
               label="Role"
               onChange={(e) => setSelectedRole(e.target.value as 'enforcement' | 'cenro')}
             >
-              <MenuItem value="enforcement">Enforcement</MenuItem>
-              <MenuItem value="cenro">CENRO</MenuItem>
+              <MuiMenuItem value="enforcement">Enforcement</MuiMenuItem>
+              <MuiMenuItem value="cenro">CENRO</MuiMenuItem>
             </Select>
           </FormControl>
         </DialogContent>
@@ -892,8 +1324,8 @@ export default function UserManagement() {
               label="Role"
               onChange={(e) => setApproveRole(e.target.value as 'enforcement' | 'cenro')}
             >
-              <MenuItem value="enforcement">Enforcement</MenuItem>
-              <MenuItem value="cenro">CENRO</MenuItem>
+              <MuiMenuItem value="enforcement">Enforcement</MuiMenuItem>
+              <MuiMenuItem value="cenro">CENRO</MuiMenuItem>
             </Select>
           </FormControl>
         </DialogContent>
