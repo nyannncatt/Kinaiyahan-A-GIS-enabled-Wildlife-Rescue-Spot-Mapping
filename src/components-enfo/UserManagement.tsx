@@ -67,6 +67,7 @@ export default function UserManagement() {
   const pageSize = 10;
   const usersPageSize = 7; // smaller user rows per page to fit viewport
   const [totalCount, setTotalCount] = React.useState(0);
+  const [allRoleCounts, setAllRoleCounts] = React.useState<{ enforcement: number; cenro: number }>({ enforcement: 0, cenro: 0 });
   const [searchQuery, setSearchQuery] = React.useState('');
   const [sortAnchorEl, setSortAnchorEl] = React.useState<null | HTMLElement>(null);
   const [sortOption, setSortOption] = React.useState<'name_asc' | 'name_desc' | 'email_asc' | 'role_asc'>('name_asc');
@@ -190,11 +191,34 @@ export default function UserManagement() {
         }));
         setEntries(mapped);
         setTotalCount(userCount ?? 0);
+        // Refresh total role counts
+        await refreshRoleCounts();
       }
     } catch (e: any) {
       alert(e?.message || 'Approve failed');
     }
   };
+
+  // Helper: refresh total role counts across all users (excluding admins)
+  const refreshRoleCounts = React.useCallback(async () => {
+    try {
+      const [{ count: enfCount }, { count: cenroCount }] = await Promise.all([
+        supabase
+          .from('users')
+          .select('id', { count: 'exact', head: true })
+          .eq('role', 'enforcement')
+          .neq('role', 'admin'),
+        supabase
+          .from('users')
+          .select('id', { count: 'exact', head: true })
+          .eq('role', 'cenro')
+          .neq('role', 'admin'),
+      ]);
+      setAllRoleCounts({ enforcement: enfCount ?? 0, cenro: cenroCount ?? 0 });
+    } catch {
+      // keep previous values on error
+    }
+  }, []);
 
   // Update role API
   async function updateUserRole(userId: string, newRole: 'enforcement' | 'cenro') {
@@ -247,6 +271,8 @@ export default function UserManagement() {
 
         setEntries(mapped);
         setTotalCount(count ?? 0);
+        // Also refresh total role counts independent of current page
+        await refreshRoleCounts();
       } catch (e: any) {
         if (!mounted) return;
         console.error('Fetch users failed:', e?.message || e);
@@ -257,7 +283,7 @@ export default function UserManagement() {
       }
     })();
     return () => { mounted = false; };
-  }, [page]);
+  }, [page, refreshRoleCounts]);
 
   // Load pending applications (best-effort; adjust table/columns to your schema)
   React.useEffect(() => {
@@ -697,14 +723,47 @@ export default function UserManagement() {
 
         {/* Quick stats and actions */}
         <Stack direction="row" spacing={1} sx={{ flexShrink: 0, alignItems: 'center' }}>
-          <Button variant="outlined" size="small" disabled sx={{ textTransform: 'none' }}>
+          <Button
+            variant="outlined"
+            size="small"
+            disableRipple
+            sx={{
+              textTransform: 'none',
+              pointerEvents: 'none',
+              color: '#ffffff',
+              borderColor: 'rgba(255,255,255,0.4)',
+              '&:hover': { borderColor: 'rgba(255,255,255,0.6)' },
+            }}
+          >
             Total Users: {totalCount}
           </Button>
-          <Button variant="outlined" size="small" disabled sx={{ textTransform: 'none' }}>
-            Enforcement: {roleCounts['enforcement'] ?? 0}
+          <Button
+            variant="outlined"
+            size="small"
+            disableRipple
+            sx={{
+              textTransform: 'none',
+              pointerEvents: 'none',
+              color: '#ffffff',
+              borderColor: 'rgba(255,255,255,0.4)',
+              '&:hover': { borderColor: 'rgba(255,255,255,0.6)' },
+            }}
+          >
+            Enforcement: {allRoleCounts.enforcement}
           </Button>
-          <Button variant="outlined" size="small" disabled sx={{ textTransform: 'none' }}>
-            Cenro: {roleCounts['cenro'] ?? 0}
+          <Button
+            variant="outlined"
+            size="small"
+            disableRipple
+            sx={{
+              textTransform: 'none',
+              pointerEvents: 'none',
+              color: '#ffffff',
+              borderColor: 'rgba(255,255,255,0.4)',
+              '&:hover': { borderColor: 'rgba(255,255,255,0.6)' },
+            }}
+          >
+            Cenro: {allRoleCounts.cenro}
           </Button>
           <Button
             variant="outlined"
