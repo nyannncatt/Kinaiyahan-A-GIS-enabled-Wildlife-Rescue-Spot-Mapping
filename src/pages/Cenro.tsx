@@ -6,7 +6,7 @@ import React from 'react';
 
 export default function Cenro() {
   const navigate = useNavigate();
-  const [environmentalBg, setEnvironmentalBg] = React.useState(false);
+  const [environmentalBg, setEnvironmentalBg] = React.useState(true);
 
   const handleLogout = async () => {
     try {
