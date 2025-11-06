@@ -9,7 +9,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import AppNavbar from '../components-enfo/AppNavbar';
 import AdminHeader from '../components-enfo/AdminHeader';
-import SideMenu from '../components-enfo/SideMenu';
+import AdminSideMenu from '../components-enfo/AdminSideMenu';
 import AppTheme from '../shared-theme/AppTheme';
 import UserManagement from '../components-enfo/UserManagement';
 import ProfileSection from '../components-enfo/ProfileSection';
@@ -33,7 +33,7 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
     <AppTheme {...props} themeComponents={xThemeComponents} disableBackground={true}>
       <CssBaseline enableColorScheme />
       <Box sx={{ display: 'flex' }}>
-        <SideMenu />
+        <AdminSideMenu />
         <AppNavbar />
         <Box
           component="main"
