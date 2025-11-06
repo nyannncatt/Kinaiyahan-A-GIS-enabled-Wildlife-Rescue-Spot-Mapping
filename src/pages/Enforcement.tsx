@@ -29,7 +29,7 @@ const xThemeComponents = {
 };
 
 function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
-  const [environmentalBg, setEnvironmentalBg] = React.useState(false);
+  const [environmentalBg, setEnvironmentalBg] = React.useState(true);
   return (
     <AppTheme {...props} themeComponents={xThemeComponents} disableBackground={true}>
       <CssBaseline enableColorScheme />

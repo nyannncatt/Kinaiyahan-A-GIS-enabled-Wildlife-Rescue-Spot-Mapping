@@ -14,6 +14,8 @@ import Menu from '@mui/material/Menu';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import SortRoundedIcon from '@mui/icons-material/SortRounded';
 import ClearRoundedIcon from '@mui/icons-material/ClearRounded';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { supabase } from '../services/supabase';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
@@ -72,6 +74,18 @@ export default function UserManagement() {
   const [sortAnchorEl, setSortAnchorEl] = React.useState<null | HTMLElement>(null);
   const [sortOption, setSortOption] = React.useState<'name_asc' | 'name_desc' | 'email_asc' | 'role_asc'>('name_asc');
 
+  // Helper function to format ID consistently (maintains layout width)
+  const formatId = (id: string, show: boolean, lines: number = 2) => {
+    if (!id) return '\u00A0';
+    if (show) {
+      // Truncate to consistent length if too long, or use full ID
+      return id.length > 36 ? id.substring(0, 33) + '...' : id;
+    }
+    // Mask with same approximate width as UUID (36 chars), split across the given number of lines
+    const lineMask = '••••••••••••••••';
+    return Array(Math.max(1, lines)).fill(lineMask).join('\n');
+  };
+
   // Pending applications state
   const [pending, setPending] = React.useState<LoginEntry[]>([]);
   const [pendingLoading, setPendingLoading] = React.useState(true);
@@ -101,6 +115,12 @@ export default function UserManagement() {
   const [loginSearchQuery, setLoginSearchQuery] = React.useState('');
   const [loginSortAnchorEl, setLoginSortAnchorEl] = React.useState<null | HTMLElement>(null);
   const [loginSortOption, setLoginSortOption] = React.useState<'date_desc' | 'date_asc' | 'name_asc' | 'name_desc' | 'role_asc'>('date_desc');
+
+  // Show/Hide ID toggles
+  const [showUserIds, setShowUserIds] = React.useState(false);
+  const [showPendingIds, setShowPendingIds] = React.useState(false);
+  const [showReportIds, setShowReportIds] = React.useState(false);
+  const [showLoginIds, setShowLoginIds] = React.useState(false);
 
   // Role modal state
   const [editUserId, setEditUserId] = React.useState<string | null>(null);
@@ -726,6 +746,15 @@ export default function UserManagement() {
           <Button
             variant="outlined"
             size="small"
+            startIcon={showUserIds ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+            onClick={() => setShowUserIds(v => !v)}
+            sx={{ textTransform: 'none' }}
+          >
+            {showUserIds ? 'Hide ID' : 'Show ID'}
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
             disableRipple
             sx={{
               textTransform: 'none',
@@ -837,7 +866,7 @@ export default function UserManagement() {
               <ListItem sx={{ py: 1 }}>
                 <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 100, textAlign: 'center' }}>
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>{entry.id || '\u00A0'}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.7rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showUserIds, 3)}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
                     <Typography variant="body2" sx={{ lineHeight: 1.3 }}>{entry.name || '\u00A0'}</Typography>
@@ -921,8 +950,17 @@ export default function UserManagement() {
             ),
           }}
         />
-        <Box>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+         <Box>
+           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+             <Button
+               variant="outlined"
+               size="small"
+               startIcon={showPendingIds ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+               onClick={() => setShowPendingIds(v => !v)}
+               sx={{ textTransform: 'none' }}
+             >
+               {showPendingIds ? 'Hide ID' : 'Show ID'}
+             </Button>
             <Button
               variant="outlined"
               size="small"
@@ -997,7 +1035,7 @@ export default function UserManagement() {
               <ListItem sx={{ py: 2 }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 140, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{entry.id || '\u00A0'}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.75rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showPendingIds, 3)}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
                     <Typography variant="body1" sx={{ lineHeight: 1.4 }}>{entry.name || '\u00A0'}</Typography>
@@ -1084,6 +1122,15 @@ export default function UserManagement() {
               <Button
                 variant="outlined"
                 size="small"
+                startIcon={showReportIds ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                onClick={() => setShowReportIds(v => !v)}
+                sx={{ textTransform: 'none' }}
+              >
+                {showReportIds ? 'Hide ID' : 'Show ID'}
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
                 disableRipple
                 sx={{ textTransform: 'none', pointerEvents: 'none' }}
               >
@@ -1161,7 +1208,7 @@ export default function UserManagement() {
               <ListItem sx={{ py: 2 }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 140, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{entry.id || '\u00A0'}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.75rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showReportIds, 3)}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
                     <Typography variant="body1" sx={{ lineHeight: 1.4 }}>{entry.species || '\u00A0'}</Typography>
@@ -1239,6 +1286,15 @@ export default function UserManagement() {
           />
           <Box>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={showLoginIds ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                onClick={() => setShowLoginIds(v => !v)}
+                sx={{ textTransform: 'none' }}
+              >
+                {showLoginIds ? 'Hide ID' : 'Show ID'}
+              </Button>
               <Button
                 variant="outlined"
                 size="small"
@@ -1324,7 +1380,7 @@ export default function UserManagement() {
               <ListItem sx={{ py: 2 }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 140, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{entry.id || '\u00A0'}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.75rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showLoginIds, 3)}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
                     <Typography variant="body1" sx={{ lineHeight: 1.4 }}>{entry.name || '\u00A0'}</Typography>

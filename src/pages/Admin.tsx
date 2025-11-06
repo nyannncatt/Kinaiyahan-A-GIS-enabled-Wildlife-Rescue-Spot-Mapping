@@ -32,7 +32,7 @@ const xThemeComponents = {
 
 function AdminComponent(props: { disableCustomTheme?: boolean }) {
   const theme = useTheme();
-  const [environmentalBg, setEnvironmentalBg] = React.useState(false);
+  const [environmentalBg, setEnvironmentalBg] = React.useState(true);
   return (
     <AppTheme {...props} themeComponents={xThemeComponents} disableBackground={true}>
       <CssBaseline enableColorScheme />
