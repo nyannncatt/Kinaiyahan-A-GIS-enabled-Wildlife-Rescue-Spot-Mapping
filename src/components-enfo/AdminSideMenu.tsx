@@ -55,7 +55,7 @@ export default function AdminSideMenu() {
           component="img"
           src="/images/kinaiyahanlogonobg.png"
           alt="Kinaiyahan Logo"
-          sx={{ width: 64, height: 64, objectFit: 'contain' }}
+          sx={{ width: 150, height: 150, objectFit: 'contain' }}
         />
       </Box>
 
