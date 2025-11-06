@@ -293,11 +293,22 @@ export default function AdminMenuContent() {
       // Wait for next frame to ensure element is fully rendered
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          element.scrollIntoView({ 
-            behavior: 'smooth',
-            block: 'center',
-            inline: 'nearest'
-          });
+          // Special handling for profile section to prevent label from being cut off
+          if (tabId === 'profile') {
+            // Calculate position with offset to show the "My Profile" label
+            const elementTop = element.getBoundingClientRect().top + window.pageYOffset;
+            const offset = 5; // Offset to account for navbar and show the label
+            window.scrollTo({
+              top: elementTop - offset,
+              behavior: 'smooth'
+            });
+          } else {
+            element.scrollIntoView({ 
+              behavior: 'smooth',
+              block: 'center',
+              inline: 'nearest'
+            });
+          }
           
           // Reset scrolling flag after scroll completes (smooth scroll takes ~500-1000ms)
           scrollTimeoutRef.current = setTimeout(() => {
