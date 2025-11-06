@@ -730,9 +730,6 @@ export default function UserManagement() {
             sx={{
               textTransform: 'none',
               pointerEvents: 'none',
-              color: '#ffffff',
-              borderColor: 'rgba(255,255,255,0.4)',
-              '&:hover': { borderColor: 'rgba(255,255,255,0.6)' },
             }}
           >
             Total Users: {totalCount}
@@ -744,9 +741,6 @@ export default function UserManagement() {
             sx={{
               textTransform: 'none',
               pointerEvents: 'none',
-              color: '#ffffff',
-              borderColor: 'rgba(255,255,255,0.4)',
-              '&:hover': { borderColor: 'rgba(255,255,255,0.6)' },
             }}
           >
             Enforcement: {allRoleCounts.enforcement}
@@ -758,9 +752,6 @@ export default function UserManagement() {
             sx={{
               textTransform: 'none',
               pointerEvents: 'none',
-              color: '#ffffff',
-              borderColor: 'rgba(255,255,255,0.4)',
-              '&:hover': { borderColor: 'rgba(255,255,255,0.6)' },
             }}
           >
             Cenro: {allRoleCounts.cenro}
@@ -931,27 +922,40 @@ export default function UserManagement() {
           }}
         />
         <Box>
-          <Button
-            variant="outlined"
-            startIcon={<SortRoundedIcon />}
-            onClick={(e) => setPendingSortAnchorEl(e.currentTarget)}
-            sx={{ whiteSpace: 'nowrap' }}
-          >
-            Sort
-          </Button>
-          <Menu
-            anchorEl={pendingSortAnchorEl}
-            open={Boolean(pendingSortAnchorEl)}
-            onClose={() => setPendingSortAnchorEl(null)}
-          >
-            <MuiMenuItem onClick={() => { setPendingSortOption('name_asc'); setPendingSortAnchorEl(null); }}>Name (A → Z)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setPendingSortOption('name_desc'); setPendingSortAnchorEl(null); }}>Name (Z → A)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setPendingSortOption('email_asc'); setPendingSortAnchorEl(null); }}>Email (A → Z)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setPendingSortOption('email_desc'); setPendingSortAnchorEl(null); }}>Email (Z → A)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setPendingSortOption('id_asc'); setPendingSortAnchorEl(null); }}>ID (A → Z)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setPendingSortOption('id_desc'); setPendingSortAnchorEl(null); }}>ID (Z → A)</MuiMenuItem>
-          </Menu>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Button
+              variant="outlined"
+              size="small"
+              disableRipple
+              sx={{
+                textTransform: 'none',
+                pointerEvents: 'none',
+              }}
+            >
+              Total Pending: {totalPendingCount}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<SortRoundedIcon />}
+              onClick={(e) => setPendingSortAnchorEl(e.currentTarget)}
+              sx={{ whiteSpace: 'nowrap', textTransform: 'none' }}
+            >
+              Sort
+            </Button>
+          </Stack>
         </Box>
+        <Menu
+          anchorEl={pendingSortAnchorEl}
+          open={Boolean(pendingSortAnchorEl)}
+          onClose={() => setPendingSortAnchorEl(null)}
+        >
+          <MuiMenuItem onClick={() => { setPendingSortOption('name_asc'); setPendingSortAnchorEl(null); }}>Name (A → Z)</MuiMenuItem>
+          <MuiMenuItem onClick={() => { setPendingSortOption('name_desc'); setPendingSortAnchorEl(null); }}>Name (Z → A)</MuiMenuItem>
+          <MuiMenuItem onClick={() => { setPendingSortOption('email_asc'); setPendingSortAnchorEl(null); }}>Email (A → Z)</MuiMenuItem>
+          <MuiMenuItem onClick={() => { setPendingSortOption('email_desc'); setPendingSortAnchorEl(null); }}>Email (Z → A)</MuiMenuItem>
+          <MuiMenuItem onClick={() => { setPendingSortOption('id_asc'); setPendingSortAnchorEl(null); }}>ID (A → Z)</MuiMenuItem>
+          <MuiMenuItem onClick={() => { setPendingSortOption('id_desc'); setPendingSortAnchorEl(null); }}>ID (Z → A)</MuiMenuItem>
+        </Menu>
       </Box>
       {pendingLoading && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
@@ -1076,14 +1080,25 @@ export default function UserManagement() {
             }}
           />
           <Box>
-            <Button
-              variant="outlined"
-              startIcon={<SortRoundedIcon />}
-              onClick={(e) => setReportsSortAnchorEl(e.currentTarget)}
-              sx={{ whiteSpace: 'nowrap' }}
-            >
-              Sort
-            </Button>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+              <Button
+                variant="outlined"
+                size="small"
+                disableRipple
+                sx={{ textTransform: 'none', pointerEvents: 'none' }}
+              >
+                Total Reports: {totalReportsCount}
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<SortRoundedIcon />}
+                onClick={(e) => setReportsSortAnchorEl(e.currentTarget)}
+                sx={{ whiteSpace: 'nowrap', textTransform: 'none' }}
+              >
+                Sort
+              </Button>
+            </Stack>
             <Menu
               anchorEl={reportsSortAnchorEl}
               open={Boolean(reportsSortAnchorEl)}
