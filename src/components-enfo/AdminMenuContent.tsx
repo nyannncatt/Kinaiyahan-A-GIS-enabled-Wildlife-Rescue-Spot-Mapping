@@ -123,18 +123,18 @@ const mainNavigationItems = [
     dataAttribute: 'data-analytics'
   },
   { 
-    id: 'audit', 
-    text: 'Login Logs', 
-    icon: <HistoryRoundedIcon sx={{ fontSize: 20 }} />,
-    description: 'Latest login entries',
-    dataAttribute: 'data-audit'
-  },
-  { 
     id: 'profile', 
     text: 'My Profile', 
     icon: <PersonRoundedIcon sx={{ fontSize: 20 }} />,
     description: 'User profile and account',
     dataAttribute: 'data-profile'
+  },
+  { 
+    id: 'audit', 
+    text: 'Login Logs', 
+    icon: <HistoryRoundedIcon sx={{ fontSize: 20 }} />,
+    description: 'Latest login entries',
+    dataAttribute: 'data-audit'
   },
 ];
 
