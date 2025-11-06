@@ -54,7 +54,7 @@ const TabButton = styled(ListItemButton, {
           ? `rgba(${theme.vars.palette.primary.mainChannel} / 0.12)`
           : theme.palette.primary.main + '20')
       : (theme.vars 
-          ? `rgba(${theme.vars.palette.action.hoverChannel} / 1)`
+          ? theme.vars.palette.action.hover
           : theme.palette.action.hover),
     transform: 'translateX(4px)',
   },
