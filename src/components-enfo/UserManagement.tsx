@@ -850,7 +850,7 @@ export default function UserManagement() {
       }}>
         <TextField
           size="small"
-          fullWidth
+          sx={{ flex: '0 1 45%', minWidth: 260 }}
           placeholder="Search applications (name, email, contact, id)…"
           value={pendingSearchQuery}
           onChange={(e) => setPendingSearchQuery(e.target.value)}
@@ -995,7 +995,7 @@ export default function UserManagement() {
         }}>
           <TextField
             size="small"
-            fullWidth
+            sx={{ flex: '0 1 45%', minWidth: 260 }}
             placeholder="Search reports (species, barangay, municipality, reporter, contact, id)…"
             value={reportsSearchQuery}
             onChange={(e) => setReportsSearchQuery(e.target.value)}
@@ -1142,7 +1142,7 @@ export default function UserManagement() {
         }}>
           <TextField
             size="small"
-            fullWidth
+            sx={{ flex: '0 1 45%', minWidth: 260 }}
             placeholder="Search logs (name, role, date, id)…"
             value={loginSearchQuery}
             onChange={(e) => setLoginSearchQuery(e.target.value)}
