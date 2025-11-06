@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box, CssBaseline } from "@mui/material";
+import { Box, CssBaseline, Typography } from "@mui/material";
 import AppTheme from "../shared-theme/AppTheme";
 import ColorModeSelect from "../shared-theme/ColorModeSelect";
 import SignInCard from "./components/SignInCard";
@@ -70,6 +70,7 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
           width: "100vw",
           height: "100vh",
           display: "flex",
+          flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
           textAlign: "center",
@@ -94,10 +95,29 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
             gap: { xs: 4, md: 12 },
             alignItems: "center",
             justifyContent: "center",
+            flex: 1,
           }}
         >
           <Content />
           <SignInCard />
+        </Box>
+
+        {/* Footer */}
+        <Box
+          sx={{
+            width: "100%",
+            py: 2,
+            px: 2,
+            textAlign: "center",
+            mt: "auto",
+          }}
+        >
+          <Typography variant="body2" sx={{ color: "text.secondary", mb: 0.5 }}>
+            Calanawan, Tankulan, Manolo Fortich, Bukidnon
+          </Typography>
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            E-mail: <a href="mailto:cenromanolofortich@denr.gov.ph" style={{ color: "inherit", textDecoration: "none" }}>cenromanolofortich@denr.gov.ph</a> | Tel/Mobile No.: <a href="tel:09175228580" style={{ color: "inherit", textDecoration: "none" }}>0917-522-8580</a>
+          </Typography>
         </Box>
       </Box>
     </AppTheme>
