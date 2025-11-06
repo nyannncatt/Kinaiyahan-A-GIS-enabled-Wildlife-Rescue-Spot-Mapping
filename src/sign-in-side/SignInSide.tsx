@@ -59,7 +59,7 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
       <CssBaseline enableColorScheme />
 
       {/* Top-right theme toggle */}
-      <ColorModeSelect sx={{ position: "fixed", top: "1rem", right: "1rem" }} />
+      <ColorModeSelect sx={{ position: "fixed", top: "1rem", right: "1rem", zIndex: (theme) => (theme.zIndex?.modal ?? 1300) + 1 }} />
 
       {/* Full-page flex container */}
       <Box
@@ -75,14 +75,30 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
           alignItems: "center",
           textAlign: "center",
           px: 2,
-          background: theme.palette.mode === 'dark' 
-            ? "radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))"
-            : "linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)",
+          background: theme.palette.mode === 'light'
+            ? "linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)"
+            : 'transparent',
           backgroundRepeat: "no-repeat",
           backgroundSize: "100% 100%",
           backgroundAttachment: "fixed",
         })}
       >
+        {/* Animated background species */}
+        <Box className="bg-animals" sx={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+          {/* Right -> Left */}
+          <span className="animal rtl" title="Philippine Eagle" style={{ top: '10%', animationDuration: '22s', animationDelay: '0s', animationName: 'popFloatA' }}>🦅</span>
+          <span className="animal rtl" title="Philippine Crocodile" style={{ top: '22%', animationDuration: '27s', animationDelay: '0s', animationName: 'zigZagA' }}>🐊</span>
+          <span className="animal rtl" title="Whale Shark" style={{ top: '34%', animationDuration: '24s', animationDelay: '0s', animationName: 'popFloatA' }}>🦈</span>
+          <span className="animal rtl" title="Philippine Eagle-Owl" style={{ top: '46%', animationDuration: '29s', animationDelay: '0s', animationName: 'zigZagA' }}>🦉</span>
+          <span className="animal rtl" title="Philippine Deer" style={{ top: '58%', animationDuration: '26s', animationDelay: '0s', animationName: 'popFloatA' }}>🦌</span>
+
+          {/* Left -> Right */}
+          <span className="animal ltr" title="Hawksbill Turtle" style={{ top: '16%', animationDuration: '24s', animationDelay: '0s', animationName: 'popFloatB' }}>🐢</span>
+          <span className="animal ltr" title="Tamaraw" style={{ top: '28%', animationDuration: '26s', animationDelay: '0s', animationName: 'zigZagB' }}>🐃</span>
+          <span className="animal ltr" title="Visayan Warty Pig" style={{ top: '40%', animationDuration: '23s', animationDelay: '0s', animationName: 'popFloatB' }}>🐗</span>
+          <span className="animal ltr" title="Philippine Tarsier" style={{ top: '52%', animationDuration: '29s', animationDelay: '0s', animationName: 'zigZagB' }}>🐵</span>
+          <span className="animal ltr" title="Philippine Hornbill" style={{ top: '64%', animationDuration: '27s', animationDelay: '0s', animationName: 'popFloatB' }}>🦅</span>
+        </Box>
         {/* Inner container */}
         <Box
           sx={{
@@ -108,10 +124,10 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
             mt: "auto",
           }}
         >
-          <Typography variant="body2" sx={{ color: "text.secondary", mb: 0.5 }}>
+          <Typography variant="body2" sx={{ color: '#000000', mb: 0.5 }}>
             Calanawan, Tankulan, Manolo Fortich, Bukidnon
           </Typography>
-          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+          <Typography variant="body2" sx={{ color: '#000000' }}>
             E-mail: <a href="mailto:cenromanolofortich@denr.gov.ph" style={{ color: "inherit", textDecoration: "none" }}>cenromanolofortich@denr.gov.ph</a> | Tel/Mobile No.: <a href="tel:09175228580" style={{ color: "inherit", textDecoration: "none" }}>0917-522-8580</a>
           </Typography>
         </Box>
