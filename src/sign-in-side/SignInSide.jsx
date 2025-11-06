@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Box, CssBaseline, Stack } from "@mui/material";
+import { Box, CssBaseline, Stack, Typography } from "@mui/material";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";   // ✅ add navigate
 import { useAuth } from "../context/AuthContext"; // ✅ hook into auth
@@ -57,6 +57,7 @@ export default function SignInSide(props) {
           minHeight: "100vh",
           width: "100vw",
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           px: 2,
@@ -75,7 +76,7 @@ export default function SignInSide(props) {
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.2 }}
-          style={{ width: "100%" }}
+          style={{ width: "100%", flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
         >
           <Stack
             direction={{ xs: "column-reverse", md: "row" }}
@@ -93,6 +94,24 @@ export default function SignInSide(props) {
             <SignInCard />
           </Stack>
         </motion.div>
+
+        {/* Footer */}
+        <Box
+          sx={{
+            width: "100%",
+            py: 2,
+            px: 2,
+            textAlign: "center",
+            mt: "auto",
+          }}
+        >
+          <Typography variant="body2" sx={{ color: "text.secondary", mb: 0.5 }}>
+            Calanawan, Tankulan, Manolo Fortich, Bukidnon
+          </Typography>
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            E-mail: <a href="mailto:cenromanolofortich@denr.gov.ph" style={{ color: "inherit", textDecoration: "none" }}>cenromanolofortich@denr.gov.ph</a> | Tel/Mobile No.: <a href="tel:09175228580" style={{ color: "inherit", textDecoration: "none" }}>0917-522-8580</a>
+          </Typography>
+        </Box>
       </Box>
     </AppTheme>
   );
