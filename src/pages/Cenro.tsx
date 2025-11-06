@@ -1,4 +1,4 @@
-import { Box, Typography, CssBaseline, Button } from "@mui/material";
+import { Box, Typography, CssBaseline, Button, Stack } from "@mui/material";
 import AppTheme from "../shared-theme/AppTheme";
 import { supabase } from "../services/supabase"; // ✅ Supabase client
 import { useNavigate } from "react-router-dom";
@@ -9,6 +9,38 @@ import AppNavbar from '../components-enfo/AppNavbar';
 export default function Cenro() {
   const navigate = useNavigate();
   const [environmentalBg, setEnvironmentalBg] = React.useState(true);
+  const [showLogo, setShowLogo] = React.useState(false);
+  const [displayedText, setDisplayedText] = React.useState('');
+  const fullText = 'ＫＩＮＡＩＹＡＨＡＮ';
+
+  // Typing animation effect
+  React.useEffect(() => {
+    let typingInterval: NodeJS.Timeout | null = null;
+    
+    // Show logo first
+    const logoTimer = setTimeout(() => {
+      setShowLogo(true);
+    }, 300);
+
+    // Start typing after logo appears
+    const typingTimer = setTimeout(() => {
+      let currentIndex = 0;
+      typingInterval = setInterval(() => {
+        if (currentIndex < fullText.length) {
+          setDisplayedText(fullText.substring(0, currentIndex + 1));
+          currentIndex++;
+        } else {
+          if (typingInterval) clearInterval(typingInterval);
+        }
+      }, 150); // 150ms per character
+    }, 800); // Start typing 800ms after component mounts
+
+    return () => {
+      clearTimeout(logoTimer);
+      clearTimeout(typingTimer);
+      if (typingInterval) clearInterval(typingInterval);
+    };
+  }, [fullText]);
 
   const handleLogout = async () => {
     try {
@@ -60,6 +92,40 @@ export default function Cenro() {
               <span className="animal ltr" title="Turtle" style={{ top: '62%', animationDuration: '23s', animationDelay: '0s', animationName: 'zigZagB' }}>🐢</span>
             </Box>
           )}
+          {/* Centered header with typing animation */}
+          <Box sx={{ textAlign: 'center', mt: 3, mb: 4 }}>
+            <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
+              <Box 
+                component="img" 
+                src="/images/kinaiyahanlogonobg.png" 
+                alt="Kinaiyahan" 
+                sx={{ 
+                  width: 56, 
+                  height: 56, 
+                  objectFit: 'contain',
+                  opacity: showLogo ? 1 : 0,
+                  transition: 'opacity 0.5s ease-in',
+                }} 
+              />
+              <Typography
+                variant="h2"
+                sx={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontWeight: 800,
+                  letterSpacing: '0.45em',
+                  color: '#000000 !important',
+                  userSelect: 'none',
+                  lineHeight: 1,
+                  minWidth: '400px', // Prevent layout shift during typing
+                }}
+              >
+                {displayedText}
+                {displayedText.length < fullText.length && (
+                  <Box component="span" sx={{ animation: 'blink 1s infinite', '@keyframes blink': { '0%, 50%': { opacity: 1 }, '51%, 100%': { opacity: 0 } } }}>|</Box>
+                )}
+              </Typography>
+            </Stack>
+          </Box>
           <Box>
           <Typography variant="h2" component="h1" gutterBottom>
             Cenro Dashboard - Test

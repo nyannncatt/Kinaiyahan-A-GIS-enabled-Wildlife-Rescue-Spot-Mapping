@@ -244,8 +244,19 @@ function App() {
 
     if (loading || checkingRole) {
       return (
-        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
-          <CircularProgress />
+        <Box 
+          sx={{ 
+            display: "flex", 
+            justifyContent: "center", 
+            alignItems: "center", 
+            minHeight: "100vh",
+            background: "linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)",
+            backgroundRepeat: "no-repeat",
+            backgroundSize: "100% 100%",
+            backgroundAttachment: "fixed",
+          }}
+        >
+          <CircularProgress sx={{ color: '#4caf50' }} />
         </Box>
       );
     }
