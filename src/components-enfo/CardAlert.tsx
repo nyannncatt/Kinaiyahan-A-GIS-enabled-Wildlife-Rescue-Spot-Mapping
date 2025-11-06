@@ -14,7 +14,7 @@ export default function CardAlert() {
           Plan about to expire
         </Typography>
         <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-          Enjoy 10% off when renewing your plan today.
+          Enjoy a10% off when renewing your plan today.
         </Typography>
         <Button variant="contained" size="small" fullWidth>
           Get the discount
