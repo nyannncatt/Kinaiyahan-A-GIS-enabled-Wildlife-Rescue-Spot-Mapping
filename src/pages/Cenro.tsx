@@ -46,7 +46,6 @@ export default function Cenro() {
           backgroundRepeat: "no-repeat",
           backgroundSize: "100% 100%",
           backgroundAttachment: "fixed",
-          position: 'relative',
         })}
       >
         {environmentalBg && (
