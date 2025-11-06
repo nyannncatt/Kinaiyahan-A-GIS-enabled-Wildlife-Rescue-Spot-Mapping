@@ -71,7 +71,7 @@ export default function SignInSide(props) {
               fontFamily: 'Inter, sans-serif',
               fontWeight: 800,
               letterSpacing: '0.45em',
-              color: 'text.primary',
+              color: '#000000 !important',
               userSelect: 'none',
               lineHeight: 1,
             }}

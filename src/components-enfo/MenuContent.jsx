@@ -7,7 +7,6 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Divider,
   useTheme
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
@@ -15,8 +14,6 @@ import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
-import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 
 // Styled components with CSS variables support
 const NavigationContainer = styled(Box)(({ theme }) => ({
@@ -122,26 +119,11 @@ const mainNavigationItems = [
     icon: <AnalyticsRoundedIcon sx={{ fontSize: 20 }} />,
     description: 'Data analysis and reports'
   },
-];
-
-const utilityItems = [
   { 
     id: 'profile', 
     text: 'My Profile', 
     icon: <PersonRoundedIcon sx={{ fontSize: 20 }} />,
     description: 'User profile and account'
-  },
-  { 
-    id: 'settings', 
-    text: 'Settings', 
-    icon: <SettingsRoundedIcon sx={{ fontSize: 20 }} />,
-    description: 'System configuration'
-  },
-  { 
-    id: 'about', 
-    text: 'About', 
-    icon: <InfoRoundedIcon sx={{ fontSize: 20 }} />,
-    description: 'Application information'
   },
 ];
 
@@ -468,45 +450,6 @@ export default function MenuContent() {
               </TabButton>
             </ListItem>
           )}
-        </List>
-      </Box>
-
-      {/* Utility Navigation */}
-      <Box sx={{ px: 2, pb: 2 }}>
-        <SectionTitle>UTILITY</SectionTitle>
-        <List dense>
-          {(isAdminRoute ? utilityItems.filter((i) => i.id !== 'settings') : utilityItems).map((item) => (
-            <ListItem key={item.id} disablePadding sx={{ display: 'block' }}>
-              <TabButton
-                active={activeTab === item.id}
-                onClick={() => handleTabClick(item.id)}
-              >
-                <ListItemIcon>
-                  <IconWrapper active={activeTab === item.id}>
-                    {item.icon}
-                  </IconWrapper>
-                </ListItemIcon>
-                <ListItemText 
-                  primary={
-                    <Box>
-                      <Typography variant="body2" sx={{ 
-                        fontWeight: activeTab === item.id ? 600 : 500,
-                        fontSize: '14px'
-                      }}>
-                        {item.text}
-                      </Typography>
-                      <Typography variant="caption" sx={{ 
-                        color: 'text.secondary',
-                        fontSize: '11px'
-                      }}>
-                        {item.description}
-                      </Typography>
-                    </Box>
-                  }
-                />
-              </TabButton>
-            </ListItem>
-          ))}
         </List>
       </Box>
     </NavigationContainer>
