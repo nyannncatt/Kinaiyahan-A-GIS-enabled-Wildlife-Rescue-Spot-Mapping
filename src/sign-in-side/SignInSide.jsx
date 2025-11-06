@@ -119,10 +119,10 @@ export default function SignInSide(props) {
             mt: "auto",
           }}
         >
-          <Typography variant="body2" sx={{ color: '#000000', mb: 0.5 }}>
+          <Typography variant="body2" sx={(theme) => ({ color: theme.palette.mode === 'light' ? '#000000' : '#ffffff', mb: 0.5 })}>
             Calanawan, Tankulan, Manolo Fortich, Bukidnon
           </Typography>
-          <Typography variant="body2" sx={{ color: '#000000' }}>
+          <Typography variant="body2" sx={(theme) => ({ color: theme.palette.mode === 'light' ? '#000000' : '#ffffff' })}>
             E-mail: <a href="mailto:cenromanolofortich@denr.gov.ph" style={{ color: "inherit", textDecoration: "none" }}>cenromanolofortich@denr.gov.ph</a> | Tel/Mobile No.: <a href="tel:09175228580" style={{ color: "inherit", textDecoration: "none" }}>0917-522-8580</a>
           </Typography>
         </Box>

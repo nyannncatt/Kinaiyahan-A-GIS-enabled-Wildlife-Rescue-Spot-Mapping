@@ -238,7 +238,12 @@ export default function SignInCard() {
 
         <Box component="form" noValidate onSubmit={handleLogin} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <FormControl>
-            <FormLabel htmlFor="email" sx={(theme) => ({ color: theme.palette.mode === 'dark' ? '#ffffff' : '#000000' })}>Email</FormLabel>
+            <FormLabel
+              htmlFor="email"
+              sx={{ color: 'text.primary' }}
+            >
+              Email
+            </FormLabel>
             <TextField
               error={emailError}
               helperText={emailErrorMessage}
@@ -256,7 +261,12 @@ export default function SignInCard() {
 
            <FormControl>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <FormLabel htmlFor="password" sx={(theme) => ({ color: theme.palette.mode === 'dark' ? '#ffffff' : '#000000' })}>Password</FormLabel>
+              <FormLabel
+                htmlFor="password"
+                sx={{ color: 'text.primary' }}
+              >
+                Password
+              </FormLabel>
               <Typography
                 component="span"
                 sx={{
