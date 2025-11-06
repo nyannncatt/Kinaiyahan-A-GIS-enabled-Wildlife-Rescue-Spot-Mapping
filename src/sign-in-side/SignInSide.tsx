@@ -63,7 +63,7 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
 
       {/* Full-page flex container */}
       <Box
-        sx={{
+        sx={(theme) => ({
           position: "fixed",
           top: 0,
           left: 0,
@@ -75,17 +75,13 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
           alignItems: "center",
           textAlign: "center",
           px: 2,
-          "&::before": {
-            content: '""',
-            display: "block",
-            position: "absolute",
-            zIndex: -1,
-            inset: 0,
-            backgroundImage:
-              "radial-gradient(ellipse at 50% 50%, hsl(210, 100%, 97%), hsl(0, 0%, 100%))",
-            backgroundRepeat: "no-repeat",
-          },
-        }}
+          background: theme.palette.mode === 'dark' 
+            ? "radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))"
+            : "linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)",
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "100% 100%",
+          backgroundAttachment: "fixed",
+        })}
       >
         {/* Inner container */}
         <Box

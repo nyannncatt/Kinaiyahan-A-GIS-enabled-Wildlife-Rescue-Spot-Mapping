@@ -61,15 +61,12 @@ export default function SignInSide(props) {
           alignItems: "center",
           justifyContent: "center",
           px: 2,
-          background: "radial-gradient(ellipse at 95% 50%, hsl(210, 100%, 97%), hsl(0, 0%, 100%))",
+          background: theme.palette.mode === 'dark' 
+            ? "radial-gradient(at 95% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))"
+            : "linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)",
           backgroundRepeat: "no-repeat",
           backgroundSize: "100% 100%",
           backgroundAttachment: "fixed",
-          ...(theme.applyStyles("dark", {
-            background:
-              "radial-gradient(at 95% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))",
-            backgroundSize: "100% 100%",
-          })),
         })}
       >
         <motion.div
