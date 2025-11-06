@@ -129,9 +129,6 @@ const mainNavigationItems = [
     description: 'Latest login entries',
     dataAttribute: 'data-audit'
   },
-];
-
-const utilityItems = [
   { 
     id: 'profile', 
     text: 'My Profile', 
@@ -385,45 +382,6 @@ export default function AdminMenuContent() {
           ))}
         </List>
       </Box>
-
-      {/* Utility Navigation */}
-      <Box sx={{ px: 2, pb: 2 }}>
-        <SectionTitle>UTILITY</SectionTitle>
-        <List dense>
-          {utilityItems.map((item) => (
-            <ListItem key={item.id} disablePadding sx={{ display: 'block' }}>
-              <TabButton
-                active={activeTab === item.id}
-                onClick={() => handleTabClick(item.id, item.dataAttribute)}
-              >
-                <ListItemIcon>
-                  <IconWrapper active={activeTab === item.id}>
-                    {item.icon}
-                  </IconWrapper>
-                </ListItemIcon>
-                <ListItemText 
-                  primary={
-                    <Box>
-                      <Typography variant="body2" sx={{ 
-                        fontWeight: activeTab === item.id ? 600 : 500,
-                        fontSize: '14px'
-                      }}>
-                        {item.text}
-                      </Typography>
-                      <Typography variant="caption" sx={{ 
-                        color: 'text.secondary',
-                        fontSize: '11px'
-                      }}>
-                        {item.description}
-                      </Typography>
-                    </Box>
-                  }
-                />
-              </TabButton>
-            </ListItem>
-          ))}
-        </List>
-    </Box>
     </NavigationContainer>
   );
 }
