@@ -558,9 +558,18 @@ export default function UserManagement() {
     return arr;
   }, [filteredEntries, sortOption]);
 
+  // Role counts for quick glance
+  const roleCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const e of entries) {
+      counts[e.role] = (counts[e.role] || 0) + 1;
+    }
+    return counts;
+  }, [entries]);
+
   const paddedEntries: LoginEntry[] = [
     ...sortedEntries.slice(0, usersPageSize),
-    ...Array(Math.max(0, usersPageSize - Math.min(usersPageSize, sortedEntries.length))).fill(PLACEHOLDER),
+    ...Array(Math.max(0, Math.min(usersPageSize, usersPageSize - Math.min(usersPageSize, sortedEntries.length)))).fill(PLACEHOLDER),
   ];
 
   const totalPages = Math.max(1, Math.ceil((totalCount || 0) / usersPageSize));
@@ -664,7 +673,7 @@ export default function UserManagement() {
       }}>
         <TextField
           size="small"
-          fullWidth
+          sx={{ flex: '0 1 45%', minWidth: 260 }}
           placeholder="Search users (name, email, contact, role, id)…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -677,7 +686,7 @@ export default function UserManagement() {
             endAdornment: (
               <InputAdornment position="end">
                 {searchQuery && (
-                  <IconButton aria-label="clear search" size="small" onClick={() => setSearchQuery('')}>
+                  <IconButton aria-label="clear" size="small" onClick={() => setSearchQuery('')}>
                     <ClearRoundedIcon fontSize="small" />
                   </IconButton>
                 )}
@@ -685,27 +694,40 @@ export default function UserManagement() {
             ),
           }}
         />
-        <Box>
+
+        {/* Quick stats and actions */}
+        <Stack direction="row" spacing={1} sx={{ flexShrink: 0, alignItems: 'center' }}>
+          <Button variant="outlined" size="small" disabled sx={{ textTransform: 'none' }}>
+            Total Users: {totalCount}
+          </Button>
+          <Button variant="outlined" size="small" disabled sx={{ textTransform: 'none' }}>
+            Enforcement: {roleCounts['enforcement'] ?? 0}
+          </Button>
+          <Button variant="outlined" size="small" disabled sx={{ textTransform: 'none' }}>
+            Cenro: {roleCounts['cenro'] ?? 0}
+          </Button>
           <Button
             variant="outlined"
+            size="small"
             startIcon={<SortRoundedIcon />}
             onClick={(e) => setSortAnchorEl(e.currentTarget)}
-            sx={{ whiteSpace: 'nowrap' }}
+            sx={{ textTransform: 'none' }}
           >
             Sort
           </Button>
-          <Menu
-            anchorEl={sortAnchorEl}
-            open={Boolean(sortAnchorEl)}
-            onClose={() => setSortAnchorEl(null)}
-          >
-            <MuiMenuItem onClick={() => { setSortOption('name_asc'); setSortAnchorEl(null); }}>Name (A → Z)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setSortOption('name_desc'); setSortAnchorEl(null); }}>Name (Z → A)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setSortOption('email_asc'); setSortAnchorEl(null); }}>Email (A → Z)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setSortOption('role_asc'); setSortAnchorEl(null); }}>Role (A → Z)</MuiMenuItem>
-          </Menu>
-        </Box>
+        </Stack>
       </Box>
+      {/* Users sort menu */}
+      <Menu
+        anchorEl={sortAnchorEl}
+        open={Boolean(sortAnchorEl)}
+        onClose={() => setSortAnchorEl(null)}
+      >
+        <MuiMenuItem onClick={() => { setSortOption('name_asc'); setSortAnchorEl(null); }}>Name (A → Z)</MuiMenuItem>
+        <MuiMenuItem onClick={() => { setSortOption('name_desc'); setSortAnchorEl(null); }}>Name (Z → A)</MuiMenuItem>
+        <MuiMenuItem onClick={() => { setSortOption('email_asc'); setSortAnchorEl(null); }}>Email (A → Z)</MuiMenuItem>
+        <MuiMenuItem onClick={() => { setSortOption('role_asc'); setSortAnchorEl(null); }}>Role (A → Z)</MuiMenuItem>
+      </Menu>
 
       {/* Compact table container (no internal scroll) */}
       <Box sx={{
