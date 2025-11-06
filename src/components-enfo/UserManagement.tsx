@@ -674,9 +674,9 @@ export default function UserManagement() {
 
   return (
     <Box data-map-container sx={{ mt: 2, mb: 2 }}>
-      <Typography component="h3" variant="h6" sx={{ mb: 1 }}>
+      <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1 }}>
         User Management
-      </Typography>
+      </Button>
       {loading && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
           <CircularProgress size={18} />
@@ -887,9 +887,9 @@ export default function UserManagement() {
       {/* Pending Applications */}
       <Box sx={{ height: 320 }} />
       <Box data-record-list>
-      <Typography component="h3" variant="h6" sx={{ mb: 1, mt: 2 }}>
+      <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1, mt: 2 }}>
         Pending Applications
-      </Typography>
+      </Button>
       {/* Applications controls: search + sort */}
       <Box sx={{
         display: 'flex',
@@ -1045,9 +1045,9 @@ export default function UserManagement() {
       {/* Reports Logs */}
       <Box sx={{ height: 320 }} />
       <Box data-analytics>
-        <Typography component="h3" variant="h6" sx={{ mb: 1, mt: 2 }}>
+        <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1, mt: 2 }}>
           Reports Logs
-        </Typography>
+        </Button>
         {/* Reports controls: search + sort */}
         <Box sx={{
           display: 'flex',
@@ -1203,9 +1203,9 @@ export default function UserManagement() {
       {/* Login Logs */}
       <Box sx={{ height: 320 }} />
       <Box data-audit>
-        <Typography component="h3" variant="h6" sx={{ mb: 1, mt: 2 }}>
+        <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1, mt: 2 }}>
           Login Logs
-        </Typography>
+        </Button>
         {/* Login logs controls: search + sort */}
         <Box sx={{
           display: 'flex',

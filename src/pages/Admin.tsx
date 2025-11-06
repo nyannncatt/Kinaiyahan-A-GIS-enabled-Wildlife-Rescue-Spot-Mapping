@@ -20,6 +20,8 @@ import {
   treeViewCustomizations,
 } from '../theme/customizations';
 import React from 'react';
+import Button from '@mui/material/Button';
+import { useTheme } from '@mui/material/styles';
 
 const xThemeComponents = {
   ...chartsCustomizations,
@@ -29,6 +31,8 @@ const xThemeComponents = {
 };
 
 function AdminComponent(props: { disableCustomTheme?: boolean }) {
+  const theme = useTheme();
+  const [environmentalBg, setEnvironmentalBg] = React.useState(false);
   return (
     <AppTheme {...props} themeComponents={xThemeComponents} disableBackground={true}>
       <CssBaseline enableColorScheme />
@@ -37,12 +41,20 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
         <AppNavbar />
         <Box
           component="main"
-          sx={(theme) => ({
+          sx={(t) => ({
             flexGrow: 1,
-            backgroundColor: theme.vars
-              ? `rgba(${theme.vars.palette.background.defaultChannel} / 1)`
-              : alpha(theme.palette.background.default, 1),
             overflow: 'auto',
+            // Apply Environmental background only on this page when toggled
+            background: environmentalBg
+              ? (t.palette.mode === 'light'
+                  ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+                  : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))')
+              : (t.vars
+                  ? `rgba(${t.vars.palette.background.defaultChannel} / 1)`
+                  : alpha(t.palette.background.default, 1)),
+            backgroundRepeat: 'no-repeat',
+            backgroundSize: '100% 100%',
+            backgroundAttachment: 'fixed',
           })}
         >
           <Stack
@@ -54,18 +66,38 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
               mt: { xs: 8, md: 0 },
             }}
           >
-            <AdminHeader />
-            <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
-              <Typography component="h2" variant="h4" sx={{ mb: 4, mt: 4, textAlign: 'left' }}>
+            <Box sx={{ display: 'flex', width: '100%', maxWidth: { sm: '100%', md: '1700px' }, alignItems: 'center', justifyContent: 'space-between' }}>
+              <AdminHeader />
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setEnvironmentalBg((v) => !v)}
+                sx={{ textTransform: 'none', mt: 1.5, mr: 2 }}
+              >
+                {environmentalBg ? 'Default' : 'Environmental'}
+              </Button>
+            </Box>
+            <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' }, ...(environmentalBg && theme.palette.mode !== 'light' ? { '& .MuiTypography-root': { color: '#ffffff' } } : {}) }}>
+              <Button
+                variant="outlined"
+                size="small"
+                disableRipple
+                sx={{ textTransform: 'none', pointerEvents: 'none', mb: 4, mt: 4 }}
+              >
                 Admin Dashboard
-              </Typography>
+              </Button>
               <UserManagement />
               {/* My Profile section */}
               <Box sx={{ height: 320 }} />
               <Box data-profile>
-                <Typography component="h3" variant="h6" sx={{ mb: 2, mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  disableRipple
+                  sx={{ textTransform: 'none', pointerEvents: 'none', mb: 2, mt: 2 }}
+                >
                   My Profile
-                </Typography>
+                </Button>
                 <ProfileSection fullWidth showTitle={false} />
               </Box>
             </Box>
