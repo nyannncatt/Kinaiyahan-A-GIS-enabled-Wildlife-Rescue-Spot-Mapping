@@ -1238,14 +1238,25 @@ export default function UserManagement() {
             }}
           />
           <Box>
-            <Button
-              variant="outlined"
-              startIcon={<SortRoundedIcon />}
-              onClick={(e) => setLoginSortAnchorEl(e.currentTarget)}
-              sx={{ whiteSpace: 'nowrap' }}
-            >
-              Sort
-            </Button>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+              <Button
+                variant="outlined"
+                size="small"
+                disableRipple
+                sx={{ textTransform: 'none', pointerEvents: 'none' }}
+              >
+                Total Logs: {totalAuditCount}
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<SortRoundedIcon />}
+                onClick={(e) => setLoginSortAnchorEl(e.currentTarget)}
+                sx={{ whiteSpace: 'nowrap', textTransform: 'none' }}
+              >
+                Sort
+              </Button>
+            </Stack>
             <Menu
               anchorEl={loginSortAnchorEl}
               open={Boolean(loginSortAnchorEl)}
