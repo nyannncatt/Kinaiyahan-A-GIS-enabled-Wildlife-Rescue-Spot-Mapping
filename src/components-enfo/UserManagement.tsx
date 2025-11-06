@@ -78,11 +78,20 @@ export default function UserManagement() {
   const formatId = (id: string, show: boolean, lines: number = 2) => {
     if (!id) return '\u00A0';
     if (show) {
-      // Truncate to consistent length if too long, or use full ID
-      return id.length > 36 ? id.substring(0, 33) + '...' : id;
+      // Split the entire ID across the requested number of lines (complete, no truncation)
+      const perLine = Math.ceil(id.length / Math.max(1, lines));
+      const chunks: string[] = [];
+      for (let i = 0; i < lines; i++) {
+        const start = i * perLine;
+        const end = start + perLine;
+        const part = id.substring(start, end);
+        chunks.push(part);
+      }
+      return chunks.join('\n');
     }
-    // Mask with same approximate width as UUID (36 chars), split across the given number of lines
-    const lineMask = '••••••••••••••••';
+    // Mask with the same per-line width as the visible split for consistency
+    const perLine = Math.ceil(id.length / Math.max(1, lines));
+    const lineMask = '•'.repeat(Math.max(1, perLine));
     return Array(Math.max(1, lines)).fill(lineMask).join('\n');
   };
 
@@ -1035,7 +1044,7 @@ export default function UserManagement() {
               <ListItem sx={{ py: 2 }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 140, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.75rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showPendingIds, 3)}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.75rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showPendingIds, 2)}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
                     <Typography variant="body1" sx={{ lineHeight: 1.4 }}>{entry.name || '\u00A0'}</Typography>
@@ -1208,7 +1217,7 @@ export default function UserManagement() {
               <ListItem sx={{ py: 2 }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 140, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.75rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showReportIds, 3)}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.75rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showReportIds, 2)}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
                     <Typography variant="body1" sx={{ lineHeight: 1.4 }}>{entry.species || '\u00A0'}</Typography>
@@ -1380,7 +1389,7 @@ export default function UserManagement() {
               <ListItem sx={{ py: 2 }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 140, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.75rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showLoginIds, 3)}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.7rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showLoginIds, 2)}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
                     <Typography variant="body1" sx={{ lineHeight: 1.4 }}>{entry.name || '\u00A0'}</Typography>
