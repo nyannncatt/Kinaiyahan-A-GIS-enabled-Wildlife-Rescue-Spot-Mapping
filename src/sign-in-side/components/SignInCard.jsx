@@ -18,6 +18,7 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ForgotPassword from "./ForgotPassword";
+import { useColorScheme } from "@mui/material/styles";
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
@@ -71,6 +72,7 @@ export default function SignInCard() {
   const [captchaSuccess, setCaptchaSuccess] = useState(false);
   const [pendingCredentials, setPendingCredentials] = useState(null);
   const navigate = useNavigate();
+  const { mode, systemMode } = useColorScheme();
 
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -223,9 +225,11 @@ export default function SignInCard() {
 
   const goPublicReport = () => navigate('/public-report');
 
+  const isEffectiveLight = mode === 'light' || (mode === 'system' && systemMode === 'light');
+
   return (
     <>
-      <Card variant="outlined">
+      <Card variant="outlined" sx={{ backgroundColor: isEffectiveLight ? '#ffffff' : undefined }}>
         <Typography component="h1" variant="h4" sx={{ width: "100%", fontSize: "clamp(2rem, 10vw, 2.15rem)" }}>
           Sign in
         </Typography>
@@ -234,7 +238,7 @@ export default function SignInCard() {
 
         <Box component="form" noValidate onSubmit={handleLogin} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <FormControl>
-            <FormLabel htmlFor="email">Email</FormLabel>
+            <FormLabel htmlFor="email" sx={(theme) => ({ color: theme.palette.mode === 'dark' ? '#ffffff' : '#000000' })}>Email</FormLabel>
             <TextField
               error={emailError}
               helperText={emailErrorMessage}
@@ -252,7 +256,7 @@ export default function SignInCard() {
 
            <FormControl>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <FormLabel htmlFor="password">Password</FormLabel>
+              <FormLabel htmlFor="password" sx={(theme) => ({ color: theme.palette.mode === 'dark' ? '#ffffff' : '#000000' })}>Password</FormLabel>
               <Typography
                 component="span"
                 sx={{
