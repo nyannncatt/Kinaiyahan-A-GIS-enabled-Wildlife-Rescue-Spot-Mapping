@@ -112,7 +112,7 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
                 variant="outlined"
                 size="small"
                 disableRipple
-                sx={{ textTransform: 'none', pointerEvents: 'none', mb: 4, mt: 4 }}
+                sx={{ textTransform: 'none', pointerEvents: 'none', mb: 4, mt: 4, visibility: 'hidden' }}
               >
                 Admin Dashboard
               </Button>
