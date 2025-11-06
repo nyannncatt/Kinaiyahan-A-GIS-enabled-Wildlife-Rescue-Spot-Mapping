@@ -47,8 +47,16 @@ export default function AdminSideMenu() {
           display: 'flex',
           mt: 'calc(var(--template-frame-height, 0px) + 4px)',
           p: 1.5,
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
+        <Box
+          component="img"
+          src="/images/kinaiyahanlogonobg.png"
+          alt="Kinaiyahan Logo"
+          sx={{ width: 64, height: 64, objectFit: 'contain' }}
+        />
       </Box>
 
       <AdminMenuContent />
