@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box, CssBaseline, Typography } from "@mui/material";
+import { Box, CssBaseline, Typography, Stack } from "@mui/material";
 import AppTheme from "../shared-theme/AppTheme";
 import ColorModeSelect from "../shared-theme/ColorModeSelect";
 import SignInCard from "./components/SignInCard";
@@ -61,6 +61,35 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
       {/* Top-right theme toggle */}
       <ColorModeSelect sx={{ position: "fixed", top: "1rem", right: "1rem", zIndex: (theme) => (theme.zIndex?.modal ?? 1300) + 1 }} />
 
+      {/* Centered Header */}
+      <Box
+        sx={{
+          position: 'fixed',
+          top: 50,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: (theme) => (theme.zIndex?.modal ?? 1300) + 1,
+          textAlign: 'center',
+        }}
+      >
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Box component="img" src="/images/kinaiyahanlogonobg.png" alt="Kinaiyahan" sx={{ width: 56, height: 56, objectFit: 'contain' }} />
+          <Typography
+            variant="h2"
+            sx={{
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 800,
+              letterSpacing: '0.45em',
+              color: 'text.primary',
+              userSelect: 'none',
+              lineHeight: 1,
+            }}
+          >
+            ＫＩＮＡＩＹＡＨＡＮ
+          </Typography>
+        </Stack>
+      </Box>
+
       {/* Full-page flex container */}
       <Box
         sx={(theme) => ({
@@ -75,9 +104,9 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
           alignItems: "center",
           textAlign: "center",
           px: 2,
-          background: theme.palette.mode === 'light'
+          background: theme.palette.mode === 'light' 
             ? "linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)"
-            : 'transparent',
+            : "radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))",
           backgroundRepeat: "no-repeat",
           backgroundSize: "100% 100%",
           backgroundAttachment: "fixed",
@@ -132,6 +161,10 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
           </Typography>
         </Box>
       </Box>
+
+      {/* Corner animals images */}
+      <Box component="img" src="/images/animals.png" alt="animals-left" sx={{ position: 'fixed', bottom: 8, left: 8, height: 64, objectFit: 'contain', pointerEvents: 'none', opacity: 0.95 }} />
+      <Box component="img" src="/images/animals.png" alt="animals-right" sx={{ position: 'fixed', bottom: 8, right: 8, height: 64, objectFit: 'contain', pointerEvents: 'none', opacity: 0.95, transform: 'scaleX(-1)' }} />
     </AppTheme>
   );
 }
