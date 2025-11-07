@@ -44,9 +44,11 @@ import {
   ExpandLess as ExpandLessIcon,
   CheckCircle,
   Close,
+  FileDownload as FileDownloadIcon,
 } from '@mui/icons-material';
 import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
 import { useMapNavigation } from '../context/MapNavigationContext';
+import * as XLSX from 'xlsx';
 
 interface WildlifeRescueStatisticsProps {
   showPendingOnly?: boolean;
@@ -58,8 +60,13 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const [wildlifeRecords, setWildlifeRecords] = useState<WildlifeRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [printDateFrom, setPrintDateFrom] = useState('');
+  const [printDateTo, setPrintDateTo] = useState('');
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -301,6 +308,160 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
 
 
 
+  // Handle Excel export preview
+  const handleExcelPreview = () => {
+    // Filter records by date range if specified
+    let recordsToExport = filteredRecords;
+    
+    if (printDateFrom || printDateTo) {
+      recordsToExport = filteredRecords.filter(record => {
+        const recordDate = new Date(record.timestamp_captured);
+        const fromDate = printDateFrom ? new Date(printDateFrom) : null;
+        const toDate = printDateTo ? new Date(printDateTo) : null;
+        
+        const dateMatch = (!fromDate || recordDate >= fromDate) && 
+                         (!toDate || recordDate <= toDate);
+        
+        return dateMatch;
+      });
+    }
+    
+    const exportData = recordsToExport.map(record => ({
+      'Species Name': record.species_name || '',
+      'Status': formatStatusLabel(record.status),
+      'Location': record.barangay || '',
+      'Reporter': record.reporter_name || '',
+      'Contact': record.reporter_contact || '',
+      'Date Reported': record.timestamp_captured ? new Date(record.timestamp_captured).toLocaleDateString() : '',
+      'Approval Status': record.approval_status || '',
+      'Notes': record.notes || ''
+    }));
+    
+    setPreviewData(exportData);
+    setPreviewDialogOpen(true);
+  };
+
+  // Handle Excel export
+  const handleExcelExport = () => {
+    // Use the preview data that was already filtered
+    const exportData = previewData;
+
+    // Create a new workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    
+    // Apply header styling and status-based colors
+    if (exportData.length > 0) {
+      const headers = Object.keys(exportData[0]);
+      const statusColors: { [key: string]: { text: string; bg: string } } = {
+        'Reported': { text: 'FF9800', bg: 'FFF3E0' },      // Orange
+        'Rescued': { text: '2196F3', bg: 'E3F2FD' },       // Blue
+        'Turned Over': { text: 'FFC107', bg: 'FFF8E1' },  // Yellow
+        'Released': { text: '4CAF50', bg: 'E8F5E9' },       // Green
+      };
+      
+      // Style headers
+      headers.forEach((header, colIndex) => {
+        const cellRef = XLSX.utils.encode_cell({ c: colIndex, r: 0 });
+        if (!ws[cellRef]) return;
+        
+        ws[cellRef].s = {
+          font: { 
+            bold: true, 
+            color: { rgb: 'FFFFFF' }, 
+            sz: 12 
+          },
+          fill: { 
+            fgColor: { rgb: '1976D2' },
+            patternType: 'solid'
+          },
+          alignment: { 
+            horizontal: 'center', 
+            vertical: 'center'
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          }
+        };
+      });
+      
+      // Color-code rows based on status
+      exportData.forEach((row, rowIndex) => {
+        headers.forEach((header, colIndex) => {
+          const cellRef = XLSX.utils.encode_cell({ c: colIndex, r: rowIndex + 1 });
+          if (!ws[cellRef]) return;
+          
+          // Apply status-based colors
+          if (header === 'Status') {
+            const status = String(row[header as keyof typeof row]);
+            const colors = statusColors[status] || { text: '000000', bg: 'FFFFFF' };
+            
+            ws[cellRef].s = {
+              font: { 
+                color: { rgb: colors.text }, 
+                bold: true 
+              },
+              fill: { 
+                fgColor: { rgb: colors.bg },
+                patternType: 'solid'
+              }
+            };
+          }
+        });
+      });
+      
+      // Create a cell styles worksheet
+      const styleData: any = {};
+      if (headers.length > 0) {
+        headers.forEach((_, colIndex) => {
+          styleData[XLSX.utils.encode_cell({ c: colIndex, r: 0 })] = {};
+        });
+      }
+      
+      ws['!merges'] = [];
+    }
+    const maxWidth = 50; // Maximum column width
+    const minWidth = 10; // Minimum column width
+    const colWidths = exportData.length > 0 ? Object.keys(exportData[0]).map(header => {
+      // Get the max length of content in this column
+      const maxLength = Math.max(
+        header.length, // Header length
+        ...exportData.map(row => {
+          const value = row[header as keyof typeof row];
+          return value ? String(value).length : 0;
+        })
+      );
+      // Return width with constraints
+      return { wch: Math.min(Math.max(maxLength + 2, minWidth), maxWidth) };
+    }) : [];
+    
+    ws['!cols'] = colWidths;
+    
+    // Add the worksheet to the workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Wildlife Records');
+    
+    // Generate the XLSX file
+    const dateRange = printDateFrom || printDateTo ? `_${printDateFrom || 'start'}_to_${printDateTo || 'end'}` : '';
+    const fileName = `wildlife_records${dateRange}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    
+    // Write options with cell styles
+    const wopts: XLSX.WritingOptions = {
+      bookType: 'xlsx',
+      bookSST: false,
+      type: 'binary',
+      cellStyles: true
+    };
+    
+    // Write and download the file
+    XLSX.writeFile(wb, fileName, wopts);
+    
+    setPreviewDialogOpen(false);
+    setExportDialogOpen(false);
+  };
+
   // Handle print
   const handlePrint = () => {
     setPrintDialogOpen(true);
@@ -480,6 +641,22 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
 
   // Print the form
   const printForm = () => {
+    // Filter records by date range if specified
+    let recordsToPrint = filteredRecords;
+    
+    if (printDateFrom || printDateTo) {
+      recordsToPrint = filteredRecords.filter(record => {
+        const recordDate = new Date(record.timestamp_captured);
+        const fromDate = printDateFrom ? new Date(printDateFrom) : null;
+        const toDate = printDateTo ? new Date(printDateTo) : null;
+        
+        const dateMatch = (!fromDate || recordDate >= fromDate) && 
+                         (!toDate || recordDate <= toDate);
+        
+        return dateMatch;
+      });
+    }
+    
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       const printContent = `
@@ -507,6 +684,8 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
           <div class="header">
             <h1>Wildlife Rescue Statistics Report</h1>
             <p>Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+            ${printDateFrom || printDateTo ? `<p>Date Range: ${printDateFrom || 'Start'} to ${printDateTo || 'End'}</p>` : ''}
+            <p>Total Records: ${recordsToPrint.length}</p>
           </div>
           
           <table>
@@ -521,7 +700,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               </tr>
             </thead>
             <tbody>
-              ${filteredRecords.map(record => `
+              ${recordsToPrint.map(record => `
                 <tr>
                   <td>${record.species_name}</td>
                   <td class="status-${record.status.replace(' ', '-')}">${formatStatusLabel(record.status).toUpperCase()}</td>
@@ -535,8 +714,8 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
           </table>
           
           <div class="footer">
-            <p>Total Records: ${filteredRecords.length}${hasActiveFilters ? ` (filtered from ${wildlifeRecords.length})` : ''}</p>
-            <p>Report generated by Wildlife GIS System</p>
+            <p>Wildlife GIS System - Statistics Report</p>
+            <p>This report contains wildlife rescue statistics${printDateFrom || printDateTo ? ' for the specified date range' : ''}.</p>
           </div>
         </body>
         </html>
@@ -565,7 +744,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const formatStatusLabel = (status: string): string => {
     switch (status.toLowerCase()) {
       case 'released':
-        return 'Dispersed';
+        return 'Released';
       case 'turned over':
         return 'Turned Over';
       case 'reported':
@@ -709,6 +888,17 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
           >
             Print
           </Button>
+          <Button
+            variant="contained"
+            startIcon={<FileDownloadIcon />}
+            onClick={() => setExportDialogOpen(true)}
+            sx={{ 
+              bgcolor: theme.palette.success.main,
+              '&:hover': { bgcolor: theme.palette.success.dark }
+            }}
+          >
+            Export Excel
+          </Button>
         </Box>
       </Box>
 
@@ -793,7 +983,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       <MenuItem value="reported">Reported</MenuItem>
                       <MenuItem value="rescued">Rescued</MenuItem>
                       <MenuItem value="turned over">Turned Over</MenuItem>
-                      <MenuItem value="released">Dispersed</MenuItem>
+                      <MenuItem value="released">Released</MenuItem>
                     </Select>
                   </FormControl>
                 </Box>
@@ -1194,13 +1384,31 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       </TableContainer>
 
       {/* Print Confirmation Dialog */}
-      <Dialog open={printDialogOpen} onClose={() => setPrintDialogOpen(false)}>
+      <Dialog open={printDialogOpen} onClose={() => setPrintDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Print Wildlife Rescue Statistics</DialogTitle>
         <DialogContent>
-          <Typography>
-            This will generate a printable report with all wildlife rescue statistics. 
+          <Typography sx={{ mb: 2 }}>
+            This will generate a printable report with wildlife rescue statistics. 
             The report will include species names, statuses, locations, reporters, and dates.
           </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="From Date"
+              type="date"
+              value={printDateFrom}
+              onChange={(e) => setPrintDateFrom(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+            <TextField
+              label="To Date"
+              type="date"
+              value={printDateTo}
+              onChange={(e) => setPrintDateTo(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPrintDialogOpen(false)}>Cancel</Button>
@@ -1208,7 +1416,80 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
         </DialogActions>
       </Dialog>
 
-      {/* Edit Record Dialog */}
+      {/* Export Excel Dialog */}
+      <Dialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Export Wildlife Records to Excel</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>
+            This will export wildlife records to a CSV file that can be opened in Excel. 
+            You can specify a date range to filter the records.
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="From Date"
+              type="date"
+              value={printDateFrom}
+              onChange={(e) => setPrintDateFrom(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+            <TextField
+              label="To Date"
+              type="date"
+              value={printDateTo}
+              onChange={(e) => setPrintDateTo(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExportDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleExcelPreview} variant="contained" color="info">Preview</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Preview Dialog */}
+      <Dialog open={previewDialogOpen} onClose={() => setPreviewDialogOpen(false)} maxWidth="lg" fullWidth>
+        <DialogTitle>Preview Excel Export Data</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>
+            Preview of {previewData.length} records that will be exported to Excel:
+          </Typography>
+          <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+            <Table stickyHeader>
+              <TableHead>
+                <TableRow>
+                  {previewData.length > 0 && Object.keys(previewData[0]).map((header) => (
+                    <TableCell key={header} sx={{ fontWeight: 'bold', backgroundColor: 'primary.main', color: 'white' }}>
+                      {header}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {previewData.slice(0, 10).map((row, index) => (
+                  <TableRow key={index}>
+                    {Object.values(row).map((value, cellIndex) => (
+                      <TableCell key={cellIndex}>{String(value)}</TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          {previewData.length > 10 && (
+            <Typography sx={{ mt: 1, color: 'text.secondary' }}>
+              Showing first 10 records of {previewData.length} total records.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPreviewDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleExcelExport} variant="contained" color="success">Download</Button>
+        </DialogActions>
+      </Dialog>
+      
       <Dialog 
         open={editDialogOpen} 
         onClose={handleEditDialogClose}
