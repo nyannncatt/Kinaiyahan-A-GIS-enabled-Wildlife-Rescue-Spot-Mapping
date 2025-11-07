@@ -12,7 +12,7 @@ import FormLabel from "@mui/material/FormLabel";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { styled } from "@mui/material/styles";
-import { FormControl, InputAdornment, Alert, Divider, SvgIcon, Snackbar, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { FormControl, InputAdornment, Alert, Divider, SvgIcon, Snackbar, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Stack } from "@mui/material";
 import MuiAlert from "@mui/material/Alert";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
@@ -341,7 +341,32 @@ export default function SignInCard() {
         fullWidth
         disableEscapeKeyDown
       >
-        <DialogTitle>Verify Captcha to Sign In</DialogTitle>
+        <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center">
+            <Box
+              component="img"
+              src="/images/kinaiyahanlogonobg.png"
+              alt="Kinaiyahan"
+              sx={{ width: 56, height: 56, objectFit: 'contain' }}
+            />
+            <Typography
+              variant="h5"
+              sx={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 800,
+                letterSpacing: '0.4em',
+                color: '#000000 !important',
+                userSelect: 'none',
+                lineHeight: 1,
+              }}
+            >
+              ＫＩＮＡＩＹＡＨＡＮ
+            </Typography>
+          </Stack>
+          <Typography variant="subtitle1" sx={{ mt: 2, color: 'text.primary', fontWeight: 600 }}>
+            Verify Captcha to Sign In
+          </Typography>
+        </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
             Please enter the captcha code below to complete your login.
