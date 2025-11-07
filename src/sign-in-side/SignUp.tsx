@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { Box, Button, TextField, Typography, Avatar, MenuItem, InputLabel, FormControl, Select, Alert, CircularProgress, Link, Card as MuiCard, Fade, Slide, Modal, Backdrop } from '@mui/material';
+import { Box, Button, TextField, Typography, Avatar, MenuItem, InputLabel, FormControl, Select, Alert, CircularProgress, Link, Card as MuiCard, Fade, Slide, Modal, Backdrop, Stack } from '@mui/material';
 import { CloudUpload, CheckCircle } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { supabase } from '../services/supabase';
@@ -233,11 +233,29 @@ export default function SignUp() {
             }}
           >
             <Slide in={mounted} direction="down" timeout={500}>
-              <Box sx={{ bgcolor: '#2e7d32', color: '#fff', px: 2, py: 1.5, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
-                <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
-                  Create account
-                </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              <Box
+                sx={{
+                  bgcolor: '#2e7d32',
+                  color: '#fff',
+                  px: { xs: 2, sm: 3 },
+                  py: 1.75,
+                  borderTopLeftRadius: 16,
+                  borderTopRightRadius: 16,
+                  textAlign: 'center',
+                }}
+              >
+                <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mb: 0.5 }}>
+                  <Box
+                    component="img"
+                    src="/images/kinaiyahanlogonobg.png"
+                    alt="Kinaiyahan"
+                    sx={{ width: 56, height: 56, objectFit: 'contain' }}
+                  />
+                  <Typography component="h1" variant="h5" sx={{ fontWeight: 800, letterSpacing: '0.2em' }}>
+                    Create account
+                  </Typography>
+                </Stack>
+                <Typography variant="body2" sx={{ opacity: 0.95, fontWeight: 500 }}>
                   Join Kinaiyahan to report and manage wildlife rescues
                 </Typography>
               </Box>
