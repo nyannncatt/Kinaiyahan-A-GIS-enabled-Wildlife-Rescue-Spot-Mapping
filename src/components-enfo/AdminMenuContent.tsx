@@ -35,14 +35,10 @@ const TabButton = styled(ListItemButton, {
   margin: '4px 0',
   padding: '12px 16px',
   backgroundColor: active 
-    ? (theme.vars 
-        ? `rgba(${theme.vars.palette.primary.mainChannel} / 0.12)`
-        : theme.palette.primary.main + '20')
+    ? 'rgba(46, 125, 50, 0.12)'
     : 'transparent',
   color: active 
-    ? (theme.vars 
-        ? `rgba(${theme.vars.palette.primary.mainChannel} / 1)`
-        : theme.palette.primary.main)
+    ? '#2e7d32'
     : (theme.vars 
         ? `rgba(${theme.vars.palette.text.primaryChannel} / 1)`
         : theme.palette.text.primary),
@@ -50,9 +46,7 @@ const TabButton = styled(ListItemButton, {
   transition: 'all 0.2s ease-in-out',
   '&:hover': {
     backgroundColor: active 
-      ? (theme.vars 
-          ? `rgba(${theme.vars.palette.primary.mainChannel} / 0.12)`
-          : theme.palette.primary.main + '20')
+      ? 'rgba(46, 125, 50, 0.12)'
       : (theme.vars 
           ? theme.vars.palette.action.hover
           : theme.palette.action.hover),
@@ -78,9 +72,7 @@ const IconWrapper = styled(Box, {
   width: '24px',
   height: '24px',
   color: active 
-    ? (theme.vars 
-        ? `rgba(${theme.vars.palette.primary.mainChannel} / 1)`
-        : theme.palette.primary.main)
+    ? '#2e7d32'
     : (theme.vars 
         ? `rgba(${theme.vars.palette.text.secondaryChannel} / 1)`
         : theme.palette.text.secondary),
@@ -341,17 +333,11 @@ export default function AdminMenuContent() {
       <Box sx={{ mb: 2, textAlign: 'center', p: 2 }}>
         <Typography variant="h6" sx={{ 
           fontWeight: 700, 
-          color: 'primary.main',
+          color: '#2e7d32 !important',
           mb: 0.5,
           fontSize: '18px'
         }}>
           Admin Menu
-        </Typography>
-        <Typography variant="body2" sx={{ 
-          color: 'text.secondary',
-          fontSize: '12px'
-        }}>
-          Navigation
         </Typography>
       </Box>
 
@@ -375,7 +361,8 @@ export default function AdminMenuContent() {
                     <Box>
                       <Typography variant="body2" sx={{ 
                         fontWeight: activeTab === item.id ? 600 : 500,
-                        fontSize: '14px'
+                        fontSize: '14px',
+                        color: activeTab === item.id ? '#2e7d32 !important' : 'inherit'
                       }}>
                         {item.text}
                       </Typography>
