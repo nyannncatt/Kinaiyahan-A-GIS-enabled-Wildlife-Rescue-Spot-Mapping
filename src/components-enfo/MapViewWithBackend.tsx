@@ -1625,7 +1625,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
         top: 10, 
         right: 10, 
         zIndex: 1500,
-        display: (pendingMarker || viewingMarkerId) ? 'none' : 'flex',
+        display: (pendingMarker || viewingMarkerId || editingMarkerId) ? 'none' : 'flex',
         flexDirection: 'column',
         gap: 1,
         maxWidth: { xs: 'calc(100vw - 20px)', sm: 'auto' },
@@ -2461,7 +2461,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                     </Box>
                   )}
                   
-                  <Box>
+                <Box>
                     <Typography variant="body2" sx={{ mt: 1 }}>
                       <strong style={{ color: '#2e7d32' }}>Status:</strong> <span style={{ color: '#2e7d32' }}>{formatStatusLabel(viewingMarker.status)}</span>
                     </Typography>
@@ -2497,11 +2497,11 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                 {role === 'enforcement' && (
                   <>
                     <Button
-                      variant="outlined"
-                      size="small"
+                  variant="outlined"
+                  size="small"
                       onClick={() => {
-                        setEditDrafts((prev) => ({
-                          ...prev,
+                    setEditDrafts((prev) => ({
+                      ...prev,
                           [viewingMarker.id]: {
                             species_name: viewingMarker.species_name,
                             status: viewingMarker.status,
@@ -2575,58 +2575,135 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
           );
         })()}
 
-        {/* When editing, render that marker outside the cluster to avoid recluster animations hiding its popup */}
-        {editingMarker && (
-          <Marker
-            key={`editing-${editingMarker.id}`}
-            position={[editingMarker.latitude, editingMarker.longitude]}
-            icon={createStatusIcon(editingMarker.status)}
-            ref={(ref) => { if (ref) markerRefs.current[editingMarker.id] = ref; }}
-          >
-            <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
-                <Box>
-                <TextField
-                  variant="outlined"
-                  margin="dense"
-                  fullWidth
-                  size="small"
-                  value={
-                    editDrafts[editingMarker.id]?.species_name !== undefined
-                      ? editDrafts[editingMarker.id]?.species_name
-                      : editingMarker.species_name
-                  }
-                  onChange={(e) => {
-                    const nextValue = e.target.value;
-                    setEditDrafts((prev) => ({
-                      ...prev,
-                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: nextValue, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
-                    }));
-                    // Suggestions disabled - no dropdown functionality
-                  }}
-                  onFocus={() => {
-                    // Suggestions disabled - no dropdown functionality
-                  }}
-                  onBlur={() => {
-                    // Suggestions disabled - no dropdown functionality
-                  }}
-                  inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
-                />
-                  {/* Species suggestions disabled - entire dropdown section commented out */}
+        {/* Edit Marker Modal */}
+        {editingMarker && (() => {
+          const currentDraft = editDrafts[editingMarker.id] || {};
+          const currentPhoto = currentDraft.photo_url !== undefined ? currentDraft.photo_url : editingMarker.photo_url;
+          const currentReporterName = currentDraft.reporter_name !== undefined ? currentDraft.reporter_name : (editingMarker.reporter_name || '');
+          const currentContactNumber = currentDraft.contact_number || editingMarker.contact_number || '';
+          
+          // Extract country code and phone number
+          let countryCode = '+63';
+          let phoneNumber = '';
+          if (currentContactNumber) {
+            if (currentContactNumber.startsWith('+63')) {
+              countryCode = '+63';
+              phoneNumber = currentContactNumber.replace(/^\+63/, '');
+            } else if (currentContactNumber.startsWith('+1')) {
+              countryCode = '+1';
+              phoneNumber = currentContactNumber.replace(/^\+1/, '');
+            } else if (currentContactNumber.startsWith('+44')) {
+              countryCode = '+44';
+              phoneNumber = currentContactNumber.replace(/^\+44/, '');
+            } else if (currentContactNumber.startsWith('+81')) {
+              countryCode = '+81';
+              phoneNumber = currentContactNumber.replace(/^\+81/, '');
+            } else if (currentContactNumber.startsWith('+86')) {
+              countryCode = '+86';
+              phoneNumber = currentContactNumber.replace(/^\+86/, '');
+            } else if (currentContactNumber.startsWith('+82')) {
+              countryCode = '+82';
+              phoneNumber = currentContactNumber.replace(/^\+82/, '');
+            } else if (currentContactNumber.startsWith('+65')) {
+              countryCode = '+65';
+              phoneNumber = currentContactNumber.replace(/^\+65/, '');
+            } else if (currentContactNumber.startsWith('+60')) {
+              countryCode = '+60';
+              phoneNumber = currentContactNumber.replace(/^\+60/, '');
+            } else {
+              phoneNumber = currentContactNumber;
+            }
+          }
+
+          return (
+            <Dialog
+              open={!!editingMarker}
+              onClose={() => {
+                setEditingMarkerId(null);
+                setEditDrafts((prev) => {
+                  const newDrafts = { ...prev };
+                  delete newDrafts[editingMarker.id];
+                  return newDrafts;
+                });
+              }}
+              maxWidth="sm"
+              fullWidth
+              PaperProps={{
+                sx: {
+                  marginRight: 'auto',
+                  marginLeft: environmentalBg ? '35%' : '39%',
+                  marginTop: '10%',
+                  transform: 'translateX(0)',
+                  background: environmentalBg
+                    ? (theme.palette.mode === 'light'
+                        ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+                        : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))')
+                    : undefined,
+                  backgroundRepeat: environmentalBg ? 'no-repeat' : undefined,
+                  backgroundSize: environmentalBg ? '100% 100%' : undefined,
+                  maxHeight: '80vh',
+                }
+              }}
+            >
+              <DialogTitle>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                  <Box
+                    component="img"
+                    src="/images/kinaiyahanlogonobg.png"
+                    alt="Kinaiyahan"
+                    sx={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }}
+                  />
+                  <Typography component="span" variant="h6" sx={{ color: '#2e7d32 !important' }}>
+                    Edit Marker Details
+                  </Typography>
                 </Box>
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Status</Box>
+              </DialogTitle>
+              <DialogContent sx={{ overflowY: 'auto', maxHeight: 'calc(80vh - 140px)' }}>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
                 <TextField
-                  select
+                    placeholder="Species name"
+                    size="small"
                   variant="outlined"
-                  margin="dense"
                   fullWidth
+                    margin="dense"
+                    value={currentDraft.species_name !== undefined ? currentDraft.species_name : editingMarker.species_name}
+                    onChange={(e) => {
+                      setEditDrafts((prev) => ({
+                        ...prev,
+                        [editingMarker.id]: {
+                          ...(prev[editingMarker.id] || {}),
+                          species_name: e.target.value,
+                          status: prev[editingMarker.id]?.status ?? editingMarker.status,
+                          photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                          barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay,
+                          municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality,
+                          reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
+                          contact_number: prev[editingMarker.id]?.contact_number ?? editingMarker.contact_number,
+                        },
+                      }));
+                    }}
+                    inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
+                  />
+                  <TextField
+                    select
                   size="small"
-                  value={editDrafts[editingMarker.id]?.status || editingMarker.status}
+                    variant="outlined"
+                    fullWidth
+                    margin="dense"
+                    value={currentDraft.status || editingMarker.status}
                   onChange={(e) =>
                     setEditDrafts((prev) => ({
                       ...prev,
-                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), status: String(e.target.value), species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
+                        [editingMarker.id]: {
+                          ...(prev[editingMarker.id] || {}),
+                          status: String(e.target.value),
+                          species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name,
+                          photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                          barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay,
+                          municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality,
+                          reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
+                          contact_number: prev[editingMarker.id]?.contact_number ?? editingMarker.contact_number,
+                        },
                     }))
                   }
                 >
@@ -2635,44 +2712,196 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                   <MenuItem value="turned over">Turned over</MenuItem>
                   <MenuItem value="released">Released</MenuItem>
                 </TextField>
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Barangay</Box>
                 <TextField
+                    placeholder="Barangay"
+                    size="small"
                   variant="outlined"
-                  margin="dense"
                   fullWidth
-                  size="small"
-                  value={editDrafts[editingMarker.id]?.barangay || editingMarker.barangay || ''}
+                    margin="dense"
+                    value={currentDraft.barangay !== undefined ? currentDraft.barangay : (editingMarker.barangay || '')}
                   onChange={(e) =>
                     setEditDrafts((prev) => ({
                       ...prev,
-                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), barangay: e.target.value, species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
+                        [editingMarker.id]: {
+                          ...(prev[editingMarker.id] || {}),
+                          barangay: e.target.value,
+                          species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name,
+                          status: prev[editingMarker.id]?.status ?? editingMarker.status,
+                          photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                          municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality,
+                          reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
+                          contact_number: prev[editingMarker.id]?.contact_number ?? editingMarker.contact_number,
+                        },
                     }))
                   }
                 />
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Municipality</Box>
                 <TextField
+                    placeholder="Municipality"
+                    size="small"
                   variant="outlined"
-                  margin="dense"
                   fullWidth
+                    margin="dense"
+                    value={currentDraft.municipality !== undefined ? currentDraft.municipality : (editingMarker.municipality || '')}
+                    onChange={(e) =>
+                      setEditDrafts((prev) => ({
+                        ...prev,
+                        [editingMarker.id]: {
+                          ...(prev[editingMarker.id] || {}),
+                          municipality: e.target.value,
+                          species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name,
+                          status: prev[editingMarker.id]?.status ?? editingMarker.status,
+                          photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                          barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay,
+                          reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
+                          contact_number: prev[editingMarker.id]?.contact_number ?? editingMarker.contact_number,
+                        },
+                      }))
+                    }
+                  />
+                  <TextField
+                    placeholder="Name of who sighted"
                   size="small"
-                  value={editDrafts[editingMarker.id]?.municipality || editingMarker.municipality || ''}
+                    variant="outlined"
+                    fullWidth
+                    margin="dense"
+                    value={currentReporterName}
                   onChange={(e) =>
                     setEditDrafts((prev) => ({
                       ...prev,
-                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), municipality: e.target.value, species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay },
+                        [editingMarker.id]: {
+                          ...(prev[editingMarker.id] || {}),
+                          reporter_name: e.target.value,
+                          species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name,
+                          status: prev[editingMarker.id]?.status ?? editingMarker.status,
+                          photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                          barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay,
+                          municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality,
+                          contact_number: prev[editingMarker.id]?.contact_number ?? editingMarker.contact_number,
+                        },
                     }))
                   }
                 />
+                  <TextField
+                    placeholder="Phone number"
+                    size="small"
+                    variant="outlined"
+                    fullWidth
+                    margin="dense"
+                    value={phoneNumber}
+                    onChange={(e) => {
+                      const phoneNumberValue = e.target.value;
+                      const fullNumber = countryCode + phoneNumberValue;
+                      setEditDrafts((prev) => ({
+                        ...prev,
+                        [editingMarker.id]: {
+                          ...(prev[editingMarker.id] || {}),
+                          contact_number: fullNumber,
+                          species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name,
+                          status: prev[editingMarker.id]?.status ?? editingMarker.status,
+                          photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                          barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay,
+                          municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality,
+                          reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
+                        },
+                      }));
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                          <FormControl size="small" sx={{ minWidth: 80 }}>
+                            <Select
+                              value={countryCode}
+                              onChange={(e) => {
+                                const countryCodeValue = e.target.value;
+                                const phoneNumberValue = phoneNumber;
+                                const fullNumber = countryCodeValue + phoneNumberValue;
+                                setEditDrafts((prev) => ({
+                                  ...prev,
+                                  [editingMarker.id]: {
+                                    ...(prev[editingMarker.id] || {}),
+                                    contact_number: fullNumber,
+                                    species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name,
+                                    status: prev[editingMarker.id]?.status ?? editingMarker.status,
+                                    photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                                    barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay,
+                                    municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality,
+                                    reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
+                                  },
+                                }));
+                              }}
+                              variant="standard"
+                              sx={{ 
+                                '&:before': { borderBottom: 'none' },
+                                '&:after': { borderBottom: 'none' },
+                                '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                                '& .MuiSelect-select': { 
+                                  padding: '0',
+                                  fontSize: '14px',
+                                  fontWeight: 500,
+                                  minHeight: 'auto'
+                                }
+                              }}
+                            >
+                              <MenuItem value="+63">🇵🇭 +63</MenuItem>
+                              <MenuItem value="+1">🇺🇸 +1</MenuItem>
+                              <MenuItem value="+44">🇬🇧 +44</MenuItem>
+                              <MenuItem value="+81">🇯🇵 +81</MenuItem>
+                              <MenuItem value="+86">🇨🇳 +86</MenuItem>
+                              <MenuItem value="+82">🇰🇷 +82</MenuItem>
+                              <MenuItem value="+65">🇸🇬 +65</MenuItem>
+                              <MenuItem value="+60">🇲🇾 +60</MenuItem>
+                            </Select>
+                          </FormControl>
+                        </Box>
+                      )
+                    }}
+                  />
                 <Box>
-                  {editingMarker.timestamp_captured ? (<div>DateTime: {new Date(editingMarker.timestamp_captured).toLocaleString()}</div>) : null}
-                  <div>Latitude: {editingMarker.latitude.toFixed(5)}</div>
-                  <div>Longitude: {editingMarker.longitude.toFixed(5)}</div>
+                    <Button variant="outlined" color="primary" size="small" component="label">
+                      Change Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const url = URL.createObjectURL(file);
+                            setEditDrafts((prev) => ({
+                              ...prev,
+                              [editingMarker.id]: {
+                                ...(prev[editingMarker.id] || {}),
+                                photo_url: url,
+                              },
+                            }));
+                          }
+                        }}
+                      />
+                    </Button>
+                    {currentPhoto && (
+                      <Box sx={{ mt: 1 }}>
+                        <img src={currentPhoto} alt="preview" style={{ width: "100%", maxHeight: "280px", objectFit: "contain", borderRadius: 8 }} />
+                        <Button size="small" onClick={() => setEditDrafts((prev) => ({ ...prev, [editingMarker.id]: { ...prev[editingMarker.id], photo_url: null } }))}>Remove</Button>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                    )}
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      <strong style={{ color: '#2e7d32' }}>Date & Time Captured:</strong> <span style={{ color: '#2e7d32' }}>{editingMarker.timestamp_captured ? new Date(editingMarker.timestamp_captured).toLocaleString() : 'N/A'}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Latitude:</strong> <span style={{ color: '#2e7d32' }}>{editingMarker.latitude.toFixed(5)}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Longitude:</strong> <span style={{ color: '#2e7d32' }}>{editingMarker.longitude.toFixed(5)}</span>
+                    </Typography>
+                  </Box>
+                </Box>
+              </DialogContent>
+              <DialogActions>
                       <Button
                         variant="contained"
                         color="primary"
-                        size="small"
                         onClick={() => {
                           const d = editDrafts[editingMarker.id] || {};
                           if (!d.species_name || !d.status) return;
@@ -2681,11 +2910,33 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                       >
                         Save
                       </Button>
-                      <Button variant="outlined" size="small" onClick={() => setEditingMarkerId(null)}>Cancel</Button>
-                    </Box>
-              </Box>
-            </Popup>
-          </Marker>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={() => {
+                    setEditingMarkerId(null);
+                    setEditDrafts((prev) => {
+                      const newDrafts = { ...prev };
+                      delete newDrafts[editingMarker.id];
+                      return newDrafts;
+                    });
+                  }}
+                >
+                  Cancel
+                </Button>
+              </DialogActions>
+            </Dialog>
+          );
+        })()}
+
+        {/* When editing, render that marker outside the cluster to avoid recluster animations hiding its popup */}
+        {editingMarker && (
+          <Marker
+            key={`editing-${editingMarker.id}`}
+            position={[editingMarker.latitude, editingMarker.longitude]}
+            icon={createStatusIcon(editingMarker.status)}
+            ref={(ref) => { if (ref) markerRefs.current[editingMarker.id] = ref; }}
+          />
         )}
 
         {/* When relocating, render that marker outside the cluster */}
@@ -3065,225 +3316,6 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                   }
                 }}
               >
-                {editingMarkerId === m.id ? (
-              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
-                    <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
-                    <TextField
-                      variant="outlined"
-                      margin="dense"
-                      fullWidth
-                      size="small"
-                      value={editDrafts[m.id]?.species_name ?? m.species_name}
-                      onChange={(e) =>
-                        setEditDrafts((prev) => ({
-                          ...prev,
-                          [m.id]: {
-                            ...prev[m.id],
-                            species_name: e.target.value,
-                            status: prev[m.id]?.status ?? m.status,
-                            photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                      },
-                    }))
-                  }
-                      inputRef={(el) => { editInputRefs.current[m.id] = el; }}
-                />
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Status</Box>
-                <TextField
-                  select
-                  variant="outlined"
-                  margin="dense"
-                  fullWidth
-                  size="small"
-                      value={editDrafts[m.id]?.status ?? m.status}
-                  onChange={(e) =>
-                    setEditDrafts((prev) => ({
-                      ...prev,
-                          [m.id]: {
-                            ...prev[m.id],
-                            species_name: prev[m.id]?.species_name ?? m.species_name,
-                            status: e.target.value,
-                            photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                      },
-                    }))
-                  }
-                >
-                  <MenuItem value="reported">Reported</MenuItem>
-                  <MenuItem value="rescued">Rescued</MenuItem>
-                  <MenuItem value="turned over">Turned over</MenuItem>
-                  <MenuItem value="released">Released</MenuItem>
-                </TextField>
-
-                {/* Reporter details (editable) */}
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Name of who sighted</Box>
-                <TextField
-                  variant="outlined"
-                  margin="dense"
-                  fullWidth
-                  size="small"
-                      value={editDrafts[m.id]?.reporter_name ?? m.reporter_name ?? ""}
-                  onChange={(e) =>
-                    setEditDrafts((prev) => ({
-                      ...prev,
-                          [m.id]: {
-                            ...prev[m.id],
-                            reporter_name: e.target.value,
-                            species_name: prev[m.id]?.species_name ?? m.species_name,
-                            status: prev[m.id]?.status ?? m.status,
-                            photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                            contact_number: prev[m.id]?.contact_number ?? m.contact_number,
-                      },
-                    }))
-                  }
-                />
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Contact number</Box>
-                <TextField
-                  variant="outlined"
-                  margin="dense"
-                  fullWidth
-                  size="small"
-                  placeholder="Phone number"
-                  value={editDrafts[m.id]?.phone_number ?? ""}
-                  onChange={(e) => {
-                    const phoneNumber = e.target.value;
-                    const countryCode = editDrafts[m.id]?.country_code ?? '+63';
-                    const fullNumber = countryCode + phoneNumber;
-                    setEditDrafts((prev) => ({
-                      ...prev,
-                          [m.id]: {
-                            ...prev[m.id],
-                        phone_number: phoneNumber,
-                        contact_number: fullNumber,
-                            species_name: prev[m.id]?.species_name ?? m.species_name,
-                            status: prev[m.id]?.status ?? m.status,
-                            photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                            reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
-                      },
-                    }));
-                  }}
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
-                        <FormControl size="small" sx={{ minWidth: 80 }}>
-                          <Select
-                            value={editDrafts[m.id]?.country_code ?? '+63'}
-                            onChange={(e) => {
-                              const countryCode = e.target.value;
-                              const phoneNumber = editDrafts[m.id]?.phone_number ?? '';
-                              const fullNumber = countryCode + phoneNumber;
-                              setEditDrafts((prev) => ({
-                                ...prev,
-                                [m.id]: {
-                                  ...prev[m.id],
-                                  country_code: countryCode,
-                                  contact_number: fullNumber,
-                                  species_name: prev[m.id]?.species_name ?? m.species_name,
-                                  status: prev[m.id]?.status ?? m.status,
-                                  photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                                  reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
-                                },
-                              }));
-                            }}
-                            variant="standard"
-                            sx={{ 
-                              '&:before': { borderBottom: 'none' },
-                              '&:after': { borderBottom: 'none' },
-                              '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
-                              '& .MuiSelect-select': { 
-                                padding: '0',
-                                fontSize: '14px',
-                                fontWeight: 500,
-                                minHeight: 'auto'
-                              }
-                            }}
-                          >
-                            <MenuItem value="+63">🇵🇭 +63</MenuItem>
-                            <MenuItem value="+1">🇺🇸 +1</MenuItem>
-                            <MenuItem value="+44">🇬🇧 +44</MenuItem>
-                            <MenuItem value="+81">🇯🇵 +81</MenuItem>
-                            <MenuItem value="+86">🇨🇳 +86</MenuItem>
-                            <MenuItem value="+82">🇰🇷 +82</MenuItem>
-                            <MenuItem value="+65">🇸🇬 +65</MenuItem>
-                            <MenuItem value="+60">🇲🇾 +60</MenuItem>
-                          </Select>
-                        </FormControl>
-                      </Box>
-                    )
-                  }}
-                />
-
-                {/* Edit photo */}
-                <Box>
-                  <Button variant="outlined" color="primary" size="small" component="label">
-                    Change Photo
-                    <input
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const url = URL.createObjectURL(file);
-                          setEditDrafts((prev) => ({
-                            ...prev,
-                                [m.id]: {
-                                  ...prev[m.id],
-                                  photo_url: url,
-                            },
-                          }));
-                        }
-                      }}
-                    />
-                  </Button>
-                       {editDrafts[m.id]?.photo_url && (
-                    <Box sx={{ mt: 1 }}>
-                           <img src={editDrafts[m.id]?.photo_url ?? undefined} alt="preview" style={{ width: "100%", borderRadius: 8 }} />
-                          <Button size="small" onClick={() => setEditDrafts((prev) => ({ ...prev, [m.id]: { ...prev[m.id], photo_url: null } }))}>Remove</Button>
-                    </Box>
-                  )}
-                </Box>
-
-                    <Box sx={{ display: "flex", gap: 1, flexWrap: 'wrap' }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    size="small"
-                        sx={(theme) => ({
-                          bgcolor: theme.palette.primary.main,
-                          color: theme.palette.mode === 'light' ? '#fff' : '#000',
-                          '&:hover': { bgcolor: theme.palette.primary.dark },
-                          '&.Mui-disabled': {
-                            opacity: 1,
-                            bgcolor: theme.palette.action.disabledBackground,
-                            color: theme.palette.mode === 'light' ? '#fff' : '#000',
-                          },
-                        })}
-                        className="confirm-btn"
-                        onClick={() => {
-                          handleUpdateMarker(m.id);
-                    }}
-                  >
-                    Save
-                  </Button>
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        size="small"
-                        onClick={() => {
-                          setEditingMarkerId(null);
-                          setEditDrafts((prev) => {
-                            const cp = { ...prev };
-                            delete cp[m.id];
-                            return cp;
-                          });
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </Box>
-                  </Box>
-              </Popup>
-                ) : null}
             </Marker>
             );
             })}
