@@ -703,7 +703,7 @@ export default function UserManagement() {
 
   return (
     <Box data-map-container sx={{ mt: 2, mb: 2 }}>
-      <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1 }}>
+      <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1, color: '#2e7d32 !important', borderColor: '#2e7d32 !important' }}>
         User Management
       </Button>
       {loading && (
@@ -925,7 +925,7 @@ export default function UserManagement() {
       {/* Pending Applications */}
       <Box sx={{ height: 320 }} />
       <Box data-record-list>
-      <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1, mt: 2 }}>
+      <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1, mt: 2, color: '#2e7d32 !important', borderColor: '#2e7d32 !important' }}>
         Pending Applications
       </Button>
       {/* Applications controls: search + sort */}
@@ -1092,7 +1092,7 @@ export default function UserManagement() {
       {/* Reports Logs */}
       <Box sx={{ height: 320 }} />
       <Box data-analytics>
-        <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1, mt: 2 }}>
+        <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1, mt: 2, color: '#2e7d32 !important', borderColor: '#2e7d32 !important' }}>
           Reports Logs
         </Button>
         {/* Reports controls: search + sort */}
@@ -1259,7 +1259,7 @@ export default function UserManagement() {
       {/* Login Logs */}
       <Box sx={{ height: 320 }} />
       <Box data-audit>
-        <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1, mt: 2 }}>
+        <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1, mt: 2, color: '#2e7d32 !important', borderColor: '#2e7d32 !important' }}>
           Login Logs
         </Button>
         {/* Login logs controls: search + sort */}
