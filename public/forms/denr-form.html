@@ -1,0 +1,358 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PRINT REPORT</title>
+<link rel="icon" type="image/png" href="/images/kinaiyahanlogonobg.png" sizes="16x16">
+<link rel="icon" type="image/png" href="/images/kinaiyahanlogonobg.png" sizes="32x32">
+<link rel="icon" type="image/png" href="/images/kinaiyahanlogonobg.png" sizes="48x48">
+<link rel="icon" type="image/png" href="/images/kinaiyahanlogonobg.png" sizes="64x64">
+<link rel="apple-touch-icon" href="/images/kinaiyahanlogonobg.png" sizes="180x180">
+<style>
+  body {
+    font-family: "Times New Roman", serif;
+    background-color: #fff;
+    margin: 40px 2.54cm;
+  }
+
+  /* Screen-only background theme copied from Public Report */
+  @media screen {
+    html, body {
+      height: 100%;
+      overflow: hidden; /* remove page scroll on site */
+    }
+    body {
+      background: linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      background-size: 200% 200%;
+      animation: bgShift 10s ease-in-out infinite alternate;
+    }
+    .container {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      padding: 40px;
+      max-width: 800px;
+      max-height: calc(100vh - 80px); /* keep within viewport */
+      overflow: hidden; /* prevent inner scroll */
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+      animation: fadeInUp 500ms cubic-bezier(0.22, 1, 0.36, 1) 120ms forwards;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(12px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes bgShift {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 100% 50%; }
+    }
+  }
+  .container {
+    width: 700px;
+    margin: 0 auto;
+    padding-bottom: 100px;
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: center;
+    gap: 20px;
+  }
+  .header img {
+    width: 90px;
+    height: auto;
+  }
+  .header-text {
+    font-weight: bold;
+    font-size: 11pt;
+    line-height: 1.2;
+    white-space: nowrap;
+    flex: 1;
+    text-align: center;
+  }
+  .header-text span {
+    display: block;
+    font-size: 11pt;
+    font-weight: normal;
+  }
+  h3 {
+    margin: 20px 0 10px;
+    font-size: 11pt;
+    font-weight: bold;
+    text-align: center;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10px 0 20px;
+  }
+  th, td {
+    border: 1px solid #000;
+    padding: 6px;
+    text-align: center;
+    font-size: 11pt;
+    width: 33.33%;
+  }
+  p {
+    font-size: 11pt;
+    margin: 6px 0;
+  }
+  .underline {
+    display: inline-block;
+    border-bottom: 1px solid #000;
+    min-width: 150px;
+  }
+  
+  .fillable {
+    border: none;
+    border-bottom: 1px solid #000;
+    background-color: transparent;
+    outline: none;
+    font-family: "Times New Roman", serif;
+    font-size: 11pt;
+    padding: 0 4px;
+    min-width: 150px;
+    height: auto;
+    vertical-align: text-bottom;
+    line-height: 1;
+  }
+  
+  .print-button {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+    z-index: 1000;
+  }
+  
+  .print-button:hover {
+    background-color: #0056b3;
+  }
+  
+  @media print {
+    .print-button {
+      display: none;
+    }
+    
+    @page {
+      margin: 0 2.54cm;
+      size: A4;
+    }
+    
+    body {
+      margin: 0;
+      padding: 20px;
+    }
+    
+    .container {
+      margin: 0 auto;
+      width: 100%;
+      max-width: 800px;
+    }
+  }
+</style>
+</head>
+<body>
+<button class="print-button" onclick="printForm()">Print Form</button>
+<button class="print-button" style="right: 140px; background-color: #2e7d32" onclick="saveForm()">Save</button>
+<div class="container">
+
+  <br>
+  <!-- Header Section -->
+  <div class="header">
+    <img src="/images/denrlogo.png" alt="DENR Logo">
+    <div class="header-text">
+      DEPARTMENT OF ENVIRONMENT AND NATURAL RESOURCES
+      <span>KAGAWARAN NG KAPALIGARAN AT LIKAS YAMAN</span>
+    </div>
+    <img src="/images/bagongpilipinaslogo.png" alt="Bagong Pilipinas Logo">
+  </div>
+
+  <br>
+  <br>
+  <br>
+   <!-- LEFT-ALIGNED CODE -->
+   <p style="text-align:left;"><span contenteditable="true" style="outline: none; padding: 2px;">CODE-DENR-CENRO B340</span> <input type="text" class="fillable" style="width:200px; margin-left: 10px;"></p>
+
+   <br>
+   <br>
+   <h3 contenteditable="true" style="outline: none; padding: 2px;">ACKNOWLEDGEMENT RECEIPT OF TURN-OVER WILDLIFE</h3>
+
+   <!-- CENTERED ACKNOWLEDGEMENT PARAGRAPH -->
+   <p style="text-align:center; line-height:1.8;">
+     <span contenteditable="true" style="outline: none; padding: 2px;">THIS IS TO ACKNOWLEDGE THE RECEIPT OF the following wildlife species turn-over to</span>
+   </p>
+  <p style="text-align:center; line-height:1.8;">
+    <input type="text" class="fillable" style="width:150px;"> <span contenteditable="true" style="outline: none; padding: 2px;">on</span> 
+    <input type="text" class="fillable" style="width:150px;"> <span contenteditable="true" style="outline: none; padding: 2px;">for</span> 
+    <input type="text" class="fillable" style="width:150px;">
+  </p>
+
+  <table>
+    <tr>
+      <th contenteditable="true" style="outline: none; padding: 2px;">SPECIES</th>
+      <th contenteditable="true" style="outline: none; padding: 2px;">SCIENTIFIC NAME</th>
+      <th contenteditable="true" style="outline: none; padding: 2px;">QUANTITY</th>
+    </tr>
+    <tr>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+    </tr>
+    <tr>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+    </tr>
+    <tr>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+      <td><input type="text" class="fillable" style="width:100%; border:none; background:transparent; text-align:center;"></td>
+    </tr>
+  </table>
+<BR>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">ORIGIN OF WILDLIFE:</span> <input type="text" class="fillable" style="width:250px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">CONDITION OF WILDLIFE:</span> <input type="text" class="fillable" style="width:400px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">REMARKS:</span> <input type="text" class="fillable" style="width:400px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">RECEIVED BY:</span> <input type="text" class="fillable" style="width:250px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">TURNED OVER BY:</span> <input type="text" class="fillable" style="width:250px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">WITNESS BY:</span> <input type="text" class="fillable" style="width:250px;"></p>
+
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">TURNED OVER TO RESCUE ON</span> <input type="text" class="fillable" style="width:250px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">RECEIVED:</span> <input type="text" class="fillable" style="width:250px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">TURNED OVER BY:</span> <input type="text" class="fillable" style="width:250px;"></p>
+  <p><span contenteditable="true" style="outline: none; padding: 2px;">RECEIVED BY:</span> <input type="text" class="fillable" style="width:250px;"></p>
+
+  <br>
+  <br>
+  <!-- Footer Section -->
+  <div style="position: fixed; bottom: 20px; left: 0; right: 0; text-align: center; font-family: 'Times New Roman', serif; font-size: 11pt; color: gray;">
+    <p><span contenteditable="true" style="outline: none; padding: 2px;"><strong>Calanawan, Tankulan, Manolo Fortich, Bukidnon</strong></span></p>
+    <p><span contenteditable="true" style="outline: none; padding: 2px;">cenromanolofortich@denr.gov.ph | Mobile No.: (+63) 917-522-8580</span></p>
+  </div>
+
+</div>
+
+<script>
+function printForm() {
+  // Require save before allowing print
+  try {
+    if (!window.__formHasSavedOnce || window.__formIsDirty) {
+      alert('Please save the form first before printing.');
+      return;
+    }
+  } catch {}
+  // Ensure all input values are visible for printing
+  const inputs = document.querySelectorAll('.fillable');
+  inputs.forEach(input => {
+    if (input.value.trim() === '') {
+      input.style.color = 'transparent';
+    } else {
+      input.style.color = 'black';
+    }
+  });
+  
+  // Trigger print dialog
+  window.print();
+
+  // Restore input styles shortly after the print dialog closes (print or cancel)
+  setTimeout(() => {
+    inputs.forEach(input => {
+      input.style.color = '';
+    });
+  }, 150);
+}
+
+function getRecordId() {
+  try { return new URLSearchParams(window.location.search).get('recordId') || 'no-record'; } catch { return 'no-record'; }
+}
+
+function saveForm() {
+  const recordId = getRecordId();
+  const inputs = Array.from(document.querySelectorAll('.fillable')).map(el => el.value || '');
+  const edits = Array.from(document.querySelectorAll('[contenteditable="true"]')).map(el => (el.textContent || ''));
+  const payload = { recordId, savedAt: new Date().toISOString(), inputs, edits };
+  try {
+    localStorage.setItem(`denrForm:${recordId}`, JSON.stringify(payload));
+    alert('Form saved for record ' + recordId + '.');
+    // Mark as saved and clean
+    window.__formHasSavedOnce = true;
+    window.__formIsDirty = false;
+  } catch { alert('Unable to save.'); }
+}
+
+function loadFormIfAny() {
+  const recordId = getRecordId();
+  try {
+    const raw = localStorage.getItem(`denrForm:${recordId}`);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    (data.inputs || []).forEach((val, idx) => {
+      const el = document.querySelectorAll('.fillable')[idx];
+      if (el) el.value = val;
+    });
+    (data.edits || []).forEach((val, idx) => {
+      const el = document.querySelectorAll('[contenteditable="true"]')[idx];
+      if (el) el.textContent = val;
+    });
+    // Existing saved payload means user can print without saving unless they change something
+    window.__formHasSavedOnce = true;
+  } catch {}
+}
+
+loadFormIfAny();
+
+// Track dirty state: set when any field changes; cleared on save
+window.__formIsDirty = false;
+window.__formHasSavedOnce = window.__formHasSavedOnce || false;
+
+function attachDirtyListeners() {
+  const inputs = document.querySelectorAll('.fillable');
+  inputs.forEach(el => {
+    el.addEventListener('input', () => { window.__formIsDirty = true; });
+    el.addEventListener('change', () => { window.__formIsDirty = true; });
+  });
+  const editables = document.querySelectorAll('[contenteditable="true"]');
+  editables.forEach(el => {
+    el.addEventListener('input', () => { window.__formIsDirty = true; });
+    el.addEventListener('blur', () => { window.__formIsDirty = true; });
+    el.addEventListener('keyup', () => { window.__formIsDirty = true; });
+  });
+}
+
+attachDirtyListeners();
+
+// Prevent accidental close if there are unsaved changes; allow leaving if no edits were made
+window.addEventListener('beforeunload', function (e) {
+  try {
+    if (window.__formIsDirty) {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    }
+  } catch {}
+});
+
+// Also restore styles on afterprint event (cross-browser safety)
+window.addEventListener('afterprint', () => {
+  const inputs = document.querySelectorAll('.fillable');
+  inputs.forEach(input => {
+    input.style.color = '';
+  });
+});
+</script>
+</body>
+</html>
+

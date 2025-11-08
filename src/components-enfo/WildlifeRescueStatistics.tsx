@@ -67,6 +67,9 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [printDateFrom, setPrintDateFrom] = useState('');
   const [printDateTo, setPrintDateTo] = useState('');
+  // Reject confirmation dialog
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [recordToReject, setRecordToReject] = useState<WildlifeRecord | null>(null);
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -279,31 +282,48 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     }
   };
 
-  // Handle reject record
-  const handleRejectRecord = async (id: string) => {
-    if (window.confirm('Are you sure you want to reject this wildlife record?')) {
-      try {
-        const updatedRecord = await rejectWildlifeRecord(id);
-        setWildlifeRecords(prev => 
-          prev.map(record => record.id === id ? updatedRecord : record)
-        );
-        setSuccessSnackbar({
-          open: true,
-          message: 'Wildlife record has been rejected successfully! Refreshing data...',
-        });
-        
-        // Refresh the entire site after successful rejection
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } catch (error) {
-        console.error('Error rejecting wildlife record:', error);
-        setErrorSnackbar({
-          open: true,
-          message: 'Failed to reject wildlife record',
-        });
-      }
+  // Handle reject - open confirmation dialog with print option
+  const handleRejectRecord = (id: string) => {
+    const rec = wildlifeRecords.find(r => r.id === id) || null;
+    setRecordToReject(rec);
+    setRejectDialogOpen(true);
+  };
+
+  const proceedReject = async () => {
+    if (!recordToReject) { setRejectDialogOpen(false); return; }
+    try {
+      const updatedRecord = await rejectWildlifeRecord(recordToReject.id);
+      setWildlifeRecords(prev => prev.map(record => record.id === recordToReject.id ? updatedRecord : record));
+      setSuccessSnackbar({ open: true, message: 'Wildlife record has been rejected successfully! Refreshing data...' });
+      setRejectDialogOpen(false);
+      setRecordToReject(null);
+      setTimeout(() => { window.location.reload(); }, 1500);
+    } catch (error) {
+      console.error('Error rejecting wildlife record:', error);
+      setErrorSnackbar({ open: true, message: 'Failed to reject wildlife record' });
+      setRejectDialogOpen(false);
     }
+  };
+
+  const openPrintAndReject = async () => {
+    try {
+      const idParam = recordToReject?.id ? `?recordId=${recordToReject.id}` : '';
+      window.open(`/forms/denr-form.html${idParam}`, '_blank');
+    } catch {}
+    await proceedReject();
+  };
+
+  // View Form for any record: show message if no saved form exists, then open form
+  const handleViewForm = (rec: WildlifeRecord) => {
+    try {
+      const key = `denrForm:${rec.id}`;
+      const exists = !!localStorage.getItem(key);
+      if (!exists) {
+        alert('No saved form exists yet for this record. You can fill and save from the form page.');
+        return; // do not open if nothing saved yet
+      }
+    } catch {}
+    window.open(`/forms/denr-form.html?recordId=${rec.id}`,'_blank');
   };
 
 
@@ -469,6 +489,30 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
 
   // Handle print individual record
   const handlePrintRecord = (record: WildlifeRecord) => {
+    // If a saved form already exists, warn that it will be overwritten upon Save
+    try {
+      const key = `denrForm:${record.id}`;
+      const exists = !!localStorage.getItem(key);
+      if (exists) {
+        const proceed = window.confirm('A saved form already exists for this record. Opening the form and saving again will overwrite the existing saved form. Continue?');
+        if (!proceed) return;
+      }
+    } catch {}
+
+    // Open the DENR form template with recordId in a new tab
+    const templatePath = `/forms/denr-form.html?recordId=${record.id}`;
+    const printWindow = window.open(templatePath, '_blank');
+    
+    if (!printWindow) {
+      alert('Please allow popups for this site to open the DENR form.');
+      return;
+    }
+    
+    // Just open the window; user can manually save/print
+  };
+  
+  // Old handlePrintRecord code for reference (commented out)
+  const handlePrintRecordOld = (record: WildlifeRecord) => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       const printContent = `
@@ -1349,21 +1393,38 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                         </Button>
                       </>
                     )}
-                    <IconButton
+                    <Button
                       size="small"
-                      onClick={() => handleDeleteRecord(record.id)}
+                      variant="text"
+                      onClick={() => handleViewForm(record)}
                       sx={{ 
-                        color: 'text.secondary',
+                        color: theme.palette.primary.main,
+                        textTransform: 'none',
+                        fontWeight: 500,
                         '&:hover': { 
                           bgcolor: theme.palette.mode === 'dark' 
-                            ? 'rgba(239, 68, 68, 0.1)' 
-                            : 'rgba(239, 68, 68, 0.04)',
-                          color: theme.palette.error.main
+                            ? 'rgba(25, 118, 210, 0.1)' 
+                            : 'rgba(25, 118, 210, 0.04)'
                         }
                       }}
                     >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                      View Form
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() => handleDeleteRecord(record.id)}
+                      sx={{ 
+                        color: '#ff1744 !important',
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        '&:hover': { 
+                          bgcolor: 'rgba(255, 23, 68, 0.08)'
+                        }
+                      }}
+                    >
+                      Delete
+                    </Button>
                   </Box>
                 </TableCell>
               </TableRow>
@@ -1382,6 +1443,23 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
       </TableContainer>
+
+      {/* Reject Confirmation Dialog */}
+      <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Create report and reject</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 1 }}>
+            Opening the printable form in a new tab, then this record will be rejected.
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            The site will stay on this page; the print form opens separately.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRejectDialogOpen(false)}>Cancel</Button>
+          <Button onClick={openPrintAndReject} color="error" variant="contained">Open Print & Reject</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Print Confirmation Dialog */}
       <Dialog open={printDialogOpen} onClose={() => setPrintDialogOpen(false)} maxWidth="sm" fullWidth>

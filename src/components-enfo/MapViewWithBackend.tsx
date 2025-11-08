@@ -296,6 +296,14 @@ type AddressInfo = { barangay?: string; municipality?: string; displayName?: str
     satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   };
 
+  // Transparent labels/reference overlays (to show city/place names on satellite)
+  const labelUrls = {
+    esriWorldBoundariesAndPlaces:
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+    esriWorldTransportation:
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
+  } as const;
+
   const attributions: Record<string, string> = {
     streets:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -350,6 +358,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [editSpeciesOptions, setEditSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
   const [editSpeciesLoading, setEditSpeciesLoading] = useState(false);
   const [showEditSpeciesDropdown, setShowEditSpeciesDropdown] = useState(false);
+  const [speciesSelectedFromDropdown, setSpeciesSelectedFromDropdown] = useState(false);
   const [hasLoadedRecords, setHasLoadedRecords] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -710,11 +719,21 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   useEffect(() => {
     const currentDraft = editingMarkerId ? editDrafts[editingMarkerId] : null;
     const query = currentDraft?.species_name?.trim() || "";
-    if (!editingMarkerId || query.length < 2 || !showEditSpeciesDropdown) {
+    
+    // Don't search if species was selected from dropdown
+    if (speciesSelectedFromDropdown) {
+      return;
+    }
+    
+    if (!editingMarkerId || query.length < 2) {
       setEditSpeciesOptions([]);
       setEditSpeciesLoading(false);
       setShowEditSpeciesDropdown(false);
       return;
+    }
+    // Ensure dropdown becomes visible again once user types >= 2 chars
+    if (!showEditSpeciesDropdown) {
+      setShowEditSpeciesDropdown(true);
     }
     setEditSpeciesLoading(true);
     const controller = new AbortController();
@@ -738,7 +757,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [editDrafts, editingMarkerId, showEditSpeciesDropdown]);
+  }, [editDrafts, editingMarkerId, showEditSpeciesDropdown, speciesSelectedFromDropdown]);
 
   // Debounced place search
   useEffect(() => {
@@ -943,8 +962,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     }
   };
 
-  // Get barangay from coordinates using reverse geocoding API
-  const getBarangayFromCoordinates = async (lat: number, lng: number) => {
+  // Get barangay and municipality from coordinates using reverse geocoding API
+  const getLocationFromCoordinates = async (lat: number, lng: number) => {
     try {
       console.log('Reverse geocoding coordinates:', { lat, lng });
       
@@ -973,13 +992,36 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
           extractedBarangay = address.quarter;
         }
         
+        // Extract municipality from various address fields
+        let extractedMunicipality = '';
+        
+        if (address.town) {
+          extractedMunicipality = address.town;
+        } else if (address.city) {
+          extractedMunicipality = address.city;
+        } else if (address.municipality) {
+          extractedMunicipality = address.municipality;
+        } else if (address.county) {
+          extractedMunicipality = address.county;
+        }
+        
         // Check if we found a barangay and match it to our predefined list
         if (extractedBarangay) {
           const predefinedBarangays = [
+            // Manolo Fortich barangays
             'Agusan Canyon', 'Alae', 'Dahilayan', 'Dalirig', 'Damilag', 'Diclum',
             'Guilang-guilang', 'Kalugmanan', 'Lindaban', 'Lingion', 'Lunocan',
             'Maluko', 'Mambatangan', 'Mampayag', 'Minsuro', 'Mantibugao',
-            'Tankulan (Pob.)', 'San Miguel', 'Sankanan', 'Santiago', 'Santo Niño', 'Ticala'
+            'Tankulan (Pob.)', 'San Miguel', 'Sankanan', 'Santiago', 'Santo Niño', 'Ticala',
+            // Malitbog barangays
+            'Kalingking', 'Kiabo', 'Mindagat', 'Omagling', 'Patpat', 'Poblacion',
+            'Sampiano', 'San Luis', 'Santa Ines', 'Silo-o', 'Sumalsag',
+            // Sumilao barangays
+            'Culasi', 'Kisolon', 'Licoan', 'Lupiagan', 'Ocasion', 'Puntian',
+            'San Roque', 'San Vicente', 'Poblacion(Sumilao)', 'Vista Villa',
+            // Impasugong barangays
+            'Bontongon', 'Bulonay', 'Capitan Bayong', 'Cawayan', 'Dumalaguing', 'Guihean',
+            'Hagpa', 'Impalutao', 'Kalabugao', 'Kibenton', 'La Fortuna', 'Poblacion(Impasugong)', 'Sayawan'
           ];
           
           // Try exact match first
@@ -997,38 +1039,95 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
           }
           
           if (matchedBarangay) {
-            console.log(`Matched barangay: ${matchedBarangay} for coordinates ${lat}, ${lng}`);
-            return matchedBarangay;
+            // Determine municipality based on barangay
+            let municipality = '';
+            if (['Agusan Canyon', 'Alae', 'Dahilayan', 'Dalirig', 'Damilag', 'Diclum',
+                'Guilang-guilang', 'Kalugmanan', 'Lindaban', 'Lingion', 'Lunocan',
+                'Maluko', 'Mambatangan', 'Mampayag', 'Minsuro', 'Mantibugao',
+                'Tankulan (Pob.)', 'San Miguel', 'Sankanan', 'Santiago', 'Santo Niño', 'Ticala'].includes(matchedBarangay)) {
+              municipality = 'Manolo Fortich';
+            } else if (['Kalingking', 'Kiabo', 'Mindagat', 'Omagling', 'Patpat', 'Poblacion',
+                       'Sampiano', 'San Luis', 'Santa Ines', 'Silo-o', 'Sumalsag'].includes(matchedBarangay)) {
+              municipality = 'Malitbog';
+            } else if (['Culasi', 'Kisolon', 'Licoan', 'Lupiagan', 'Ocasion', 'Puntian',
+                       'San Roque', 'San Vicente', 'Poblacion(Sumilao)', 'Vista Villa'].includes(matchedBarangay)) {
+              municipality = 'Sumilao';
+            } else if (['Bontongon', 'Bulonay', 'Capitan Bayong', 'Cawayan', 'Dumalaguing', 'Guihean',
+                       'Hagpa', 'Impalutao', 'Kalabugao', 'Kibenton', 'La Fortuna', 'Poblacion(Impasugong)', 'Sayawan'].includes(matchedBarangay)) {
+              municipality = 'Impasugong';
+            }
+            
+            console.log(`Matched barangay: ${matchedBarangay}, municipality: ${municipality} for coordinates ${lat}, ${lng}`);
+            return { barangay: matchedBarangay, municipality };
           }
         }
         
         // If no match found, try to find the closest barangay based on distance
         const barangayCenters = [
-          { name: 'Tankulan (Pob.)', lat: 8.356, lng: 124.864 },
-          { name: 'Agusan Canyon', lat: 8.45, lng: 124.85 },
-          { name: 'Alae', lat: 8.40, lng: 124.95 },
-          { name: 'Dahilayan', lat: 8.50, lng: 124.85 },
-          { name: 'Dalirig', lat: 8.30, lng: 124.90 },
-          { name: 'Damilag', lat: 8.35, lng: 124.75 },
-          { name: 'Diclum', lat: 8.35, lng: 125.00 },
-          { name: 'Guilang-guilang', lat: 8.45, lng: 124.90 },
-          { name: 'Kalugmanan', lat: 8.25, lng: 124.85 },
-          { name: 'Lindaban', lat: 8.35, lng: 124.65 },
-          { name: 'Lingion', lat: 8.30, lng: 125.00 },
-          { name: 'Lunocan', lat: 8.50, lng: 124.90 },
-          { name: 'Maluko', lat: 8.25, lng: 124.90 },
-          { name: 'Mambatangan', lat: 8.35, lng: 124.55 },
-          { name: 'Mampayag', lat: 8.30, lng: 125.05 },
-          { name: 'Minsuro', lat: 8.55, lng: 124.85 },
-          { name: 'Mantibugao', lat: 8.20, lng: 124.85 },
-          { name: 'San Miguel', lat: 8.35, lng: 124.45 },
-          { name: 'Sankanan', lat: 8.30, lng: 125.10 },
-          { name: 'Santiago', lat: 8.50, lng: 124.95 },
-          { name: 'Santo Niño', lat: 8.20, lng: 124.90 },
-          { name: 'Ticala', lat: 8.35, lng: 124.35 }
+          // Manolo Fortich barangays
+          { name: 'Tankulan (Pob.)', lat: 8.356, lng: 124.864, municipality: 'Manolo Fortich' },
+          { name: 'Agusan Canyon', lat: 8.45, lng: 124.85, municipality: 'Manolo Fortich' },
+          { name: 'Alae', lat: 8.40, lng: 124.95, municipality: 'Manolo Fortich' },
+          { name: 'Dahilayan', lat: 8.50, lng: 124.85, municipality: 'Manolo Fortich' },
+          { name: 'Dalirig', lat: 8.30, lng: 124.90, municipality: 'Manolo Fortich' },
+          { name: 'Damilag', lat: 8.35, lng: 124.75, municipality: 'Manolo Fortich' },
+          { name: 'Diclum', lat: 8.35, lng: 125.00, municipality: 'Manolo Fortich' },
+          { name: 'Guilang-guilang', lat: 8.45, lng: 124.90, municipality: 'Manolo Fortich' },
+          { name: 'Kalugmanan', lat: 8.25, lng: 124.85, municipality: 'Manolo Fortich' },
+          { name: 'Lindaban', lat: 8.35, lng: 124.65, municipality: 'Manolo Fortich' },
+          { name: 'Lingion', lat: 8.30, lng: 125.00, municipality: 'Manolo Fortich' },
+          { name: 'Lunocan', lat: 8.50, lng: 124.90, municipality: 'Manolo Fortich' },
+          { name: 'Maluko', lat: 8.25, lng: 124.90, municipality: 'Manolo Fortich' },
+          { name: 'Mambatangan', lat: 8.35, lng: 124.55, municipality: 'Manolo Fortich' },
+          { name: 'Mampayag', lat: 8.30, lng: 125.05, municipality: 'Manolo Fortich' },
+          { name: 'Minsuro', lat: 8.55, lng: 124.85, municipality: 'Manolo Fortich' },
+          { name: 'Mantibugao', lat: 8.20, lng: 124.85, municipality: 'Manolo Fortich' },
+          { name: 'San Miguel', lat: 8.35, lng: 124.45, municipality: 'Manolo Fortich' },
+          { name: 'Sankanan', lat: 8.30, lng: 125.10, municipality: 'Manolo Fortich' },
+          { name: 'Santiago', lat: 8.50, lng: 124.95, municipality: 'Manolo Fortich' },
+          { name: 'Santo Niño', lat: 8.20, lng: 124.90, municipality: 'Manolo Fortich' },
+          { name: 'Ticala', lat: 8.35, lng: 124.35, municipality: 'Manolo Fortich' },
+          // Malitbog barangays
+          { name: 'Kalingking', lat: 8.540000, lng: 124.880000, municipality: 'Malitbog' },
+          { name: 'Kiabo', lat: 8.520000, lng: 124.860000, municipality: 'Malitbog' },
+          { name: 'Mindagat', lat: 8.500000, lng: 124.900000, municipality: 'Malitbog' },
+          { name: 'Omagling', lat: 8.480000, lng: 124.840000, municipality: 'Malitbog' },
+          { name: 'Patpat', lat: 8.560000, lng: 124.920000, municipality: 'Malitbog' },
+          { name: 'Poblacion', lat: 8.530000, lng: 124.870000, municipality: 'Malitbog' },
+          { name: 'Sampiano', lat: 8.510000, lng: 124.850000, municipality: 'Malitbog' },
+          { name: 'San Luis', lat: 8.490000, lng: 124.890000, municipality: 'Malitbog' },
+          { name: 'Santa Ines', lat: 8.550000, lng: 124.910000, municipality: 'Malitbog' },
+          { name: 'Silo-o', lat: 8.470000, lng: 124.830000, municipality: 'Malitbog' },
+          { name: 'Sumalsag', lat: 8.525000, lng: 124.875000, municipality: 'Malitbog' },
+          // Sumilao barangays
+          { name: 'Culasi', lat: 8.300000, lng: 124.950000, municipality: 'Sumilao' },
+          { name: 'Kisolon', lat: 8.320000, lng: 124.940000, municipality: 'Sumilao' },
+          { name: 'Licoan', lat: 8.310000, lng: 124.930000, municipality: 'Sumilao' },
+          { name: 'Lupiagan', lat: 8.290000, lng: 124.920000, municipality: 'Sumilao' },
+          { name: 'Ocasion', lat: 8.280000, lng: 124.910000, municipality: 'Sumilao' },
+          { name: 'Puntian', lat: 8.270000, lng: 124.900000, municipality: 'Sumilao' },
+          { name: 'San Roque', lat: 8.260000, lng: 124.890000, municipality: 'Sumilao' },
+          { name: 'San Vicente', lat: 8.250000, lng: 124.880000, municipality: 'Sumilao' },
+          { name: 'Poblacion(Sumilao)', lat: 8.315000, lng: 124.945000, municipality: 'Sumilao' },
+          { name: 'Vista Villa', lat: 8.330000, lng: 124.935000, municipality: 'Sumilao' },
+          // Impasugong barangays
+          { name: 'Bontongon', lat: 8.300000, lng: 125.000000, municipality: 'Impasugong' },
+          { name: 'Bulonay', lat: 8.320000, lng: 125.020000, municipality: 'Impasugong' },
+          { name: 'Capitan Bayong', lat: 8.280000, lng: 125.010000, municipality: 'Impasugong' },
+          { name: 'Cawayan', lat: 8.350000, lng: 125.030000, municipality: 'Impasugong' },
+          { name: 'Dumalaguing', lat: 8.250000, lng: 125.005000, municipality: 'Impasugong' },
+          { name: 'Guihean', lat: 8.270000, lng: 125.015000, municipality: 'Impasugong' },
+          { name: 'Hagpa', lat: 8.290000, lng: 125.025000, municipality: 'Impasugong' },
+          { name: 'Impalutao', lat: 8.310000, lng: 125.035000, municipality: 'Impasugong' },
+          { name: 'Kalabugao', lat: 8.330000, lng: 125.040000, municipality: 'Impasugong' },
+          { name: 'Kibenton', lat: 8.260000, lng: 125.020000, municipality: 'Impasugong' },
+          { name: 'La Fortuna', lat: 8.340000, lng: 125.045000, municipality: 'Impasugong' },
+          { name: 'Poblacion(Impasugong)', lat: 8.315000, lng: 125.030000, municipality: 'Impasugong' },
+          { name: 'Sayawan', lat: 8.275000, lng: 125.012000, municipality: 'Impasugong' }
         ];
         
         let closestBarangay = '';
+        let closestMunicipality = '';
         let minDistance = Infinity;
         
         for (const barangay of barangayCenters) {
@@ -1037,11 +1136,12 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
           if (distance < minDistance) {
             minDistance = distance;
             closestBarangay = barangay.name;
+            closestMunicipality = barangay.municipality;
           }
         }
         
-        console.log(`Using closest barangay: ${closestBarangay} (distance: ${minDistance})`);
-        return closestBarangay;
+        console.log(`Using closest barangay: ${closestBarangay}, municipality: ${closestMunicipality} (distance: ${minDistance})`);
+        return { barangay: closestBarangay, municipality: closestMunicipality };
       }
       
       return null;
@@ -1054,13 +1154,14 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   // Handle relocating marker
   const handleRelocateMarker = async (id: string, newLat: number, newLng: number) => {
     try {
-      // Get the new barangay based on coordinates using reverse geocoding
-      const newBarangay = await getBarangayFromCoordinates(newLat, newLng);
+      // Get the new barangay and municipality based on coordinates using reverse geocoding
+      const locationData = await getLocationFromCoordinates(newLat, newLng);
       
       const updates = {
         latitude: newLat,
         longitude: newLng,
-        barangay: newBarangay || undefined
+        barangay: locationData?.barangay || undefined,
+        municipality: locationData?.municipality || undefined
       };
       
       const updatedRecord = await updateWildlifeRecord(id, updates);
@@ -1074,7 +1175,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       setSuccessModal({
         open: true,
         title: 'Success!',
-        message: `Wildlife record location has been updated successfully.${newBarangay ? ` New location: ${newBarangay}` : ''}`,
+        message: `Wildlife record location has been updated successfully.${locationData?.barangay ? ` New location: ${locationData.barangay}, ${locationData.municipality}` : ''}`,
       });
       
       // Refresh map data after successful update
@@ -1145,9 +1246,9 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         throw new Error('Original marker not found');
       }
       
-      // Get the new barangay based on coordinates using reverse geocoding
-      const newBarangay = await getBarangayFromCoordinates(newLat, newLng);
-      console.log('New barangay from coordinates:', newBarangay);
+      // Get the new barangay and municipality based on coordinates using reverse geocoding
+      const locationData = await getLocationFromCoordinates(newLat, newLng);
+      console.log('New location from coordinates:', locationData);
       
       // Create a new record for the dispersed location instead of updating the original
       const dispersedRecord = {
@@ -1156,8 +1257,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         approval_status: 'approved' as const,
         latitude: newLat,
         longitude: newLng,
-        barangay: newBarangay || undefined,
-        municipality: originalMarker.municipality,
+        barangay: locationData?.barangay || undefined,
+        municipality: locationData?.municipality || originalMarker.municipality,
         reporter_name: originalMarker.reporter_name,
         contact_number: originalMarker.contact_number,
         photo_url: originalMarker.photo_url,
@@ -1187,7 +1288,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         originalBarangay: originalMarker.barangay || undefined,
         dispersedLat: newLat,
         dispersedLng: newLng,
-        dispersedBarangay: newBarangay || undefined,
+        dispersedBarangay: locationData?.barangay || undefined,
         speciesName: originalMarker.species_name
       };
       
@@ -1200,7 +1301,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       setSuccessModal({
         open: true,
         title: 'Success!',
-        message: `Wildlife record has been dispersed to new location. Original location preserved with trace line.${newBarangay ? ` New location: ${newBarangay}` : ''}`,
+        message: `Wildlife record has been dispersed to new location. Original location preserved with trace line.${locationData?.barangay ? ` New location: ${locationData.barangay}, ${locationData.municipality}` : ''}`,
       });
       
       // Refresh map data after successful creation
@@ -1894,6 +1995,23 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         whenReady={() => { /* set in effect below */ }}
       >
         <TileLayer url={tileUrls[skin]} attribution={attributions[skin]} />
+        {/* Add labels overlay on top of satellite imagery */}
+        {skin === 'satellite' && (
+          <>
+            <TileLayer
+              url={labelUrls.esriWorldBoundariesAndPlaces}
+              attribution={attributions.satellite}
+              opacity={0.9}
+              zIndex={400}
+            />
+            <TileLayer
+              url={labelUrls.esriWorldTransportation}
+              attribution={attributions.satellite}
+              opacity={0.5}
+              zIndex={401}
+            />
+          </>
+        )}
         <ResizeHandler />
         <MapBoundsController />
         <BoundaryGuide />
@@ -1911,7 +2029,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             eventHandlers={{ add: (e: any) => e.target.openPopup() }}
           >
             <Popup className="themed-popup" autoPan autoPanPadding={[16,16]}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 260 }}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 300 }}>
                 <strong>Add marker here</strong>
                 {pendingWarning && (
                   <Alert severity="warning" sx={{ my: 0.5 }}>
@@ -1957,7 +2075,9 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           <Box
                             key={`${opt.label}-${opt.common || ""}`}
                             sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
-                            onClick={() => {
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
                               setPendingMarker((p) => (p ? { ...p, speciesName: opt.label } : p));
                               setShowSpeciesDropdown(false);
                             }}
@@ -2158,72 +2278,34 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
-                <Box sx={{ position: 'relative' }}>
+                <Box>
                 <TextField
                   variant="outlined"
                   margin="dense"
                   fullWidth
                   size="small"
-                  value={editDrafts[editingMarker.id]?.species_name || editingMarker.species_name}
-                  onChange={(e) =>
+                  value={
+                    editDrafts[editingMarker.id]?.species_name !== undefined
+                      ? editDrafts[editingMarker.id]?.species_name
+                      : editingMarker.species_name
+                  }
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
                     setEditDrafts((prev) => ({
                       ...prev,
-                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: e.target.value, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
-                    }))
-                  }
+                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: nextValue, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
+                    }));
+                    // Suggestions disabled - no dropdown functionality
+                  }}
                   onFocus={() => {
-                    setShowEditSpeciesDropdown(true);
+                    // Suggestions disabled - no dropdown functionality
                   }}
                   onBlur={() => {
-                    // Delay hiding to allow click on dropdown items
-                    setTimeout(() => setShowEditSpeciesDropdown(false), 200);
+                    // Suggestions disabled - no dropdown functionality
                   }}
                   inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
                 />
-                  {showEditSpeciesDropdown && (
-                    <Box sx={{ 
-                      position: 'absolute', 
-                      top: '100%', 
-                      left: 0, 
-                      right: 0, 
-                      zIndex: 1000,
-                      mt: 0.5, 
-                      border: "1px solid", 
-                      borderColor: "divider", 
-                      borderRadius: 1, 
-                      maxHeight: 200, 
-                      overflow: "auto",
-                      bgcolor: 'background.paper',
-                      boxShadow: 2
-                    }}>
-                      {editSpeciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
-                      {!editSpeciesLoading && editSpeciesOptions.length === 0 && editDrafts[editingMarker.id]?.species_name && editDrafts[editingMarker.id].species_name.length >= 2 && (
-                        <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
-                      )}
-                      {!editSpeciesLoading && editSpeciesOptions.length > 0 && (
-                        <Box>
-                          {editSpeciesOptions.map((opt) => (
-                            <Box
-                              key={`${opt.label}-${opt.common || ""}`}
-                              sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
-                              onMouseDown={(e) => {
-                                e.preventDefault(); // Prevent input blur
-                                setEditDrafts((prev) => ({
-                                  ...prev,
-                                  [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: opt.label, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
-                                }));
-                                setShowEditSpeciesDropdown(false);
-                                setEditSpeciesOptions([]);
-                              }}
-                            >
-                              {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
-                              <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
-                            </Box>
-                          ))}
-                        </Box>
-                      )}
-                    </Box>
-                  )}
+                  {/* Species suggestions disabled - entire dropdown section commented out */}
                 </Box>
                 <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Status</Box>
                 <TextField
@@ -2308,7 +2390,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
               icon={createStatusIcon(relocatingMarker.status)}
               ref={(ref) => { if (ref) markerRefs.current[relocatingMarker.id] = ref; }}
             >
-              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
+              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]} maxWidth={420}>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                   <Typography variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
                     Relocating: {relocatingMarker.species_name}
@@ -2846,7 +2928,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   )}
                 </Box>
 
-                    <Box sx={{ display: "flex", gap: 1 }}>
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: 'wrap' }}>
                   <Button
                     variant="contained"
                     color="primary"
@@ -2886,7 +2968,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                     </Box>
                   </Box>
                 ) : (
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 360 }}>
                     <div><strong>{m.species_name}</strong></div>
                     <div>Status: {formatStatusLabel(m.status)}</div>
                     {/* Dispersal information */}
@@ -2905,7 +2987,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           <div><strong>📍 Released Location</strong></div>
                           <div>Original: {trace.originalBarangay || 'Unknown'} ({trace.originalLat.toFixed(5)}, {trace.originalLng.toFixed(5)})</div>
                           <div>Current: {trace.dispersedBarangay || 'Unknown'} ({trace.dispersedLat.toFixed(5)}, {trace.dispersedLng.toFixed(5)})</div>
-                          <Button
+                      <Button
                             variant="outlined"
                             size="small"
                             color="error"
@@ -2960,10 +3042,11 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                               },
                             }));
                           setEditingMarkerId(m.id);
+                          setSpeciesSelectedFromDropdown(false); // Reset flag when starting to edit a new marker
                             setTimeout(() => {
                             try { markerRefs.current[m.id]?.openPopup?.(); } catch {}
-                            const el = editInputRefs.current[m.id];
-                              if (el) { try { el.focus(); } catch {} }
+                            // Ensure no input is focused automatically
+                            try { (document.activeElement as HTMLElement | null)?.blur?.(); } catch {}
                             }, 0);
                           }}
                         >

@@ -28,6 +28,7 @@ import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import { getWildlifeRecords } from '../services/wildlifeRecords';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { useTheme } from '@mui/material/styles';
+import { motion } from 'framer-motion';
 
 export default function MainGrid() {
   const theme = useTheme();
@@ -40,6 +41,8 @@ export default function MainGrid() {
   
   // State for filtering analytics by status
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
+  // State for municipality filter in analytics (Top Barangays)
+  const [selectedMunicipality, setSelectedMunicipality] = useState<string | null>(null);
   
   // Fetch wildlife records for analytics
   useEffect(() => {
@@ -63,8 +66,13 @@ export default function MainGrid() {
     ? approvedRecords.filter(r => r.status === selectedStatusFilter.toLowerCase())
     : approvedRecords;
   
-  // Top barangays with data (based on filtered records)
-  const barangayFrequency = (selectedStatusFilter ? filteredRecords : approvedRecords).reduce((acc: any, record: any) => {
+  // Top barangays with data (based on filters)
+  const barangaySource = (selectedStatusFilter ? filteredRecords : approvedRecords).filter((r: any) => {
+    if (!selectedMunicipality) return true;
+    const m = (r.municipality || '').toLowerCase();
+    return m === selectedMunicipality.toLowerCase();
+  });
+  const barangayFrequency = barangaySource.reduce((acc: any, record: any) => {
     const barangay = record.barangay || 'Unknown';
     acc[barangay] = (acc[barangay] || 0) + 1;
     return acc;
@@ -73,11 +81,19 @@ export default function MainGrid() {
     .map(([barangay, count]) => ({ barangay, count }))
     .sort((a, b) => (b.count as number) - (a.count as number))
     .slice(0, 5);
+  const topBarangaysTotal = topBarangays.reduce((sum, item) => sum + Number(item.count), 0);
+  const topBarangaysPieData = topBarangays.map((item) => ({
+    id: item.barangay,
+    value: Number(item.count),
+    label: item.barangay,
+  }));
   
   // Records summary counts (based on filtered records)
   const displayRecords = selectedStatusFilter ? filteredRecords : approvedRecords;
   const uniqueSpecies = new Set(displayRecords.map((r: any) => r.species_name)).size;
   const activeBarangays = new Set(displayRecords.map((r: any) => r.barangay).filter(Boolean)).size;
+  const totalApproved = wildlifeRecords.filter((r: any) => r.approval_status === 'approved').length;
+  const totalRejected = wildlifeRecords.filter((r: any) => r.approval_status === 'rejected').length;
   
   // State for pending reports
   const [pendingCount, setPendingCount] = useState(0);
@@ -273,6 +289,10 @@ export default function MainGrid() {
 
       {/* Map Container */}
       <Box 
+        component={motion.div}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
         data-map-container
         sx={{ 
           height: 700, 
@@ -285,19 +305,31 @@ export default function MainGrid() {
       </Box>
       
         {/* Wildlife Rescue Statistics Component */}
-        <Box data-record-list sx={{ mt: 3, mb: 8 }}>
+        <Box 
+          component={motion.div}
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          data-record-list sx={{ mt: 3, mb: 8 }}>
           <WildlifeRescueStatistics {...(showPendingOnly && { showPendingOnly })} />
         </Box>
 
         {/* Analytics Section */}
-        <Box data-analytics sx={{ mt: 8, mb: 3, minHeight: '70vh' }}>
+        <Box 
+          component={motion.div}
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          data-analytics sx={{ mt: 8, mb: 3, maxWidth: { xs: '100%', md: '1577px' }, mx: 'auto' }}>
           <Card sx={{ p: 2, boxShadow: 1 }}>
             <Typography variant="h4" component="h2" gutterBottom sx={{ color: 'primary.main', mb: 2 }}>
               Analytics
             </Typography>
             
             {/* Pie Chart for Status Distribution */}
-            <Box sx={{ mb: 3 }}>
+            <Box sx={{ mb: 3 }}>  
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6" sx={{ color: 'text.primary', fontWeight: 600 }}>
                   Status Distribution
@@ -332,8 +364,8 @@ export default function MainGrid() {
                         color: selectedStatusFilter && selectedStatusFilter !== 'Released' ? '#43a04730' : '#43a047'
                       },
                     ],
-                    innerRadius: 30,
-                    outerRadius: 120,
+                    innerRadius: 28,
+                    outerRadius: 95,
                     paddingAngle: 2,
                     cornerRadius: 5,
                     arcLabel: (item) => {
@@ -346,8 +378,8 @@ export default function MainGrid() {
                     arcLabelMinAngle: 10,
                   }
                 ]}
-                width={400}
-                height={350}
+                width={320}
+                height={220}
               />
             </Box>
 
@@ -397,7 +429,7 @@ export default function MainGrid() {
                       opacity: !selectedStatusFilter ? 0.9 : 1
                     }}
                   >
-                    {approvedRecords.length} total (100%) • {approvedRecords.filter(r => r.status === 'reported').length} reported
+                    {approvedRecords.length} total (100%) • {approvedRecords.length} reported
                   </Typography>
                 </Box>
               </Box>
@@ -477,45 +509,56 @@ export default function MainGrid() {
 
             {/* Top Barangays Section */}
             <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" gutterBottom sx={{ color: 'text.primary', fontWeight: 600, mt: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ color: 'text.primary', fontWeight: 600, mt: 1 }}>
                 Top 5 Barangays with Wildlife Activity
               </Typography>
-              {topBarangays.length > 0 ? (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'center' }}>
-                  {topBarangays.map((item, index) => (
-                    <Card
-                      key={item.barangay}
-                      sx={{
-                        p: 2,
-                        minWidth: 180,
-                        boxShadow: 2,
-                        border: '2px solid',
-                        borderColor: index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : 'primary.main',
-                        backgroundColor: index < 3 ? `${index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : '#CD7F32'}20` : 'background.paper'
-                      }}
+              {/* Municipality filter */}
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                {[
+                  { label: 'All', value: null },
+                  { label: 'Manolo Fortich', value: 'Manolo Fortich' },
+                  { label: 'Sumilao', value: 'Sumilao' },
+                  { label: 'Malitbog', value: 'Malitbog' },
+                  { label: 'Impasugong', value: 'Impasugong' },
+                ].map((opt) => {
+                  const isActive = (opt.value ?? null) === (selectedMunicipality ?? null);
+                  return (
+                    <Button
+                      key={opt.label}
+                      size="small"
+                      variant={isActive ? 'contained' : 'outlined'}
+                      onClick={() => setSelectedMunicipality(opt.value as any)}
+                      sx={{ textTransform: 'none' }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography sx={{ fontSize: '1.5rem' }}>
-                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📍'}
-                        </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                          Rank {index + 1}
-                        </Typography>
-                      </Box>
-                      <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
-                        {item.barangay}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {Number(item.count)} {Number(item.count) === 1 ? 'record' : 'records'}
-                      </Typography>
-                    </Card>
-                  ))}
-                </Box>
-              ) : (
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  No barangay data available yet
-                </Typography>
-              )}
+                      {opt.label}
+                    </Button>
+                  );
+                })}
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 240 }}>
+                {topBarangays.length > 0 ? (
+                  <PieChart
+                    series={[{
+                      data: topBarangaysPieData,
+                      innerRadius: 26,
+                      outerRadius: 92,
+                      paddingAngle: 2,
+                      cornerRadius: 5,
+                      arcLabel: (item) => {
+                        const pct = topBarangaysTotal > 0 ? ((item.value / topBarangaysTotal) * 100).toFixed(1) + '%' : '0%';
+                        return pct;
+                      },
+                      arcLabelMinAngle: 10,
+                    }]}
+                    width={360}
+                    height={220}
+                  />
+                ) : (
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    No barangay data available yet
+                  </Typography>
+                )}
+              </Box>
             </Box>
 
             {/* Records Summary */}
@@ -532,13 +575,25 @@ export default function MainGrid() {
                     {selectedStatusFilter ? 'Filtered Records' : 'Total Records'}
                   </Typography>
                 </Card>
-                <Card sx={{ p: 2, textAlign: 'center', minWidth: 150, boxShadow: 1 }}>
-                  <Typography variant="h4" sx={{ color: 'success.main', fontWeight: 700 }}>
-                    {uniqueSpecies}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Unique Species
-                  </Typography>
+                <Card sx={{ p: 2, textAlign: 'center', minWidth: 250, boxShadow: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 3 }}>
+                    <Box sx={{ textAlign: 'center', flex: 1 }}>
+                      <Typography variant="h4" sx={{ color: 'success.main', fontWeight: 700 }}>
+                        {totalApproved}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        Approved
+                      </Typography>
+                    </Box>
+                    <Box sx={{ textAlign: 'center', flex: 1 }}>
+                      <Typography variant="h4" sx={{ color: 'error.main', fontWeight: 700 }}>
+                        {totalRejected}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        Rejected
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Card>
                 <Card sx={{ p: 2, textAlign: 'center', minWidth: 150, boxShadow: 1 }}>
                   <Typography variant="h4" sx={{ color: 'info.main', fontWeight: 700 }}>
