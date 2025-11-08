@@ -916,7 +916,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     <Box sx={{ width: '100%', p: 3 }}>
       {/* Header with Print and Back to Map Buttons */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1" sx={{ color: theme.palette.primary.main }}>
+        <Typography variant="h4" component="h1" sx={{ color: '#2e7d32 !important' }}>
           Wildlife Record List
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>

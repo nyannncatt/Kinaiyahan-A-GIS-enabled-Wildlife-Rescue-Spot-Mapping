@@ -302,7 +302,7 @@ export default function ProfileSection({ fullWidth = false, showTitle = true }: 
       <Card sx={{ p: 3.5, boxShadow: 1, minHeight: { xs: 'auto', md: '650px' }, display: 'flex', flexDirection: 'column', position: 'relative' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: -8, flexShrink: 0 }}>
           {showTitle && (
-            <Typography variant="h4" component="h2" sx={{ color: 'primary.main', mb: 3 }}>
+            <Typography variant="h4" component="h2" sx={{ color: '#2e7d32 !important', mb: 3 }}>
               My Profile
             </Typography>
           )}

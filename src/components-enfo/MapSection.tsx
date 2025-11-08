@@ -28,7 +28,7 @@ export default function MapSection({ pendingCount, onScrollToRecordList, onScrol
     <>
       {/* Map Header */}
       <br></br>
-      <Typography component="h2" variant="h6" sx={{ mb: 2, mt: 4, color: 'primary.main', fontWeight: 600 }}>
+      <Typography component="h2" variant="h6" sx={{ mb: 2, mt: 4, color: '#2e7d32 !important', fontWeight: 600 }}>
         Wildlife Rescue Map
       </Typography>
 

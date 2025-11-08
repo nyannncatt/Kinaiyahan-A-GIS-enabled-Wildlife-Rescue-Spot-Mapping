@@ -61,7 +61,7 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
       data-analytics sx={{ mt: 8, mb: 3, maxWidth: { xs: '100%', md: '1577px' }, mx: 'auto' }}
     >
       <Card sx={{ p: 2, boxShadow: 1 }}>
-        <Typography variant="h4" component="h2" gutterBottom sx={{ color: 'primary.main', mb: 2 }}>
+        <Typography variant="h4" component="h2" gutterBottom sx={{ color: '#2e7d32 !important', mb: 2 }}>
           Analytics
         </Typography>
         
