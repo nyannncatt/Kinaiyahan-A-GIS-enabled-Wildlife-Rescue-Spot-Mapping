@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, GeoJSON, 
 import { Icon, LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { Box, Button, TextField, Alert, CircularProgress, Typography, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Chip, Tooltip, IconButton, ToggleButtonGroup, ToggleButton } from '@mui/material';
+import { Box, Button, TextField, Alert, CircularProgress, Typography, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Chip, Tooltip, IconButton, ToggleButtonGroup, ToggleButton, useTheme } from '@mui/material';
 import SuccessModal from './SuccessModal';
 import FetchingModal from './FetchingModal';
 import { alpha } from '@mui/material/styles';
@@ -267,6 +267,8 @@ function BoundaryGuide() {
 
 interface MapViewWithBackendProps {
   skin: 'streets' | 'dark' | 'satellite';
+  onModalOpenChange?: (isOpen: boolean) => void;
+  environmentalBg?: boolean;
 }
 
 interface PendingMarker {
@@ -321,7 +323,8 @@ const statusColors: Record<string, string> = {
   'dispersed': '#ff9800' // Orange
 };
 
-export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
+export default function MapViewWithBackend({ skin, onModalOpenChange, environmentalBg = false }: MapViewWithBackendProps) {
+  const theme = useTheme();
   const { user } = useAuth();
   const { targetRecordId, clearTarget, triggerRecordsRefresh } = useMapNavigation();
   const [wildlifeRecords, setWildlifeRecords] = useState<WildlifeRecord[]>([]);
@@ -330,6 +333,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [isAddingMarker, setIsAddingMarker] = useState(false);
   const [pendingMarker, setPendingMarker] = useState<PendingMarker | null>(null);
   const [editingMarkerId, setEditingMarkerId] = useState<string | null>(null);
+  const [viewingMarkerId, setViewingMarkerId] = useState<string | null>(null);
   const [editDrafts, setEditDrafts] = useState<Record<string, any>>({});
   const [relocatingMarkerId, setRelocatingMarkerId] = useState<string | null>(null);
   const [dispersingMarkerId, setDispersingMarkerId] = useState<string | null>(null);
@@ -338,6 +342,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [relocationOriginalLocation, setRelocationOriginalLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [dispersalTraces, setDispersalTraces] = useState<Array<{
     id: string;
+    originalMarkerId: string;
+    originalStatus: string;
     originalLat: number;
     originalLng: number;
     originalBarangay?: string;
@@ -361,6 +367,24 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [speciesSelectedFromDropdown, setSpeciesSelectedFromDropdown] = useState(false);
   const [hasLoadedRecords, setHasLoadedRecords] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  // Validate and clean up traces when records are loaded
+  useEffect(() => {
+    if (wildlifeRecords.length > 0 && dispersalTraces.length > 0) {
+      const validTraces = dispersalTraces.filter(trace => {
+        // Check if both the original marker and dispersed marker still exist
+        const originalExists = wildlifeRecords.some(r => r.id === trace.originalMarkerId);
+        const dispersedExists = wildlifeRecords.some(r => r.id === trace.id);
+        return originalExists && dispersedExists;
+      });
+      
+      // Only update if we removed some invalid traces
+      if (validTraces.length !== dispersalTraces.length) {
+        setDispersalTraces(validTraces);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wildlifeRecords]);
 
   // Save dispersal traces to localStorage whenever they change
   useEffect(() => {
@@ -549,6 +573,13 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       }
     }
   }, [targetRecordId, mapInstance, wildlifeRecords, clearTarget]);
+
+  // Notify parent when modal opens/closes
+  useEffect(() => {
+    if (onModalOpenChange) {
+      onModalOpenChange(!!pendingMarker);
+    }
+  }, [pendingMarker, onModalOpenChange]);
 
   // Set loading timeout
   useEffect(() => {
@@ -953,9 +984,20 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     if (!window.confirm('Are you sure you want to delete this wildlife record?')) return;
 
     try {
+      // Check if this is a dispersed marker (has a trace)
+      const trace = dispersalTraces.find(t => t.id === id);
+      
       await deleteWildlifeRecord(id);
       setWildlifeRecords(prev => prev.filter(record => record.id !== id));
       setEditingMarkerId(null);
+      
+      // Remove the trace line if this was a dispersed marker
+      if (trace) {
+        setDispersalTraces(prev => prev.filter(t => t.id !== id));
+      }
+      
+      // Refresh records
+      try { triggerRecordsRefresh(); } catch {}
     } catch (err) {
       console.error('Error deleting wildlife record:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete wildlife record');
@@ -1198,16 +1240,17 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         throw new Error('Dispersal trace not found');
       }
       
-      // Find the original marker
-      const originalMarker = wildlifeRecords.find(m => 
-        m.latitude === trace.originalLat && 
-        m.longitude === trace.originalLng &&
-        m.species_name === trace.speciesName
-      );
+      // Find the original marker by ID
+      const originalMarker = wildlifeRecords.find(m => m.id === trace.originalMarkerId);
       
       if (!originalMarker) {
         throw new Error('Original marker not found');
       }
+      
+      // Restore the original marker's status
+      await updateWildlifeRecord(trace.originalMarkerId, {
+        status: trace.originalStatus as any
+      });
       
       // Delete the dispersed record
       await deleteWildlifeRecord(dispersedRecordId);
@@ -1222,7 +1265,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       setSuccessModal({
         open: true,
         title: 'Success!',
-        message: `Dispersal has been undone. Wildlife record restored to original location.`,
+        message: `Dispersal has been undone. Wildlife record restored to original status (${formatStatusLabel(trace.originalStatus)}).`,
       });
       
       // Refresh map data
@@ -1274,6 +1317,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       // Store dispersal trace information in state
       const traceInfo: {
         id: string;
+        originalMarkerId: string;
+        originalStatus: string;
         originalLat: number;
         originalLng: number;
         originalBarangay?: string;
@@ -1283,6 +1328,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         speciesName: string;
       } = {
         id: createdRecord.id,
+        originalMarkerId: originalMarker.id,
+        originalStatus: originalMarker.status,
         originalLat: originalMarker.latitude,
         originalLng: originalMarker.longitude,
         originalBarangay: originalMarker.barangay || undefined,
@@ -1578,7 +1625,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         top: 10, 
         right: 10, 
         zIndex: 1500,
-        display: 'flex',
+        display: (pendingMarker || viewingMarkerId) ? 'none' : 'flex',
         flexDirection: 'column',
         gap: 1,
         maxWidth: { xs: 'calc(100vw - 20px)', sm: 'auto' },
@@ -2027,11 +2074,46 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             key={"pending"}
             position={pendingMarker.pos as [number, number]}
             icon={createStatusIcon(pendingMarker.status)}
-            eventHandlers={{ add: (e: any) => e.target.openPopup() }}
-          >
-            <Popup className="themed-popup" autoPan autoPanPadding={[16,16]}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 300 }}>
-                <strong>Add marker here</strong>
+          />
+        )}
+
+         {/* Add Marker Modal */}
+         <Dialog
+           open={!!pendingMarker}
+           onClose={() => { setPendingMarker(null); setIsAddingMarker(false); }}
+           maxWidth="sm"
+           fullWidth
+           PaperProps={{
+             sx: {
+               marginRight: 'auto',
+               marginLeft: environmentalBg ? '35%' : '39%',
+               marginTop: '10%',
+               transform: 'translateX(0)',
+               background: environmentalBg
+                 ? (theme.palette.mode === 'light'
+                     ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+                     : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))')
+                 : undefined,
+               backgroundRepeat: environmentalBg ? 'no-repeat' : undefined,
+               backgroundSize: environmentalBg ? '100% 100%' : undefined,
+             }
+           }}
+         >
+           <DialogTitle>
+             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+               <Box
+                 component="img"
+                 src="/images/kinaiyahanlogonobg.png"
+                 alt="Kinaiyahan"
+                 sx={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }}
+               />
+               <Typography component="span" variant="h6" sx={{ color: '#2e7d32 !important' }}>
+                 Add Marker Here
+               </Typography>
+             </Box>
+           </DialogTitle>
+          <DialogContent>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
                 {pendingWarning && (
                   <Alert severity="warning" sx={{ my: 0.5 }}>
                     {pendingWarning}
@@ -2043,7 +2125,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   variant="outlined"
                   fullWidth
                   margin="dense"
-                  value={pendingMarker.speciesName}
+                  value={pendingMarker?.speciesName || ''}
                   onChange={(e) =>
                     setPendingMarker((p) => {
                       const next = p ? { ...p, speciesName: e.target.value } : p;
@@ -2061,7 +2143,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                     setTimeout(() => setShowSpeciesDropdown(false), 200);
                   }}
                   required
-                  error={Boolean(pendingWarning) && !(pendingMarker.speciesName || '').trim()}
+                  error={Boolean(pendingWarning) && !(pendingMarker?.speciesName || '').trim()}
                   inputRef={(el) => { pendingSpeciesRef.current = el; }}
                 />
                 {showSpeciesDropdown && (
@@ -2097,7 +2179,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   variant="outlined"
                   fullWidth
                   margin="dense"
-                  value={pendingMarker.status}
+                  value={pendingMarker?.status || 'reported'}
                   onChange={(e) =>
                     setPendingMarker((p) => (p ? { ...p, status: e.target.value } : p))
                   }
@@ -2125,14 +2207,14 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   variant="outlined"
                   fullWidth
                   margin="dense"
-                  value={pendingMarker.reporterName || ""}
+                  value={pendingMarker?.reporterName || ""}
                   onChange={(e) => setPendingMarker((p) => {
                     const next = p ? { ...p, reporterName: e.target.value } : p;
                     if (next && isPendingComplete(next)) setPendingWarning(null);
                     return next as PendingMarker;
                   })}
                   required
-                  error={Boolean(pendingWarning) && !(pendingMarker.reporterName || '').trim()}
+                  error={Boolean(pendingWarning) && !(pendingMarker?.reporterName || '').trim()}
                   inputRef={(el) => { pendingReporterRef.current = el; }}
                 />
                 <TextField
@@ -2141,10 +2223,10 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   variant="outlined"
                   fullWidth
                   margin="dense"
-                  value={pendingMarker.phoneNumber || ""}
+                  value={pendingMarker?.phoneNumber || ""}
                   onChange={(e) => {
                     const phoneNumber = e.target.value;
-                    const countryCode = pendingMarker.countryCode || '+63';
+                    const countryCode = pendingMarker?.countryCode || '+63';
                     const fullNumber = countryCode + phoneNumber;
                     setPendingMarker((p) => {
                       const next = p ? { ...p, phoneNumber, contactNumber: fullNumber } : p;
@@ -2153,14 +2235,14 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                     });
                   }}
                   required
-                  error={Boolean(pendingWarning) && !(pendingMarker.phoneNumber || '').trim()}
+                  error={Boolean(pendingWarning) && !(pendingMarker?.phoneNumber || '').trim()}
                   inputRef={(el) => { pendingContactRef.current = el; }}
                   InputProps={{
                     startAdornment: (
                       <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
                         <FormControl size="small" sx={{ minWidth: 80 }}>
                           <Select
-                            value={pendingMarker.countryCode || '+63'}
+                            value={pendingMarker?.countryCode || '+63'}
                             onChange={(e) => setPendingMarker((p) => p ? { ...p, countryCode: e.target.value } : p)}
                             variant="standard"
                             sx={{ 
@@ -2207,41 +2289,39 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                       }}
                     />
                   </Button>
-                  {pendingMarker.photo && (
+                  {pendingMarker?.photo && (
                     <Box sx={{ mt: 1 }}>
-                      <img src={pendingMarker.photo ?? undefined} alt="preview" style={{ width: "100%", borderRadius: 8 }} />
+                      <img src={pendingMarker?.photo ?? undefined} alt="preview" style={{ width: "100%", borderRadius: 8 }} />
                       <Button size="small" onClick={() => setPendingMarker((p) => (p ? { ...p, photo: null } : p))}>Remove</Button>
                     </Box>
                   )}
                 </Box>
 
                 <Box>
-                  <div>Date & Time Captured: {new Date(pendingMarker.timestampIso).toLocaleString()}</div>
-                  <div>Latitude: {pendingMarker.pos[0].toFixed(5)}</div>
-                  <div>Longitude: {pendingMarker.pos[1].toFixed(5)}</div>
-                  <div>Barangay: {pendingMarker.addressLoading ? "Loading..." : (pendingMarker.address?.barangay || "N/A")}</div>
-                  <div>Municipality: {pendingMarker.addressLoading ? "Loading..." : (pendingMarker.address?.municipality || "N/A")}</div>
+                   <Typography variant="body2" sx={{ mt: 1 }}>
+                     <strong style={{ color: '#2e7d32' }}>Date & Time Captured:</strong> <span style={{ color: '#2e7d32' }}>{pendingMarker && new Date(pendingMarker.timestampIso).toLocaleString()}</span>
+                   </Typography>
+                   <Typography variant="body2">
+                     <strong style={{ color: '#2e7d32' }}>Latitude:</strong> <span style={{ color: '#2e7d32' }}>{pendingMarker && pendingMarker.pos[0].toFixed(5)}</span>
+                   </Typography>
+                   <Typography variant="body2">
+                     <strong style={{ color: '#2e7d32' }}>Longitude:</strong> <span style={{ color: '#2e7d32' }}>{pendingMarker && pendingMarker.pos[1].toFixed(5)}</span>
+                   </Typography>
+                   <Typography variant="body2">
+                     <strong style={{ color: '#2e7d32' }}>Barangay:</strong> <span style={{ color: '#2e7d32' }}>{pendingMarker && (pendingMarker.addressLoading ? "Loading..." : (pendingMarker.address?.barangay || "N/A"))}</span>
+                   </Typography>
+                   <Typography variant="body2">
+                     <strong style={{ color: '#2e7d32' }}>Municipality:</strong> <span style={{ color: '#2e7d32' }}>{pendingMarker && (pendingMarker.addressLoading ? "Loading..." : (pendingMarker.address?.municipality || "N/A"))}</span>
+                   </Typography>
                 </Box>
-
-                <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
+            </Box>
+          </DialogContent>
+          <DialogActions>
                   <Button
                     variant="contained"
                     color="primary"
-                    size="small"
-                      sx={(theme) => ({
-                        bgcolor: theme.palette.primary.main,
-                        color: theme.palette.mode === 'light' ? '#fff' : '#000',
-                        '&:hover': { bgcolor: theme.palette.primary.dark },
-                        '&.Mui-disabled': {
-                          opacity: 1,
-                          bgcolor: theme.palette.action.disabledBackground,
-                          color: theme.palette.mode === 'light' ? '#fff' : '#000',
-                        },
-                      })}
-                      className="confirm-btn"
-                      type="button"
                       onClick={() => {
-                        if (!isPendingComplete(pendingMarker)) {
+                if (!pendingMarker || !isPendingComplete(pendingMarker)) {
                           setPendingWarning('Please provide Species, Reporter Name, and Contact number before confirming.');
                           // Focus the first missing field for convenience
                           const missing = [
@@ -2255,18 +2335,245 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                         }
                         handleAddMarker();
                       }}
-                    // Keep button enabled to allow warning popup UX, but gate in handler
                   >
                     Confirm
                   </Button>
-                  <Button variant="outlined" color="primary" size="small" type="button" onClick={() => { setPendingMarker(null); setIsAddingMarker(false); }}>
+            <Button variant="outlined" color="primary" onClick={() => { setPendingMarker(null); setIsAddingMarker(false); }}>
                     Cancel
                   </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* View Marker Modal */}
+        {(() => {
+          const viewingMarker = viewingMarkerId ? finalFilteredMarkers.find(m => m.id === viewingMarkerId) : null;
+          if (!viewingMarker) return null;
+          
+          const trace = dispersalTraces.find(t => t.id === viewingMarker.id);
+          
+          return (
+            <Dialog
+              open={!!viewingMarkerId}
+              onClose={() => setViewingMarkerId(null)}
+              maxWidth="sm"
+              fullWidth
+              PaperProps={{
+                sx: {
+                  marginRight: 'auto',
+                  marginLeft: environmentalBg ? '35%' : '39%',
+                  marginTop: '10%',
+                  transform: 'translateX(0)',
+                  background: environmentalBg
+                    ? (theme.palette.mode === 'light'
+                        ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+                        : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))')
+                    : undefined,
+                  backgroundRepeat: environmentalBg ? 'no-repeat' : undefined,
+                  backgroundSize: environmentalBg ? '100% 100%' : undefined,
+                  maxHeight: '80vh',
+                }
+              }}
+            >
+              <DialogTitle>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                  <Box
+                    component="img"
+                    src="/images/kinaiyahanlogonobg.png"
+                    alt="Kinaiyahan"
+                    sx={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }}
+                  />
+                  <Typography component="span" variant="h6" sx={{ color: '#2e7d32 !important' }}>
+                    Species: {viewingMarker.species_name}
+                  </Typography>
                 </Box>
+              </DialogTitle>
+              <DialogContent sx={{ overflowY: 'auto', maxHeight: 'calc(80vh - 140px)' }}>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
+                  {/* Dispersal information */}
+                  {trace && (
+                    <Box sx={{ 
+                      bgcolor: '#e8f5e8', 
+                      color: '#2e7d32', 
+                      p: 1, 
+                      borderRadius: 1, 
+                      fontSize: '0.875rem',
+                      border: '1px solid',
+                      borderColor: '#4caf50'
+                    }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>📍 Released Location</Typography>
+                      <Typography variant="body2">Original: {trace.originalBarangay || 'Unknown'} ({trace.originalLat.toFixed(5)}, {trace.originalLng.toFixed(5)})</Typography>
+                      <Typography variant="body2">Current: {trace.dispersedBarangay || 'Unknown'} ({trace.dispersedLat.toFixed(5)}, {trace.dispersedLng.toFixed(5)})</Typography>
+                      {role === 'enforcement' && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="error"
+                          sx={{ 
+                            mt: 1,
+                            minWidth: 'fit-content',
+                            whiteSpace: 'nowrap',
+                            fontSize: '0.75rem',
+                            py: 0.5,
+                            px: 1,
+                            borderColor: '#d32f2f',
+                            color: '#d32f2f',
+                            '&:hover': {
+                              borderColor: '#b71c1c',
+                              color: '#b71c1c',
+                              bgcolor: 'rgba(211, 47, 47, 0.04)'
+                            }
+                          }}
+                          onClick={() => {
+                            if (role === 'enforcement') {
+                              handleUndispersed(viewingMarker.id);
+                              setViewingMarkerId(null);
+                            }
+                          }}
+                          disabled={role !== 'enforcement'}
+                        >
+                          Unrelease
+                        </Button>
+                      )}
               </Box>
-            </Popup>
-          </Marker>
-        )}
+                  )}
+                  
+                  {viewingMarker.photo_url && (
+                    <Box sx={{ mt: 1 }}>
+                      <Tooltip title="Click to view the whole photo size" arrow>
+                        <Box
+                          component="img"
+                          src={viewingMarker.photo_url}
+                          alt="marker"
+                          onClick={() => window.open(viewingMarker.photo_url, '_blank')}
+                          sx={{
+                            width: "100%",
+                            maxHeight: "280px",
+                            objectFit: "contain",
+                            borderRadius: 8,
+                            cursor: "pointer",
+                            transition: "opacity 0.2s ease-in-out",
+                            "&:hover": {
+                              opacity: 0.8
+                            }
+                          }}
+                        />
+                      </Tooltip>
+                    </Box>
+                  )}
+                  
+                  <Box>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      <strong style={{ color: '#2e7d32' }}>Status:</strong> <span style={{ color: '#2e7d32' }}>{formatStatusLabel(viewingMarker.status)}</span>
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      <strong style={{ color: '#2e7d32' }}>Date & Time Captured:</strong> <span style={{ color: '#2e7d32' }}>{new Date(viewingMarker.timestamp_captured).toLocaleString()}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Latitude:</strong> <span style={{ color: '#2e7d32' }}>{viewingMarker.latitude.toFixed(5)}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Longitude:</strong> <span style={{ color: '#2e7d32' }}>{viewingMarker.longitude.toFixed(5)}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Barangay:</strong> <span style={{ color: '#2e7d32' }}>{viewingMarker.barangay || "N/A"}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Municipality:</strong> <span style={{ color: '#2e7d32' }}>{viewingMarker.municipality || "N/A"}</span>
+                    </Typography>
+                    {viewingMarker.reporter_name && (
+                      <Typography variant="body2">
+                        <strong style={{ color: '#2e7d32' }}>Reported by:</strong> <span style={{ color: '#2e7d32' }}>{viewingMarker.reporter_name}</span>
+                      </Typography>
+                    )}
+                    {viewingMarker.contact_number && (
+                      <Typography variant="body2">
+                        <strong style={{ color: '#2e7d32' }}>Contact:</strong> <span style={{ color: '#2e7d32' }}>{viewingMarker.contact_number}</span>
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              </DialogContent>
+              <DialogActions>
+                {role === 'enforcement' && (
+                  <>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => {
+                        setEditDrafts((prev) => ({
+                          ...prev,
+                          [viewingMarker.id]: {
+                            species_name: viewingMarker.species_name,
+                            status: viewingMarker.status,
+                            photo_url: viewingMarker.photo_url ?? null,
+                            barangay: viewingMarker.barangay ?? null,
+                            municipality: viewingMarker.municipality ?? null,
+                          },
+                        }));
+                        setEditingMarkerId(viewingMarker.id);
+                        setViewingMarkerId(null);
+                        setTimeout(() => {
+                          try { markerRefs.current[viewingMarker.id]?.openPopup?.(); } catch {}
+                        }, 0);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="secondary"
+                      onClick={() => {
+                        if (role === 'enforcement') {
+                          setRelocationOriginalLocation({ lat: viewingMarker.latitude, lng: viewingMarker.longitude });
+                          setRelocatingMarkerId(viewingMarker.id);
+                          setViewingMarkerId(null);
+                        }
+                      }}
+                      disabled={role !== 'enforcement'}
+                    >
+                      Relocate Pin
+                    </Button>
+                    {normalizeStatus(viewingMarker.status) !== 'released' && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="warning"
+                        onClick={() => {
+                          if (role === 'enforcement') {
+                            setOriginalLocation({ lat: viewingMarker.latitude, lng: viewingMarker.longitude });
+                            setDispersingMarkerId(viewingMarker.id);
+                            setViewingMarkerId(null);
+                          }
+                        }}
+                        disabled={role !== 'enforcement'}
+                      >
+                        Release
+                      </Button>
+                    )}
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="error"
+                      onClick={() => {
+                        if (role === 'enforcement') {
+                          handleDeleteMarker(viewingMarker.id);
+                          setViewingMarkerId(null);
+                        }
+                      }}
+                      disabled={role !== 'enforcement'}
+                    >
+                      Delete
+                    </Button>
+                  </>
+                )}
+                <Button variant="outlined" color="primary" onClick={() => setViewingMarkerId(null)}>
+                  Close
+                </Button>
+              </DialogActions>
+            </Dialog>
+          );
+        })()}
 
         {/* When editing, render that marker outside the cluster to avoid recluster animations hiding its popup */}
         {editingMarker && (
@@ -2750,9 +3057,16 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                 position={[m.latitude, m.longitude]}
                 icon={createStatusIcon(m.status)}
                 ref={(ref) => { markerRefs.current[m.id] = ref; }}
+                eventHandlers={{
+                  click: () => {
+                    if (editingMarkerId !== m.id) {
+                      setViewingMarkerId(m.id);
+                    }
+                  }
+                }}
               >
-              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
                 {editingMarkerId === m.id ? (
+              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
                     <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
                     <TextField
@@ -2968,192 +3282,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                       </Button>
                     </Box>
                   </Box>
-                ) : (
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 360 }}>
-                    <div><strong>{m.species_name}</strong></div>
-                    <div>Status: {formatStatusLabel(m.status)}</div>
-                    {/* Dispersal information */}
-                    {(() => {
-                      const trace = dispersalTraces.find(t => t.id === m.id);
-                      return trace ? (
-                        <Box sx={{ 
-                          bgcolor: '#e8f5e8', 
-                          color: '#2e7d32', 
-                          p: 1, 
-                          borderRadius: 1, 
-                          fontSize: '0.875rem',
-                          border: '1px solid',
-                          borderColor: '#4caf50'
-                        }}>
-                          <div><strong>📍 Released Location</strong></div>
-                          <div>Original: {trace.originalBarangay || 'Unknown'} ({trace.originalLat.toFixed(5)}, {trace.originalLng.toFixed(5)})</div>
-                          <div>Current: {trace.dispersedBarangay || 'Unknown'} ({trace.dispersedLat.toFixed(5)}, {trace.dispersedLng.toFixed(5)})</div>
-                      <Tooltip title={role !== 'enforcement' ? 'Only enforcement can modify' : ''} disableHoverListener={role === 'enforcement'} arrow>
-                        <span>
-                          <Button
-                              variant="outlined"
-                              size="small"
-                              color="error"
-                              sx={{ 
-                                mt: 1,
-                                minWidth: 'fit-content',
-                                whiteSpace: 'nowrap',
-                                fontSize: '0.75rem',
-                                py: 0.5,
-                                px: 1,
-                                borderColor: '#d32f2f',
-                                color: '#d32f2f',
-                                '&:hover': {
-                                  borderColor: '#b71c1c',
-                                  color: '#b71c1c',
-                                  bgcolor: 'rgba(211, 47, 47, 0.04)'
-                                }
-                              }}
-                              onClick={(e) => {
-                                try { e.preventDefault(); e.stopPropagation(); } catch {}
-                                if (role === 'enforcement') handleUndispersed(m.id);
-                              }}
-                              disabled={role !== 'enforcement'}
-                            >
-                              Unrelease
-                            </Button>
-                        </span>
-                      </Tooltip>
-                        </Box>
-                      ) : null;
-                    })()}
-                    {m.photo_url && <img src={m.photo_url} alt="marker" style={{ width: "100%", borderRadius: 8 }} />}
-                    <div>Date & Time Captured: {new Date(m.timestamp_captured).toLocaleString()}</div>
-                    <div>Latitude: {m.latitude.toFixed(5)}</div>
-                    <div>Longitude: {m.longitude.toFixed(5)}</div>
-                    <div>Barangay: {m.barangay || "N/A"}</div>
-                    <div>Municipality: {m.municipality || "N/A"}</div>
-                    {m.reporter_name ? <div>Reported by: {m.reporter_name}</div> : null}
-                    {m.contact_number ? <div>Contact: {m.contact_number}</div> : null}
-                      <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
-                        {role === 'enforcement' && (
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            sx={{ 
-                              minWidth: 'fit-content', 
-                              whiteSpace: 'nowrap'
-                            }}
-                            onClick={(e) => {
-                              try { e.preventDefault(); e.stopPropagation(); } catch {}
-                              setEditDrafts((prev) => ({
-                                ...prev,
-                                [m.id]: {
-                                  species_name: m.species_name,
-                                  status: m.status,
-                                  photo_url: m.photo_url ?? null,
-                                  barangay: m.barangay ?? null,
-                                  municipality: m.municipality ?? null,
-                                },
-                              }));
-                              setEditingMarkerId(m.id);
-                              setSpeciesSelectedFromDropdown(false);
-                              setTimeout(() => {
-                                try { markerRefs.current[m.id]?.openPopup?.(); } catch {}
-                                try { (document.activeElement as HTMLElement | null)?.blur?.(); } catch {}
-                              }, 0);
-                            }}
-                          >
-                            Edit
-                          </Button>
-                        )}
-                        <Tooltip title={role !== 'enforcement' ? 'Only enforcement can modify' : ''} disableHoverListener={role === 'enforcement'} arrow>
-                        <span>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color="secondary"
-                          sx={{ 
-                            minWidth: 'fit-content', 
-                            whiteSpace: 'nowrap',
-                            '&.Mui-disabled': {
-                              opacity: 1,
-                              borderColor: 'divider',
-                              color: 'text.disabled',
-                              bgcolor: 'action.disabledBackground',
-                            }
-                          }}
-                          onClick={(e) => {
-                            try { e.preventDefault(); e.stopPropagation(); } catch {}
-                            if (role === 'enforcement') {
-                            setRelocationOriginalLocation({ lat: m.latitude, lng: m.longitude });
-                            setRelocatingMarkerId(m.id);
-                            }
-                            // Close the popup to allow clicking on map
-                            try { markerRefs.current[m.id]?.closePopup?.(); } catch {}
-                          }}
-                          disabled={role !== 'enforcement'}
-                        >
-                          Relocate Pin
-                        </Button>
-                        </span>
-                        </Tooltip>
-                        <Tooltip title={role !== 'enforcement' ? 'Only enforcement can modify' : ''} disableHoverListener={role === 'enforcement'} arrow>
-                        <span>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color="warning"
-                          sx={{ 
-                            minWidth: 'fit-content', 
-                            whiteSpace: 'nowrap',
-                            '&.Mui-disabled': {
-                              opacity: 1,
-                              borderColor: 'divider',
-                              color: 'text.disabled',
-                              bgcolor: 'action.disabledBackground',
-                            }
-                          }}
-                          onClick={(e) => {
-                            try { e.preventDefault(); e.stopPropagation(); } catch {}
-                            if (role === 'enforcement') {
-                            setOriginalLocation({ lat: m.latitude, lng: m.longitude });
-                            setDispersingMarkerId(m.id);
-                            }
-                            // Close the popup to allow clicking on map
-                            try { markerRefs.current[m.id]?.closePopup?.(); } catch {}
-                          }}
-                          disabled={role !== 'enforcement'}
-                        >
-                          Release
-                        </Button>
-                        </span>
-                        </Tooltip>
-                        <Tooltip title={role !== 'enforcement' ? 'Only enforcement can modify' : ''} disableHoverListener={role === 'enforcement'} arrow>
-                        <span>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color="error"
-                          sx={{ 
-                            minWidth: 'fit-content', 
-                            whiteSpace: 'nowrap',
-                            '&.Mui-disabled': {
-                              opacity: 1,
-                              borderColor: 'divider',
-                              color: 'text.disabled',
-                              bgcolor: 'action.disabledBackground',
-                            }
-                          }}
-                        onClick={(e) => {
-                            try { e.preventDefault(); e.stopPropagation(); } catch {}
-                            if (role === 'enforcement') handleDeleteMarker(m.id);
-                          }}
-                          disabled={role !== 'enforcement'}
-                        >
-                          Delete
-                        </Button>
-                        </span>
-                        </Tooltip>
-                      </Box>
-                  </Box>
-                )}
               </Popup>
+                ) : null}
             </Marker>
             );
             })}
