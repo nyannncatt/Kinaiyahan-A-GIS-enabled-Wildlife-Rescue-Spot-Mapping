@@ -1334,7 +1334,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                         }
                       }}
                     >
-                      View Map
+                      View Location
                     </Button>
                     {resolvedRole === 'enforcement' && (
                       <IconButton
