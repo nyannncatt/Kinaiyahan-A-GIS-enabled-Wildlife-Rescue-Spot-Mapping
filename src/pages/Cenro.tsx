@@ -113,7 +113,7 @@ export default function Cenro() {
                   fontFamily: 'Inter, sans-serif',
                   fontWeight: 800,
                   letterSpacing: '0.45em',
-                  color: '#000000 !important',
+                  color: '#2e7d32 !important',
                   userSelect: 'none',
                   lineHeight: 1,
                   minWidth: '400px', // Prevent layout shift during typing
