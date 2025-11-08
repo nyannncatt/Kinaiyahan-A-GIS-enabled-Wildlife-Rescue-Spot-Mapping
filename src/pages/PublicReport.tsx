@@ -37,7 +37,6 @@ import {
   LocationOn,
   Person,
   Phone,
-  Pets,
   CheckCircle,
   Upload,
   Close,
@@ -1075,7 +1074,12 @@ export default function PublicReport() {
                      }}
                      startAdornment={
                        <InputAdornment position="start">
-                         <Pets color="action" />
+                         <Box
+                           component="img"
+                           src="/images/kinaiyahanlogonobg.png"
+                           alt="Kinaiyahan"
+                           sx={{ width: 24, height: 24, objectFit: 'contain' }}
+                         />
                        </InputAdornment>
                      }
                      label="Species Name *"
@@ -2056,18 +2060,19 @@ export default function PublicReport() {
               </Button>
 
               <Box sx={{ textAlign: 'center' }}>
-                <Avatar 
-                  sx={{ 
-                    bgcolor: '#4caf50', 
-                    width: isMobile ? 56 : 80, 
-                    height: isMobile ? 56 : 80, 
-                    mx: 'auto', 
+                <Box
+                  component="img"
+                  src="/images/kinaiyahanlogonobg.png"
+                  alt="Kinaiyahan"
+                  sx={{
+                    width: isMobile ? 72 : 100,
+                    height: isMobile ? 72 : 100,
+                    mx: 'auto',
                     mb: 2,
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
+                    display: 'block',
+                    objectFit: 'contain'
                   }}
-                >
-                  <Pets fontSize="large" />
-                </Avatar>
+                />
               <Typography 
                 variant={isMobile ? 'h4' : 'h3'} 
                 component="h1" 
