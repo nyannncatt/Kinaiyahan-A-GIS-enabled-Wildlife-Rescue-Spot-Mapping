@@ -2085,7 +2085,7 @@ export default function PublicReport() {
                   WebkitTextFillColor: 'transparent',
                 }}
               >
-                Wildlife Report
+                Kinaiyahan Wildlife Report
               </Typography>
               <Typography 
                 variant={isMobile ? 'body1' : 'h6'} 
