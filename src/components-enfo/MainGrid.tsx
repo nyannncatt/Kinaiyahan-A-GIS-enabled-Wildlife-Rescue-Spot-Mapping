@@ -132,7 +132,7 @@ export default function MainGrid({ onModalOpenChange, environmentalBg }: MainGri
           viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           data-record-list sx={{ mt: 3, mb: 8 }}>
-          <WildlifeRescueStatistics {...(showPendingOnly && { showPendingOnly })} />
+          <WildlifeRescueStatistics {...(showPendingOnly && { showPendingOnly })} environmentalBg={environmentalBg} />
         </Box>
 
         {/* Analytics Section */}

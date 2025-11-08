@@ -2148,9 +2148,9 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                 />
                 {showSpeciesDropdown && (
                   <Box sx={{ mt: 0.5, border: "1px solid", borderColor: "divider", borderRadius: 1, height: 128, overflow: "auto" }}>
-                    {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
+                    {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1, color: '#2e7d32 !important' }}>Searching…</Box>}
                     {!speciesLoading && speciesOptions.length === 0 && (
-                      <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
+                      <Box sx={{ fontSize: 12, opacity: 0.5, p: 1, color: '#2e7d32 !important' }}>No suggestions</Box>
                     )}
                     {!speciesLoading && speciesOptions.length > 0 && (
                       <Box>
@@ -2165,8 +2165,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                               setShowSpeciesDropdown(false);
                             }}
                           >
-                            {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
-                            <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
+                            {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold', color: '#2e7d32 !important' }}>{opt.common}</Box>}
+                            <Box sx={{ fontSize: 12, fontStyle: 'italic', color: '#2e7d32 !important' }}>{opt.label}</Box>
                           </Box>
                         ))}
                       </Box>
@@ -2855,7 +2855,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                         </Box>
                       )
                     }}
-                  />
+                />
                 <Box>
                     <Button variant="outlined" color="primary" size="small" component="label">
                       Change Photo

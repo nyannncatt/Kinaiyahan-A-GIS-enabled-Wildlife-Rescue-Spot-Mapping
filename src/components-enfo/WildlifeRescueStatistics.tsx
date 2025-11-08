@@ -46,16 +46,17 @@ import {
   Close,
   FileDownload as FileDownloadIcon,
 } from '@mui/icons-material';
-import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, getUserRole, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
+import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, getUserRole, uploadWildlifePhoto, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
 import { useAuth } from '../context/AuthContext';
 import { useMapNavigation } from '../context/MapNavigationContext';
 import * as XLSX from 'xlsx';
 
 interface WildlifeRescueStatisticsProps {
   showPendingOnly?: boolean;
+  environmentalBg?: boolean;
 }
 
-const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ showPendingOnly = false }) => {
+const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ showPendingOnly = false, environmentalBg = false }) => {
   const { user } = useAuth();
   const [resolvedRole, setResolvedRole] = useState<string | null>((user?.user_metadata as any)?.role || null);
   const theme = useTheme();
@@ -88,12 +89,11 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<WildlifeRecord | null>(null);
   const [editFormData, setEditFormData] = useState<UpdateWildlifeRecord>({});
+  const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
+  const [editPhotoPreview, setEditPhotoPreview] = useState<string | null>(null);
   
   const [editError, setEditError] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
-  const [speciesOptions, setSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
-  const [speciesLoading, setSpeciesLoading] = useState(false);
-  const [showSpeciesDropdown, setShowSpeciesDropdown] = useState(false);
   
   // Success notification state
   const [successSnackbar, setSuccessSnackbar] = useState<{
@@ -190,6 +190,41 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   // Handle edit record
   const handleEditRecord = (record: WildlifeRecord) => {
     setEditingRecord(record);
+    
+    // Extract country code and phone number from contact_number
+    const contactNumber = record.contact_number || '';
+    let countryCode = '+63';
+    let phoneNumber = '';
+    if (contactNumber) {
+      if (contactNumber.startsWith('+63')) {
+        countryCode = '+63';
+        phoneNumber = contactNumber.replace(/^\+63/, '');
+      } else if (contactNumber.startsWith('+1')) {
+        countryCode = '+1';
+        phoneNumber = contactNumber.replace(/^\+1/, '');
+      } else if (contactNumber.startsWith('+44')) {
+        countryCode = '+44';
+        phoneNumber = contactNumber.replace(/^\+44/, '');
+      } else if (contactNumber.startsWith('+81')) {
+        countryCode = '+81';
+        phoneNumber = contactNumber.replace(/^\+81/, '');
+      } else if (contactNumber.startsWith('+86')) {
+        countryCode = '+86';
+        phoneNumber = contactNumber.replace(/^\+86/, '');
+      } else if (contactNumber.startsWith('+82')) {
+        countryCode = '+82';
+        phoneNumber = contactNumber.replace(/^\+82/, '');
+      } else if (contactNumber.startsWith('+65')) {
+        countryCode = '+65';
+        phoneNumber = contactNumber.replace(/^\+65/, '');
+      } else if (contactNumber.startsWith('+60')) {
+        countryCode = '+60';
+        phoneNumber = contactNumber.replace(/^\+60/, '');
+      } else {
+        phoneNumber = contactNumber;
+      }
+    }
+    
     setEditFormData({
       species_name: record.species_name,
       status: record.status as 'reported' | 'rescued' | 'turned over' | 'released',
@@ -197,7 +232,12 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       municipality: record.municipality || '',
       reporter_name: record.reporter_name || '',
       contact_number: record.contact_number || '',
+      photo_url: record.photo_url || '',
+      country_code: countryCode,
+      phone_number: phoneNumber,
     });
+    setEditPhotoFile(null);
+    setEditPhotoPreview(record.photo_url || null);
     setEditError(null);
     setEditDialogOpen(true);
   };
@@ -210,13 +250,59 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     setEditLoading(true);
 
     try {
-      const updatedRecord = await updateWildlifeRecord(editingRecord.id, editFormData);
+      // Get the current record from the list to ensure we have the latest photo_url
+      const currentRecord = wildlifeRecords.find(r => r.id === editingRecord.id);
+      const originalPhotoUrl = currentRecord?.photo_url || editingRecord.photo_url;
+      
+      // Filter out phone_number and country_code as they're not database columns
+      // Also exclude photo_url from form data since we'll handle it separately
+      const { phone_number, country_code, photo_url: formPhotoUrl, ...baseUpdateData } = editFormData;
+      
+      // Build update data
+      const updateData: UpdateWildlifeRecord = {
+        ...baseUpdateData,
+      };
+      
+      // Handle photo upload/removal
+      if (editPhotoFile) {
+        // New photo was selected - upload it
+        try {
+          const uploadedPhotoUrl = await uploadWildlifePhoto(editPhotoFile, editingRecord.id);
+          if (uploadedPhotoUrl) {
+            updateData.photo_url = uploadedPhotoUrl;
+          }
+        } catch (photoError) {
+          console.error('Error uploading photo:', photoError);
+          setEditError('Failed to upload photo. Please try again.');
+          setEditLoading(false);
+          return;
+        }
+      } else if (editPhotoPreview === null && originalPhotoUrl) {
+        // Photo was removed - set to null
+        updateData.photo_url = null as any;
+      } else if (!editPhotoFile && originalPhotoUrl) {
+        // No new photo selected and no removal - preserve original photo_url
+        // CRITICAL: Always preserve photo_url from original record to prevent ERR_FILE_NOT_FOUND
+        if (typeof originalPhotoUrl === 'string' && originalPhotoUrl.trim() !== '') {
+          updateData.photo_url = originalPhotoUrl;
+        }
+      }
+      
+      const updatedRecord = await updateWildlifeRecord(editingRecord.id, updateData);
       setWildlifeRecords(prev => 
         prev.map(record => record.id === editingRecord.id ? updatedRecord : record)
       );
+      
+      // Clean up blob URL if it exists
+      if (editPhotoPreview && editPhotoPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(editPhotoPreview);
+      }
+      
       setEditDialogOpen(false);
       setEditingRecord(null);
       setEditFormData({});
+      setEditPhotoFile(null);
+      setEditPhotoPreview(null);
       
       // Show success popup
       setSuccessSnackbar({
@@ -233,46 +319,27 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
 
   // Handle edit dialog close
   const handleEditDialogClose = () => {
+    // Clean up blob URL if it exists
+    if (editPhotoPreview && editPhotoPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(editPhotoPreview);
+    }
     setEditDialogOpen(false);
     setEditingRecord(null);
     setEditFormData({});
+    setEditPhotoFile(null);
+    setEditPhotoPreview(null);
     setEditError(null);
-    setSpeciesOptions([]);
-    setShowSpeciesDropdown(false);
   };
 
-  // Species autocomplete for edit mode
+  // Cleanup blob URLs on unmount
   useEffect(() => {
-    const query = editFormData.species_name?.trim() || "";
-    if (!editDialogOpen || query.length < 2 || !showSpeciesDropdown) {
-      setSpeciesOptions([]);
-      setSpeciesLoading(false);
-      setShowSpeciesDropdown(false);
-      return;
-    }
-    setSpeciesLoading(true);
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      try {
-        const url = `https://api.inaturalist.org/v1/taxa/autocomplete?q=${encodeURIComponent(query)}&per_page=8`;
-        const res = await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
-        if (!res.ok) throw new Error("inat autocomplete failed");
-        const data = await res.json();
-        const options = (data?.results || [])
-          .map((r: any) => ({ label: r?.name || "", common: r?.preferred_common_name || undefined }))
-          .filter((o: any) => o.label);
-        setSpeciesOptions(options);
-      } catch {
-        // ignore errors
-      } finally {
-        setSpeciesLoading(false);
-      }
-    }, 350);
     return () => {
-      clearTimeout(timer);
-      controller.abort();
+      if (editPhotoPreview && editPhotoPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(editPhotoPreview);
+      }
     };
-  }, [editFormData.species_name, editDialogOpen, showSpeciesDropdown]);
+  }, [editPhotoPreview]);
+
 
   // Handle approve record
   const handleApproveRecord = async (id: string) => {
@@ -1589,186 +1656,284 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
         </DialogActions>
       </Dialog>
       
-      <Dialog 
-        open={editDialogOpen} 
-        onClose={handleEditDialogClose}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Edit Wildlife Record</DialogTitle>
-        <DialogContent>
-          {editError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {editError}
-            </Alert>
-          )}
-          
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <Box sx={{ position: 'relative' }}>
-              <TextField
-                label="Species Name"
-                value={editFormData.species_name || ''}
-                onChange={(e) => setEditFormData(prev => ({ ...prev, species_name: e.target.value }))}
-                onFocus={() => {
-                  setShowSpeciesDropdown(true);
-                }}
-                onBlur={() => {
-                  // Delay hiding to allow click on dropdown items
-                  setTimeout(() => setShowSpeciesDropdown(false), 200);
-                }}
-                fullWidth
-                required
-              />
-              {showSpeciesDropdown && (
-                <Box sx={{ 
-                  position: 'absolute', 
-                  top: '100%', 
-                  left: 0, 
-                  right: 0, 
-                  zIndex: 1000,
-                  mt: 0.5, 
-                  border: "1px solid", 
-                  borderColor: "divider", 
-                  borderRadius: 1, 
-                  maxHeight: 200, 
-                  overflow: "auto",
-                  bgcolor: 'background.paper',
-                  boxShadow: 2
-                }}>
-                  {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
-                  {!speciesLoading && speciesOptions.length === 0 && editFormData.species_name && editFormData.species_name.length >= 2 && (
-                    <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
-                  )}
-                  {!speciesLoading && speciesOptions.length > 0 && (
-                    <Box>
-                      {speciesOptions.map((opt) => (
-                        <Box
-                          key={`${opt.label}-${opt.common || ""}`}
-                          sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
-                          onMouseDown={(e) => {
-                            e.preventDefault(); // Prevent input blur
-                            setEditFormData(prev => ({ ...prev, species_name: opt.label }));
-                            setShowSpeciesDropdown(false);
-                            setSpeciesOptions([]);
-                          }}
-                        >
-                          {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
-                          <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
-                        </Box>
-                      ))}
+      {editingRecord && (() => {
+        const countryCode = editFormData.country_code || '+63';
+        const phoneNumber = editFormData.phone_number || '';
+
+        return (
+          <Dialog 
+            open={editDialogOpen} 
+            onClose={handleEditDialogClose}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{
+              sx: {
+                marginRight: 'auto',
+                marginLeft: environmentalBg ? '35%' : '39%',
+                marginTop: '10%',
+                transform: 'translateX(0)',
+                background: environmentalBg
+                  ? (theme.palette.mode === 'light'
+                      ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+                      : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))')
+                  : undefined,
+                backgroundRepeat: environmentalBg ? 'no-repeat' : undefined,
+                backgroundSize: environmentalBg ? '100% 100%' : undefined,
+                maxHeight: '80vh',
+              }
+            }}
+          >
+            <DialogTitle>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                <Box
+                  component="img"
+                  src="/images/kinaiyahanlogonobg.png"
+                  alt="Kinaiyahan"
+                  sx={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }}
+                />
+                <Typography component="span" variant="h6" sx={{ color: '#2e7d32 !important' }}>
+                  Edit Marker Details
+                </Typography>
+              </Box>
+            </DialogTitle>
+            <DialogContent sx={{ overflowY: 'auto', maxHeight: 'calc(80vh - 140px)' }}>
+              {editError && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {editError}
+                </Alert>
+              )}
+              
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+                <TextField
+                  placeholder="Species name"
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  margin="dense"
+                  value={editFormData.species_name || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, species_name: e.target.value }))}
+                  required
+                />
+                
+                <TextField
+                  select
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  margin="dense"
+                  value={editFormData.status || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value as any }))}
+                  SelectProps={{
+                    displayEmpty: true,
+                    renderValue: (value: unknown) => {
+                      const v = String(value || "");
+                      return v !== "" ? v : "Status";
+                    },
+                  }}
+                >
+                  <MenuItem value="" disabled>
+                    Status
+                  </MenuItem>
+                  <MenuItem value="reported">Reported</MenuItem>
+                  <MenuItem value="rescued">Rescued</MenuItem>
+                  <MenuItem value="turned over">Turned over</MenuItem>
+                  <MenuItem value="released">Released</MenuItem>
+                </TextField>
+                
+                <TextField
+                  placeholder="Barangay"
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  margin="dense"
+                  value={editFormData.barangay || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, barangay: e.target.value }))}
+                />
+                
+                <TextField
+                  placeholder="Municipality"
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  margin="dense"
+                  value={editFormData.municipality || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, municipality: e.target.value }))}
+                />
+                
+                <TextField
+                  placeholder="Name of who sighted"
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  margin="dense"
+                  value={editFormData.reporter_name || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, reporter_name: e.target.value }))}
+                />
+                
+                <TextField
+                  placeholder="Phone number"
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  margin="dense"
+                  value={phoneNumber}
+                  onChange={(e) => {
+                    const phoneNumberValue = e.target.value;
+                    setEditFormData(prev => {
+                      const currentCountryCode = prev.country_code || '+63';
+                      const fullNumber = currentCountryCode + phoneNumberValue;
+                      return {
+                        ...prev, 
+                        phone_number: phoneNumberValue,
+                        contact_number: fullNumber 
+                      };
+                    });
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                        <FormControl size="small" sx={{ minWidth: 80 }}>
+                          <Select
+                            value={countryCode}
+                            onChange={(e) => {
+                              const countryCodeValue = e.target.value;
+                              setEditFormData(prev => {
+                                const phoneNumberValue = prev.phone_number || '';
+                                const fullNumber = countryCodeValue + phoneNumberValue;
+                                return {
+                                  ...prev,
+                                  country_code: countryCodeValue,
+                                  contact_number: fullNumber 
+                                };
+                              });
+                            }}
+                            variant="standard"
+                            sx={{ 
+                              '&:before': { borderBottom: 'none' },
+                              '&:after': { borderBottom: 'none' },
+                              '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                              '& .MuiSelect-select': { 
+                                padding: '0',
+                                fontSize: '14px',
+                                fontWeight: 500,
+                                minHeight: 'auto'
+                              }
+                            }}
+                          >
+                            <MenuItem value="+63">🇵🇭 +63</MenuItem>
+                            <MenuItem value="+1">🇺🇸 +1</MenuItem>
+                            <MenuItem value="+44">🇬🇧 +44</MenuItem>
+                            <MenuItem value="+81">🇯🇵 +81</MenuItem>
+                            <MenuItem value="+86">🇨🇳 +86</MenuItem>
+                            <MenuItem value="+82">🇰🇷 +82</MenuItem>
+                            <MenuItem value="+65">🇸🇬 +65</MenuItem>
+                            <MenuItem value="+60">🇲🇾 +60</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    )
+                  }}
+                />
+
+                {/* Photo Upload Section */}
+                <Box sx={{ mt: 1 }}>
+                  <Button variant="outlined" color="primary" size="small" component="label" sx={{ mb: 1 }}>
+                    {editPhotoPreview && !editPhotoFile ? 'Change Photo' : 'Upload Photo'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          // Clean up previous blob URL if it exists
+                          if (editPhotoPreview && editPhotoPreview.startsWith('blob:')) {
+                            URL.revokeObjectURL(editPhotoPreview);
+                          }
+                          setEditPhotoFile(file);
+                          const url = URL.createObjectURL(file);
+                          setEditPhotoPreview(url);
+                        }
+                      }}
+                    />
+                  </Button>
+                  {editPhotoPreview && (
+                    <Box sx={{ mt: 1 }}>
+                      <Box
+                        component="img"
+                        src={editPhotoPreview}
+                        alt="preview"
+                        sx={{
+                          width: "100%",
+                          maxHeight: "280px",
+                          objectFit: "contain",
+                          borderRadius: 2,
+                          border: '1px solid',
+                          borderColor: 'divider'
+                        }}
+                      />
+                      <Button 
+                        size="small" 
+                        color="error"
+                        onClick={() => {
+                          // Clean up blob URL if it exists
+                          if (editPhotoPreview && editPhotoPreview.startsWith('blob:')) {
+                            URL.revokeObjectURL(editPhotoPreview);
+                          }
+                          if (editPhotoFile) {
+                            // If a new photo was selected, remove it and go back to original
+                            setEditPhotoFile(null);
+                            setEditPhotoPreview(editingRecord?.photo_url || null);
+                          } else {
+                            // If removing the original photo, set to null
+                            setEditPhotoFile(null);
+                            setEditPhotoPreview(null);
+                          }
+                        }}
+                        sx={{ mt: 1 }}
+                      >
+                        Remove
+                      </Button>
                     </Box>
                   )}
                 </Box>
-              )}
-            </Box>
-            
-            <FormControl fullWidth>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={editFormData.status || ''}
-                onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value as any }))}
-                label="Status"
-              >
-                <MenuItem value="reported">Reported</MenuItem>
-                <MenuItem value="rescued">Rescued</MenuItem>
-                <MenuItem value="turned over">Turned Over</MenuItem>
-                <MenuItem value="released">Dispersed</MenuItem>
-              </Select>
-            </FormControl>
-            
-            <TextField
-              label="Barangay"
-              value={editFormData.barangay || ''}
-              onChange={(e) => setEditFormData(prev => ({ ...prev, barangay: e.target.value }))}
-              fullWidth
-            />
-            
-            <TextField
-              label="Municipality"
-              value={editFormData.municipality || ''}
-              onChange={(e) => setEditFormData(prev => ({ ...prev, municipality: e.target.value }))}
-              fullWidth
-            />
-            
-            <TextField
-              label="Reporter Name"
-              value={editFormData.reporter_name || ''}
-              onChange={(e) => setEditFormData(prev => ({ ...prev, reporter_name: e.target.value }))}
-              fullWidth
-            />
-            
-            <TextField
-              label="Phone Number"
-              value={editFormData.phone_number || ''}
-              onChange={(e) => {
-                const phoneNumber = e.target.value;
-                const countryCode = editFormData.country_code || '+63';
-                const fullNumber = countryCode + phoneNumber;
-                setEditFormData(prev => ({ 
-                  ...prev, 
-                  phone_number: phoneNumber,
-                  contact_number: fullNumber 
-                }));
-              }}
-              fullWidth
-              InputProps={{
-                startAdornment: (
-                  <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
-                    <FormControl sx={{ minWidth: 80 }}>
-                      <Select
-                        value={editFormData.country_code || '+63'}
-                        onChange={(e) => {
-                          const countryCode = e.target.value;
-                          const phoneNumber = editFormData.phone_number || '';
-                          const fullNumber = countryCode + phoneNumber;
-                          setEditFormData(prev => ({ 
-                            ...prev, 
-                            country_code: countryCode,
-                            contact_number: fullNumber 
-                          }));
-                        }}
-                        variant="standard"
-                        sx={{ 
-                          '&:before': { borderBottom: 'none' },
-                          '&:after': { borderBottom: 'none' },
-                          '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
-                          '& .MuiSelect-select': { 
-                            padding: '0',
-                            fontSize: '14px',
-                            fontWeight: 500,
-                            minHeight: 'auto'
-                          }
-                        }}
-                      >
-                        <MenuItem value="+63">🇵🇭 +63</MenuItem>
-                        <MenuItem value="+1">🇺🇸 +1</MenuItem>
-                        <MenuItem value="+44">🇬🇧 +44</MenuItem>
-                        <MenuItem value="+81">🇯🇵 +81</MenuItem>
-                        <MenuItem value="+86">🇨🇳 +86</MenuItem>
-                        <MenuItem value="+82">🇰🇷 +82</MenuItem>
-                        <MenuItem value="+65">🇸🇬 +65</MenuItem>
-                        <MenuItem value="+60">🇲🇾 +60</MenuItem>
-                      </Select>
-                    </FormControl>
+
+                {editingRecord.timestamp_captured && (
+                  <Box>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      <strong style={{ color: '#2e7d32' }}>Date & Time Captured:</strong> <span style={{ color: '#2e7d32' }}>{new Date(editingRecord.timestamp_captured).toLocaleString()}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Latitude:</strong> <span style={{ color: '#2e7d32' }}>{editingRecord.latitude.toFixed(5)}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Longitude:</strong> <span style={{ color: '#2e7d32' }}>{editingRecord.longitude.toFixed(5)}</span>
+                    </Typography>
                   </Box>
-                )
-              }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleEditDialogClose} disabled={editLoading}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleEditSubmit} 
-            variant="contained" 
-            disabled={editLoading || !editFormData.species_name?.trim()}
-          >
-            {editLoading ? 'Updating...' : 'Update Record'}
-          </Button>
-         </DialogActions>
-       </Dialog>
+                )}
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleEditSubmit}
+                disabled={editLoading || !editFormData.species_name?.trim()}
+              >
+                {editLoading ? 'Updating...' : 'Save'}
+              </Button>
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={handleEditDialogClose}
+                disabled={editLoading}
+              >
+                Cancel
+              </Button>
+            </DialogActions>
+          </Dialog>
+        );
+      })()}
 
        {/* Success Snackbar */}
        <Snackbar
