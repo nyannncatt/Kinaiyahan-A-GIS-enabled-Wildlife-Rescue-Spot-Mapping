@@ -18,9 +18,11 @@ interface MapSectionProps {
   pendingCount: number;
   onScrollToRecordList: () => void;
   onScrollToPendingReports: () => void;
+  onModalOpenChange?: (isOpen: boolean) => void;
+  environmentalBg?: boolean;
 }
 
-export default function MapSection({ pendingCount, onScrollToRecordList, onScrollToPendingReports }: MapSectionProps) {
+export default function MapSection({ pendingCount, onScrollToRecordList, onScrollToPendingReports, onModalOpenChange, environmentalBg }: MapSectionProps) {
   // State to track selected map skin
   const [skin, setSkin] = useState<"streets" | "dark" | "satellite">("streets");
 
@@ -151,7 +153,7 @@ export default function MapSection({ pendingCount, onScrollToRecordList, onScrol
           backgroundColor: 'background.paper'
         }}
       >
-        <MapViewWithBackend skin={skin} />
+         <MapViewWithBackend skin={skin} onModalOpenChange={onModalOpenChange} environmentalBg={environmentalBg} />
       </Box>
     </>
   );

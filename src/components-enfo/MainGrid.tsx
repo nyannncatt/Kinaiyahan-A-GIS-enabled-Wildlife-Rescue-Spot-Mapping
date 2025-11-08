@@ -8,7 +8,12 @@ import MapSection from './MapSection';
 import { MapNavigationProvider } from '../context/MapNavigationContext';
 import { getWildlifeRecords } from '../services/wildlifeRecords';
 
-export default function MainGrid() {
+interface MainGridProps {
+  onModalOpenChange?: (isOpen: boolean) => void;
+  environmentalBg?: boolean;
+}
+
+export default function MainGrid({ onModalOpenChange, environmentalBg }: MainGridProps) {
   
   // State for wildlife records for analytics
   const [wildlifeRecords, setWildlifeRecords] = useState<any[]>([]);
@@ -115,6 +120,8 @@ export default function MainGrid() {
           pendingCount={pendingCount}
           onScrollToRecordList={scrollToRecordList}
           onScrollToPendingReports={scrollToPendingReports}
+          onModalOpenChange={onModalOpenChange}
+          environmentalBg={environmentalBg}
         />
       
         {/* Wildlife Rescue Statistics Component */}

@@ -124,6 +124,11 @@ export default function MenuContent() {
   const [activeTab, setActiveTab] = useState('mapping');
   const theme = useTheme();
   const isAdminRoute = typeof window !== 'undefined' && window.location && window.location.pathname.startsWith('/admin');
+  const isEnforcementRoute = typeof window !== 'undefined' && window.location && window.location.pathname.startsWith('/enforcement');
+  const isCenroRoute = typeof window !== 'undefined' && window.location && window.location.pathname.startsWith('/cenro');
+  
+  // Determine menu title based on route
+  const menuTitle = isAdminRoute ? 'Admin Menu' : isEnforcementRoute ? 'Enforcement Menu' : isCenroRoute ? 'Cenro Menu' : 'Kinaiyahan';
 
   // Track scroll position to update active tab
   useEffect(() => {
@@ -344,7 +349,7 @@ export default function MenuContent() {
           mb: 0.5,
           fontSize: '18px'
         }}>
-          Kinaiyahan
+          {menuTitle}
         </Typography>
       </Box>
 

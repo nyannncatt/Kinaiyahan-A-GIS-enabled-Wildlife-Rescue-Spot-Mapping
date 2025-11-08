@@ -33,6 +33,7 @@ function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
   const [showLogo, setShowLogo] = React.useState(false);
   const [displayedText, setDisplayedText] = React.useState('');
   const [showHeader, setShowHeader] = React.useState(true);
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
   const fullText = 'ＫＩＮＡＩＹＡＨＡＮ';
 
   // Typing animation effect
@@ -187,7 +188,7 @@ function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
                 {environmentalBg ? 'Default' : 'Environmental'}
               </Button>
             </Box>
-            <MainGrid />
+            <MainGrid onModalOpenChange={setIsModalOpen} environmentalBg={environmentalBg} />
           </Stack>
         </Box>
       </Box>
