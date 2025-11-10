@@ -1636,6 +1636,22 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                         </IconButton>
                       </Tooltip>
                     )}
+                    <Tooltip title="View details">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => { e.stopPropagation(); handleViewDetails(record); }}
+                        sx={{ 
+                          color: theme.palette.primary.main,
+                          '&:hover': { 
+                            bgcolor: theme.palette.mode === 'dark' 
+                              ? 'rgba(25, 118, 210, 0.1)' 
+                              : 'rgba(25, 118, 210, 0.04)'
+                          }
+                        }}
+                      >
+                        <InfoOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                     <Button
                       size="small"
                       variant="text"
@@ -1653,22 +1669,6 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     >
                       View Form
                     </Button>
-                    <Tooltip title="View details">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => { e.stopPropagation(); handleViewDetails(record); }}
-                        sx={{ 
-                          color: theme.palette.primary.main,
-                          '&:hover': { 
-                            bgcolor: theme.palette.mode === 'dark' 
-                              ? 'rgba(25, 118, 210, 0.1)' 
-                              : 'rgba(25, 118, 210, 0.04)'
-                          }
-                        }}
-                      >
-                        <InfoOutlinedIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
                   </Box>
                 </TableCell>
               </TableRow>
