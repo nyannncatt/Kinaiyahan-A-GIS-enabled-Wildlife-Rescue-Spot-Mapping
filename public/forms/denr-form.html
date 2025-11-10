@@ -220,6 +220,15 @@
     .print-button {
       display: none;
     }
+    #savedByInfo {
+      display: none !important;
+    }
+    .bg-animals {
+      display: none !important;
+    }
+    .animal {
+      display: none !important;
+    }
     
     @page {
       margin: 0 2.54cm;
@@ -340,6 +349,29 @@
 
 </div>
 
+<!-- Saved By Information (Screen Only) - Outside form container -->
+<div id="savedByInfo" style="display: none; position: fixed; top: 70px; right: 10px; background: transparent; color: #2e7d32; padding: 10px 15px; border-radius: 8px; font-size: 11pt; z-index: 1001; max-width: 250px;">
+  <div style="font-weight: bold; margin-bottom: 4px;">Last Saved By:</div>
+  <div style="font-size: 10pt; margin-bottom: 2px;"><strong>Name:</strong> <span id="savedByName"></span></div>
+  <div style="font-size: 10pt; opacity: 0.9;"><strong>Role:</strong> <span id="savedByRole"></span></div>
+</div>
+
+<!-- Supabase Client -->
+<script>
+  // Load Supabase and expose it globally
+  (function() {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+    script.onload = function() {
+      window.supabaseLoaded = true;
+      // The UMD build should expose createClient
+      if (typeof window.supabase !== 'undefined') {
+        window.supabaseReady = true;
+      }
+    };
+    document.head.appendChild(script);
+  })();
+</script>
 <script>
 function printForm() {
   // Require save before allowing print
@@ -374,18 +406,160 @@ function getRecordId() {
   try { return new URLSearchParams(window.location.search).get('recordId') || 'no-record'; } catch { return 'no-record'; }
 }
 
-function saveForm() {
+// Initialize Supabase client
+let supabaseClient = null;
+async function initSupabase() {
+  try {
+    // Wait for Supabase library to load
+    let attempts = 0;
+    while (!window.supabaseLoaded && attempts < 50) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+    
+    // Try to get Supabase config from localStorage (set by main app)
+    const storedConfig = localStorage.getItem('supabaseConfig');
+    if (!storedConfig) {
+      console.log('Supabase config not found in localStorage');
+      return null;
+    }
+    
+    const config = JSON.parse(storedConfig);
+    if (!config.url || !config.key) {
+      console.log('Invalid Supabase config');
+      return null;
+    }
+    
+    // Try to find createClient function - Supabase UMD build exposes it differently
+    let createClientFn = null;
+    
+    // Check various possible global names
+    if (window.supabase && window.supabase.createClient) {
+      createClientFn = window.supabase.createClient;
+    } else if (window.supabaseJs && window.supabaseJs.createClient) {
+      createClientFn = window.supabaseJs.createClient;
+    } else if (window.supabase && typeof window.supabase === 'function') {
+      createClientFn = window.supabase;
+    } else if (window.supabase && window.supabase.default && window.supabase.default.createClient) {
+      createClientFn = window.supabase.default.createClient;
+    } else {
+      // Try to use dynamic import as fallback
+      try {
+        const supabaseModule = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+        if (supabaseModule && supabaseModule.createClient) {
+          createClientFn = supabaseModule.createClient;
+        }
+      } catch (e) {
+        console.log('Could not use dynamic import:', e);
+      }
+    }
+    
+    if (!createClientFn) {
+      console.log('Could not find createClient function. Available globals:', Object.keys(window).filter(k => k.toLowerCase().includes('supabase')));
+      return null;
+    }
+    
+    return createClientFn(config.url, config.key);
+  } catch (e) {
+    console.log('Supabase not available:', e);
+    return null;
+  }
+}
+
+// Get current user info
+async function getCurrentUserInfo() {
+  try {
+    if (!supabaseClient) {
+      supabaseClient = await initSupabase();
+    }
+    
+    if (!supabaseClient) {
+      return { name: 'Unknown', role: 'Unknown' };
+    }
+    
+    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError || !session?.user) {
+      return { name: 'Unknown', role: 'Unknown' };
+    }
+    
+    const userId = session.user.id;
+    
+    // Get user info from users table
+    const { data: userData, error: userError } = await supabaseClient
+      .from('users')
+      .select('first_name, last_name, role')
+      .eq('id', userId)
+      .single();
+    
+    if (userError || !userData) {
+      // Fallback to auth metadata
+      const metadata = session.user.user_metadata || {};
+      const firstName = metadata.first_name || metadata.full_name || '';
+      const lastName = metadata.last_name || '';
+      const name = `${firstName} ${lastName}`.trim() || session.user.email?.split('@')[0] || 'Unknown';
+      const role = metadata.role || 'Unknown';
+      return { name, role };
+    }
+    
+    const firstName = userData.first_name || '';
+    const lastName = userData.last_name || '';
+    const name = `${firstName} ${lastName}`.trim() || session.user.email?.split('@')[0] || 'Unknown';
+    const role = userData.role || 'Unknown';
+    
+    return { name, role };
+  } catch (e) {
+    console.error('Error getting user info:', e);
+    return { name: 'Unknown', role: 'Unknown' };
+  }
+}
+
+async function saveForm() {
   const recordId = getRecordId();
   const inputs = Array.from(document.querySelectorAll('.fillable')).map(el => el.value || '');
   const edits = Array.from(document.querySelectorAll('[contenteditable="true"]')).map(el => (el.textContent || ''));
-  const payload = { recordId, savedAt: new Date().toISOString(), inputs, edits };
+  
+  // Get current user info
+  const userInfo = await getCurrentUserInfo();
+  
+  const payload = { 
+    recordId, 
+    savedAt: new Date().toISOString(), 
+    inputs, 
+    edits,
+    savedBy: userInfo.name,
+    savedByRole: userInfo.role
+  };
+  
   try {
     localStorage.setItem(`denrForm:${recordId}`, JSON.stringify(payload));
     alert('Form saved for record ' + recordId + '.');
     // Mark as saved and clean
     window.__formHasSavedOnce = true;
     window.__formIsDirty = false;
+    
+    // Update saved by info display
+    updateSavedByInfo(payload);
   } catch { alert('Unable to save.'); }
+}
+
+function updateSavedByInfo(data) {
+  const savedByInfo = document.getElementById('savedByInfo');
+  const savedByName = document.getElementById('savedByName');
+  const savedByRole = document.getElementById('savedByRole');
+  
+  if (savedByInfo && savedByName && savedByRole && data.savedBy && data.savedBy !== 'Unknown') {
+    savedByName.textContent = data.savedBy;
+    
+    // Capitalize first letter of each word in role
+    const formattedRole = data.savedByRole && data.savedByRole !== 'Unknown' 
+      ? data.savedByRole.split(' ').map(word => 
+          word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        ).join(' ')
+      : 'Unknown';
+    
+    savedByRole.textContent = formattedRole;
+    savedByInfo.style.display = 'block';
+  }
 }
 
 function loadFormIfAny() {
@@ -404,10 +578,19 @@ function loadFormIfAny() {
     });
     // Existing saved payload means user can print without saving unless they change something
     window.__formHasSavedOnce = true;
+    
+    // Display saved by info if available
+    if (data.savedBy && data.savedBy !== 'Unknown') {
+      updateSavedByInfo(data);
+    }
   } catch {}
 }
 
-loadFormIfAny();
+// Initialize Supabase and load form
+(async function() {
+  await initSupabase();
+  loadFormIfAny();
+})();
 
 // Track dirty state: set when any field changes; cleared on save
 window.__formIsDirty = false;
