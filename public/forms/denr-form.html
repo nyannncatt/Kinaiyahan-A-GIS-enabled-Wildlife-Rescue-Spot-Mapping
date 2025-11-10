@@ -350,10 +350,16 @@
 </div>
 
 <!-- Saved By Information (Screen Only) - Outside form container -->
-<div id="savedByInfo" style="display: none; position: fixed; top: 70px; right: 10px; background: transparent; color: #2e7d32; padding: 10px 15px; border-radius: 8px; font-size: 11pt; z-index: 1001; max-width: 250px;">
-  <div style="font-weight: bold; margin-bottom: 4px;">Last Saved By:</div>
-  <div style="font-size: 10pt; margin-bottom: 2px;"><strong>Name:</strong> <span id="savedByName"></span></div>
-  <div style="font-size: 10pt; opacity: 0.9;"><strong>Role:</strong> <span id="savedByRole"></span></div>
+<div id="savedByInfo" style="display: none; position: fixed; top: 70px; right: 10px; background: transparent; color: #2e7d32; padding: 10px 15px; border-radius: 8px; font-size: 11pt; z-index: 1001; max-width: 250px; line-height: 1.4;">
+  <div style="font-weight: bold; margin-bottom: 6px; position: relative;">Last Saved By:</div>
+  <div style="font-size: 10pt; margin-bottom: 4px; position: relative;">
+    <strong style="position: absolute; left: 0; top: 0; width: 50px; text-align: left;">Name:</strong>
+    <span id="savedByName" style="display: block; margin-left: 55px; word-wrap: break-word; word-break: break-word; min-height: 1.2em;"></span>
+  </div>
+  <div style="font-size: 10pt; opacity: 0.9; position: relative;">
+    <strong style="position: absolute; left: 0; top: 0; width: 50px; text-align: left;">Role:</strong>
+    <span id="savedByRole" style="display: block; margin-left: 55px; word-wrap: break-word; word-break: break-word; min-height: 1.2em;"></span>
+  </div>
 </div>
 
 <!-- Supabase Client -->
