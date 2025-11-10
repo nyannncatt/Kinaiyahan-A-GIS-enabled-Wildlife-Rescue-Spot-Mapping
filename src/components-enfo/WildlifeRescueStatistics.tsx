@@ -183,12 +183,25 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
 
   // Handle delete record
   const handleDeleteRecord = async (id: string) => {
+    const recordToDelete = wildlifeRecords.find(r => r.id === id);
+    const recordName = recordToDelete?.species_name || 'record';
+    
     if (window.confirm('Are you sure you want to delete this wildlife record?')) {
       try {
         await deleteWildlifeRecord(id);
         setWildlifeRecords(prev => prev.filter(record => record.id !== id));
+        
+        // Show success message
+        setSuccessSnackbar({
+          open: true,
+          message: `Wildlife record "${recordName}" has been successfully deleted!`,
+        });
       } catch (error) {
         console.error('Error deleting wildlife record:', error);
+        setErrorSnackbar({
+          open: true,
+          message: 'Failed to delete wildlife record. Please try again.',
+        });
       }
     }
   };
@@ -389,6 +402,43 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       setTimeout(() => {
         window.location.reload();
       }, 1500);
+    } catch (error) {
+      console.error('Error approving wildlife record:', error);
+      setErrorSnackbar({
+        open: true,
+        message: 'Failed to approve wildlife record',
+      });
+    }
+  };
+
+  // Approve and print function
+  const handleApproveAndPrint = async () => {
+    if (!recordToApprove) return;
+    
+    try {
+      const updatedRecord = await approveWildlifeRecord(recordToApprove.id);
+      setWildlifeRecords(prev => 
+        prev.map(record => record.id === recordToApprove.id ? updatedRecord : record)
+      );
+      setSuccessSnackbar({
+        open: true,
+        message: 'Wildlife record has been approved successfully! Opening print form...',
+      });
+      
+      // Close modal
+      setApprovalPreviewOpen(false);
+      const recordToPrint = recordToApprove;
+      setRecordToApprove(null);
+      setHasScrolledToBottom(false);
+      
+      // Open print form
+      setTimeout(() => {
+        handlePrintRecord(recordToPrint);
+        // Refresh the entire site after opening print form
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      }, 500);
     } catch (error) {
       console.error('Error approving wildlife record:', error);
       setErrorSnackbar({
@@ -1851,7 +1901,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               Please scroll down to review all information before approving.
             </Alert>
           )}
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
             <Button 
               onClick={() => {
                 setApprovalPreviewOpen(false);
@@ -1879,7 +1929,26 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                 }
               }}
             >
-              Approve Report
+              Approve
+            </Button>
+            <Button 
+              onClick={handleApproveAndPrint} 
+              variant="contained"
+              startIcon={<PrintIcon />}
+              disabled={!hasScrolledToBottom}
+              sx={{
+                bgcolor: hasScrolledToBottom ? '#4caf50' : 'rgba(46, 125, 50, 0.3)',
+                color: hasScrolledToBottom ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                '&:hover': {
+                  bgcolor: hasScrolledToBottom ? '#388e3c' : 'rgba(46, 125, 50, 0.3)'
+                },
+                '&:disabled': {
+                  bgcolor: 'rgba(46, 125, 50, 0.3)',
+                  color: 'rgba(255, 255, 255, 0.5)'
+                }
+              }}
+            >
+              Approve and Print Report
             </Button>
           </Box>
         </DialogActions>
