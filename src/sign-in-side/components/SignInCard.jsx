@@ -1,5 +1,5 @@
 // src/sign-in-side/SignInCard.jsx
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../services/supabase";
 
@@ -71,6 +71,8 @@ export default function SignInCard() {
   const [captchaError, setCaptchaError] = useState(false);
   const [captchaSuccess, setCaptchaSuccess] = useState(false);
   const [pendingCredentials, setPendingCredentials] = useState(null);
+  const [capsLockOn, setCapsLockOn] = useState(false);
+  const passwordInputRef = useRef(null);
   const navigate = useNavigate();
   const { mode, systemMode } = useColorScheme();
 
@@ -225,6 +227,32 @@ export default function SignInCard() {
 
   const goPublicReport = () => navigate('/public-report');
 
+  // Detect Caps Lock
+  const handleKeyDown = (e) => {
+    // Check Caps Lock state directly
+    const capsLockState = e.getModifierState('CapsLock');
+    setCapsLockOn(capsLockState);
+  };
+
+  const handleKeyUp = (e) => {
+    // Update Caps Lock state on key release
+    if (e.key === 'CapsLock' || e.getModifierState) {
+      const capsLockState = e.getModifierState('CapsLock');
+      setCapsLockOn(capsLockState);
+    }
+  };
+
+  const handlePasswordFocus = () => {
+    // Check Caps Lock when password field is focused
+    // We'll check on first key press instead since focus event doesn't have modifier state
+    // The warning will appear as soon as user starts typing
+  };
+
+  const handlePasswordBlur = () => {
+    // Hide warning when field loses focus
+    setCapsLockOn(false);
+  };
+
   const isEffectiveLight = mode === 'light' || (mode === 'system' && systemMode === 'light');
 
   return (
@@ -294,6 +322,11 @@ export default function SignInCard() {
               color={passwordError ? 'error' : 'primary'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onKeyUp={handleKeyUp}
+              onFocus={handlePasswordFocus}
+              onBlur={handlePasswordBlur}
+              inputRef={passwordInputRef}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -307,6 +340,11 @@ export default function SignInCard() {
                 ),
               }}
             />
+            {capsLockOn && (
+              <Alert severity="warning" sx={{ mt: -1, mb: 1 }}>
+                ⚠️ Caps Lock is on
+              </Alert>
+            )}
               </FormControl>
 
           <FormControlLabel control={<Checkbox value="remember" color="primary" />} label="Remember me" />
