@@ -637,6 +637,44 @@ window.addEventListener('afterprint', () => {
   });
 });
 </script>
+
+<!-- Suppress transient 504/429 console noise on this page only -->
+<script>
+(function () {
+  try {
+    const patterns = [
+      /Failed to load resource:\s*the server responded with a status of (504|429)/i,
+      /Gateway Timeout/i,
+      /Too Many Requests/i
+    ];
+
+    const originalError = console.error ? console.error.bind(console) : null;
+    if (originalError) {
+      console.error = (...args) => {
+        const text = args.map(a => (a && a.message) ? a.message : String(a)).join(' ');
+        if (patterns.some(re => re.test(text))) return; // swallow noisy 504/429
+        originalError(...args);
+      };
+    }
+
+    // Prevent default error logging for matching messages
+    window.addEventListener('error', (e) => {
+      const text = `${e.message || ''} ${e.filename || ''}`;
+      if (patterns.some(re => re.test(text))) {
+        e.preventDefault();
+      }
+    }, true);
+
+    window.addEventListener('unhandledrejection', (e) => {
+      const reason = e.reason;
+      const text = reason && (reason.message || String(reason)) || '';
+      if (patterns.some(re => re.test(text))) {
+        e.preventDefault();
+      }
+    });
+  } catch {}
+})();
+</script>
 </body>
 </html>
 

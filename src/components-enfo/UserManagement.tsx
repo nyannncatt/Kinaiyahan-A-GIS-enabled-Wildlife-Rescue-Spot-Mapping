@@ -67,7 +67,7 @@ export default function UserManagement() {
   const [error, setError] = React.useState<string | null>(null);
   const [page, setPage] = React.useState(0); // 0-based
   const pageSize = 10;
-  const usersPageSize = 7; // smaller user rows per page to fit viewport
+  const usersPageSize = 8; // show 8 user rows per page
   const [totalCount, setTotalCount] = React.useState(0);
   const [allRoleCounts, setAllRoleCounts] = React.useState<{ enforcement: number; cenro: number }>({ enforcement: 0, cenro: 0 });
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -891,7 +891,7 @@ export default function UserManagement() {
           ) : null;
           return (
             <React.Fragment key={`row-${entry.id || idx}`}>
-              <ListItem sx={{ py: 1 }}>
+              <ListItem sx={{ py: 1, minHeight: 64 }}>
                 <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 100, textAlign: 'center' }}>
                     <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.7rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showUserIds, 3)}</Typography>
@@ -1060,7 +1060,7 @@ export default function UserManagement() {
           const isPlaceholder = !entry.name && !entry.email && !entry.contactNumber;
           return (
             <React.Fragment key={`pending-row-${entry.id || idx}`}>
-              <ListItem sx={{ py: 2 }}>
+              <ListItem sx={{ py: 2, minHeight: 64 }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 140, textAlign: 'center' }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.75rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showPendingIds, 2)}</Typography>
@@ -1233,7 +1233,7 @@ export default function UserManagement() {
           const isPlaceholder = !entry.id && !entry.species && !entry.reporterName;
           return (
             <React.Fragment key={`report-row-${entry.id || idx}`}>
-              <ListItem sx={{ py: 2 }}>
+              <ListItem sx={{ py: 2, minHeight: 64 }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 140, textAlign: 'center' }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.75rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showReportIds, 2)}</Typography>
@@ -1405,7 +1405,7 @@ export default function UserManagement() {
             return padded;
           })().map((entry: any, idx) => (
             <React.Fragment key={`audit-row-${idx}`}>
-              <ListItem sx={{ py: 2 }}>
+              <ListItem sx={{ py: 2, minHeight: 64 }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 140, textAlign: 'center' }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.7rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showLoginIds, 2)}</Typography>
