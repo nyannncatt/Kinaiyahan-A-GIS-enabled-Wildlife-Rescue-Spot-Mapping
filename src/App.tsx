@@ -202,6 +202,22 @@ function App() {
   const location = useLocation();
   const isRecovery = window.location.hash.includes("type=recovery");
 
+  // Store Supabase config in localStorage for DENR form access
+  useEffect(() => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (supabaseUrl && supabaseKey) {
+        localStorage.setItem('supabaseConfig', JSON.stringify({
+          url: supabaseUrl,
+          key: supabaseKey
+        }));
+      }
+    } catch (e) {
+      console.log('Could not store Supabase config:', e);
+    }
+  }, []);
+
   // Loading-aware auth guard - also checks for role in public.users
   const RequireAuth = ({ children }: { children: ReactElement }) => {
     const { user, loading, session } = useAuth();
