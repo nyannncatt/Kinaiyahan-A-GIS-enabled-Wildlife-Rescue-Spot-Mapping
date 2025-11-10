@@ -865,7 +865,26 @@ export default function UserManagement() {
               </Tooltip>
               <Tooltip title={isAdmin ? 'Cannot delete admin' : ''}>
                 <span>
-                  <Button size="small" variant="outlined" color="error" disabled={isAdmin} onClick={() => openDeleteDialog(entry.id, entry.name)}>Delete User</Button>
+                  <Button 
+                    size="small" 
+                    variant="outlined" 
+                    color="error" 
+                    disabled={isAdmin} 
+                    onClick={() => openDeleteDialog(entry.id, entry.name)}
+                    sx={{
+                      color: isAdmin ? undefined : '#d32f2f !important',
+                      borderColor: isAdmin ? undefined : '#d32f2f',
+                      '&:hover': {
+                        borderColor: isAdmin ? undefined : '#d32f2f',
+                        bgcolor: isAdmin ? undefined : 'rgba(211, 47, 47, 0.04)'
+                      },
+                      '& .MuiButton-root': {
+                        color: '#d32f2f !important'
+                      }
+                    }}
+                  >
+                    Delete User
+                  </Button>
                 </span>
               </Tooltip>
             </Stack>
@@ -1515,7 +1534,9 @@ export default function UserManagement() {
 
       {/* Delete User Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onClose={closeDeleteDialog} fullWidth maxWidth="xs">
-        <DialogTitle>Delete User</DialogTitle>
+        <DialogTitle>
+          <Typography sx={{ color: '#d32f2f !important', fontWeight: 600 }}>Delete User</Typography>
+        </DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mt: 1 }}>
             Are you sure you want to delete <strong>{userToDelete?.name}</strong>?
