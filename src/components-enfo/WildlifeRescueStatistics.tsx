@@ -46,6 +46,7 @@ import {
   CheckCircle,
   Close,
   FileDownload as FileDownloadIcon,
+  InfoOutlined as InfoOutlinedIcon,
 } from '@mui/icons-material';
 import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, getUserRole, uploadWildlifePhoto, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
 import { useAuth } from '../context/AuthContext';
@@ -118,6 +119,10 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     open: false,
     message: '',
   });
+
+  // View details dialog
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [recordToView, setRecordToView] = useState<WildlifeRecord | null>(null);
 
   // Resolve role from DB if not in auth metadata
   useEffect(() => {
@@ -492,7 +497,11 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     window.open(`/forms/denr-form.html?recordId=${rec.id}`,'_blank');
   };
 
-
+  // Open read-only details dialog for a record (from list action)
+  const handleViewDetails = (rec: WildlifeRecord) => {
+    setRecordToView(rec);
+    setDetailsDialogOpen(true);
+  };
 
   // Handle Excel export preview
   const handleExcelPreview = () => {
@@ -1401,6 +1410,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             {paginatedRecords.map((record, index) => (
               <TableRow 
                 key={record.id}
+                onClick={() => handleViewDetails(record)}
                 sx={{ 
                   bgcolor: index % 2 === 0 
                     ? 'background.paper' 
@@ -1412,7 +1422,8 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       ? 'rgba(255, 255, 255, 0.05)' 
                       : 'rgba(0, 0, 0, 0.04)' 
                   },
-                  borderBottom: `1px solid ${theme.palette.divider}`
+                  borderBottom: `1px solid ${theme.palette.divider}`,
+                  cursor: 'pointer'
                 }}
               >
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2, fontFamily: 'monospace', fontSize: '0.8rem' }}>
@@ -1506,23 +1517,22 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                 </TableCell>
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
                   <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <Button
-                      variant="text"
-                      size="small"
-                      onClick={() => handleLocationClick(record)}
-                      sx={{ 
-                        color: theme.palette.primary.main,
-                        textTransform: 'none',
-                        fontWeight: 500,
-                        '&:hover': { 
-                          bgcolor: theme.palette.mode === 'dark' 
-                            ? 'rgba(25, 118, 210, 0.1)' 
-                            : 'rgba(25, 118, 210, 0.04)' 
-                        }
-                      }}
-                    >
-                      View Location
-                    </Button>
+                    <Tooltip title="View location">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => { e.stopPropagation(); handleLocationClick(record); }}
+                        sx={{ 
+                          color: theme.palette.primary.main,
+                          '&:hover': { 
+                            bgcolor: theme.palette.mode === 'dark' 
+                              ? 'rgba(25, 118, 210, 0.1)' 
+                              : 'rgba(25, 118, 210, 0.04)'
+                          }
+                        }}
+                      >
+                        <LocationIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                     {resolvedRole === 'enforcement' && (
                       <Tooltip
                         title={record.approval_status === 'rejected' ? 'Rejected reports cannot be edited' : 'Edit'}
@@ -1530,7 +1540,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                         <span>
                           <IconButton
                             size="small"
-                            onClick={() => handleEditRecord(record)}
+                            onClick={(e) => { e.stopPropagation(); handleEditRecord(record); }}
                             disabled={record.approval_status === 'rejected'}
                             sx={{ 
                               color: 'text.secondary',
@@ -1610,10 +1620,26 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                         </Button>
                       </>
                     )}
+                    {resolvedRole === 'enforcement' && (
+                      <Tooltip title="Delete">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteRecord(record.id); }}
+                          sx={{ 
+                            color: '#ff1744',
+                            '&:hover': { 
+                              bgcolor: 'rgba(255, 23, 68, 0.08)'
+                            }
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                     <Button
                       size="small"
                       variant="text"
-                      onClick={() => handleViewForm(record)}
+                      onClick={(e) => { e.stopPropagation(); handleViewForm(record); }}
                       sx={{ 
                         color: theme.palette.primary.main,
                         textTransform: 'none',
@@ -1627,23 +1653,22 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     >
                       View Form
                     </Button>
-                    {resolvedRole === 'enforcement' && (
-                      <Button
+                    <Tooltip title="View details">
+                      <IconButton
                         size="small"
-                        variant="text"
-                        onClick={() => handleDeleteRecord(record.id)}
+                        onClick={(e) => { e.stopPropagation(); handleViewDetails(record); }}
                         sx={{ 
-                          color: '#ff1744 !important',
-                          textTransform: 'none',
-                          fontWeight: 700,
+                          color: theme.palette.primary.main,
                           '&:hover': { 
-                            bgcolor: 'rgba(255, 23, 68, 0.08)'
+                            bgcolor: theme.palette.mode === 'dark' 
+                              ? 'rgba(25, 118, 210, 0.1)' 
+                              : 'rgba(25, 118, 210, 0.04)'
                           }
                         }}
                       >
-                        Delete
-                      </Button>
-                    )}
+                        <InfoOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   </Box>
                 </TableCell>
               </TableRow>
@@ -2602,6 +2627,121 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
            {errorSnackbar.message}
          </Alert>
        </Snackbar>
+
+       {/* View Details Dialog */}
+       <Dialog 
+         open={detailsDialogOpen} 
+         onClose={() => { setDetailsDialogOpen(false); setRecordToView(null); }}
+         maxWidth="md" 
+         fullWidth
+         PaperProps={{
+           sx: {
+             background: environmentalBg
+               ? (theme.palette.mode === 'light'
+                   ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+                   : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))')
+               : undefined,
+             backgroundRepeat: environmentalBg ? 'no-repeat' : undefined,
+             backgroundSize: environmentalBg ? '100% 100%' : undefined,
+             backgroundAttachment: environmentalBg ? 'fixed' : undefined,
+           }
+         }}
+       >
+         <DialogTitle sx={{ pb: 2, textAlign: 'center' }}>
+           <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mb: 2 }}>
+             <Box component="img" src="/images/kinaiyahanlogonobg.png" alt="Kinaiyahan" sx={{ width: 56, height: 56, objectFit: 'contain' }} />
+             <Typography variant="h5" sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '0.3em', color: '#2e7d32 !important', userSelect: 'none', lineHeight: 1 }}>
+               ＫＩＮＡＩＹＡＨＡＮ
+             </Typography>
+           </Stack>
+           <Typography variant="h6" sx={{ fontWeight: 600, color: '#2e7d32 !important' }}>
+             Record Details
+           </Typography>
+         </DialogTitle>
+         <DialogContent sx={{ pt: 3 }}>
+           {recordToView && (
+             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+               {recordToView.photo_url && (
+                 <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                   <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>Photo</Typography>
+                   <Box component="img" src={recordToView.photo_url} alt={recordToView.species_name} sx={{ width: '100%', maxHeight: 350, objectFit: 'contain', borderRadius: 1.5, border: '1px solid rgba(46, 125, 50, 0.3)', bgcolor: 'background.default' }} />
+                 </Card>
+               )}
+
+               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                 <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                   <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>Species Information</Typography>
+                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                     <Box>
+                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Species Name</Typography>
+                       <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.species_name}</Typography>
+                     </Box>
+                     <Box>
+                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Status</Typography>
+                       <Chip label={recordToView.status} size="small" sx={{ borderColor: '#2e7d32', color: '#2e7d32', '& .MuiChip-label': { color: '#2e7d32' } }} variant="outlined" />
+                     </Box>
+                   </Box>
+                 </Card>
+
+                 <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                   <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>Location Information</Typography>
+                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                     {recordToView.barangay && (
+                       <Box>
+                         <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Barangay</Typography>
+                         <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.barangay}</Typography>
+                       </Box>
+                     )}
+                     {recordToView.municipality && (
+                       <Box>
+                         <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Municipality</Typography>
+                         <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.municipality}</Typography>
+                       </Box>
+                     )}
+                     <Box>
+                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Coordinates</Typography>
+                       <Typography variant="body2" sx={{ fontFamily: 'monospace', color: '#2e7d32 !important' }}>{recordToView.latitude.toFixed(6)}, {recordToView.longitude.toFixed(6)}</Typography>
+                     </Box>
+                   </Box>
+                 </Card>
+               </Box>
+
+               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                 {(recordToView.reporter_name || recordToView.contact_number) && (
+                   <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                     <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>Reporter Information</Typography>
+                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                       {recordToView.reporter_name && (
+                         <Box>
+                           <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Reporter Name</Typography>
+                           <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.reporter_name}</Typography>
+                         </Box>
+                       )}
+                       {recordToView.contact_number && (
+                         <Box>
+                           <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Contact Number</Typography>
+                           <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.contact_number}</Typography>
+                         </Box>
+                       )}
+                     </Box>
+                   </Card>
+                 )}
+
+                 <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                   <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>Report Details</Typography>
+                   <Box>
+                     <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Date Captured</Typography>
+                     <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{new Date(recordToView.timestamp_captured).toLocaleString()}</Typography>
+                   </Box>
+                 </Card>
+               </Box>
+             </Box>
+           )}
+         </DialogContent>
+         <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+           <Button onClick={() => { setDetailsDialogOpen(false); setRecordToView(null); }} variant="outlined">Close</Button>
+         </DialogActions>
+       </Dialog>
      </Box>
    );
  };
