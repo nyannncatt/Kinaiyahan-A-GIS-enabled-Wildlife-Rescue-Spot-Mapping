@@ -1524,21 +1524,32 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       View Location
                     </Button>
                     {resolvedRole === 'enforcement' && (
-                      <IconButton
-                        size="small"
-                        onClick={() => handleEditRecord(record)}
-                        sx={{ 
-                          color: 'text.secondary',
-                          '&:hover': { 
-                            bgcolor: theme.palette.mode === 'dark' 
-                              ? 'rgba(25, 118, 210, 0.1)' 
-                              : 'rgba(25, 118, 210, 0.04)',
-                            color: theme.palette.primary.main
-                          }
-                        }}
+                      <Tooltip
+                        title={record.approval_status === 'rejected' ? 'Rejected reports cannot be edited' : 'Edit'}
                       >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
+                        <span>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleEditRecord(record)}
+                            disabled={record.approval_status === 'rejected'}
+                            sx={{ 
+                              color: 'text.secondary',
+                              opacity: record.approval_status === 'rejected' ? 0.5 : 1,
+                              cursor: record.approval_status === 'rejected' ? 'not-allowed' : 'pointer',
+                              '&:hover': { 
+                                bgcolor: record.approval_status === 'rejected'
+                                  ? 'transparent'
+                                  : (theme.palette.mode === 'dark' 
+                                      ? 'rgba(25, 118, 210, 0.1)' 
+                                      : 'rgba(25, 118, 210, 0.04)'),
+                                color: record.approval_status === 'rejected' ? 'text.secondary' : theme.palette.primary.main
+                              }
+                            }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
                     )}
                     <IconButton
                       size="small"
