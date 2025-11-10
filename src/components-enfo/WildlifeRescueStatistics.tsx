@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Button,
@@ -30,6 +30,7 @@ import {
   CardContent,
   InputAdornment,
   Collapse,
+  Stack,
 } from '@mui/material';
 import {
   LocationOn as LocationIcon,
@@ -74,6 +75,11 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   // Reject confirmation dialog
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [recordToReject, setRecordToReject] = useState<WildlifeRecord | null>(null);
+  // Approval preview modal
+  const [approvalPreviewOpen, setApprovalPreviewOpen] = useState(false);
+  const [recordToApprove, setRecordToApprove] = useState<WildlifeRecord | null>(null);
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+  const approvalContentRef = useRef<HTMLDivElement>(null);
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -341,17 +347,43 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   }, [editPhotoPreview]);
 
 
-  // Handle approve record
-  const handleApproveRecord = async (id: string) => {
+  // Handle approve record - open preview modal
+  const handleApproveClick = (record: WildlifeRecord) => {
+    setRecordToApprove(record);
+    setApprovalPreviewOpen(true);
+    setHasScrolledToBottom(false);
+  };
+
+  // Handle scroll in approval modal
+  const handleApprovalScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const scrollTop = target.scrollTop;
+    const scrollHeight = target.scrollHeight;
+    const clientHeight = target.clientHeight;
+    
+    // Check if scrolled to bottom (with 50px threshold)
+    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 50;
+    setHasScrolledToBottom(isAtBottom);
+  };
+
+  // Final approve function
+  const handleFinalApprove = async () => {
+    if (!recordToApprove) return;
+    
     try {
-      const updatedRecord = await approveWildlifeRecord(id);
+      const updatedRecord = await approveWildlifeRecord(recordToApprove.id);
       setWildlifeRecords(prev => 
-        prev.map(record => record.id === id ? updatedRecord : record)
+        prev.map(record => record.id === recordToApprove.id ? updatedRecord : record)
       );
       setSuccessSnackbar({
         open: true,
         message: 'Wildlife record has been approved successfully! Refreshing data...',
       });
+      
+      // Close modal
+      setApprovalPreviewOpen(false);
+      setRecordToApprove(null);
+      setHasScrolledToBottom(false);
       
       // Refresh the entire site after successful approval
       setTimeout(() => {
@@ -1479,7 +1511,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                           size="small"
                           variant="outlined"
                           startIcon={<CheckCircle fontSize="small" />}
-                          onClick={() => handleApproveRecord(record.id)}
+                          onClick={() => handleApproveClick(record)}
                           sx={{ 
                             color: '#4caf50',
                             borderColor: '#4caf50',
@@ -1493,7 +1525,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                             }
                           }}
                         >
-                          Approved
+                          Approve
                         </Button>
                         <Button
                           size="small"
@@ -1570,19 +1602,503 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
         />
       </TableContainer>
 
-      {/* Reject Confirmation Dialog */}
-      <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Create report and reject</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ mb: 1 }}>
-            Opening the printable form in a new tab, then this record will be rejected.
+      {/* Approval Preview Modal */}
+      <Dialog 
+        open={approvalPreviewOpen} 
+        onClose={() => {
+          setApprovalPreviewOpen(false);
+          setRecordToApprove(null);
+          setHasScrolledToBottom(false);
+        }} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: environmentalBg
+              ? (theme.palette.mode === 'light'
+                  ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+                  : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))')
+              : undefined,
+            backgroundRepeat: environmentalBg ? 'no-repeat' : undefined,
+            backgroundSize: environmentalBg ? '100% 100%' : undefined,
+            backgroundAttachment: environmentalBg ? 'fixed' : undefined,
+            height: '85vh',
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 2, textAlign: 'center' }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mb: 2 }}>
+            <Box
+              component="img"
+              src="/images/kinaiyahanlogonobg.png"
+              alt="Kinaiyahan"
+              sx={{ width: 56, height: 56, objectFit: 'contain' }}
+            />
+            <Typography
+              variant="h5"
+              sx={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 800,
+                letterSpacing: '0.3em',
+                color: '#2e7d32 !important',
+                userSelect: 'none',
+                lineHeight: 1,
+              }}
+            >
+              ＫＩＮＡＩＹＡＨＡＮ
+            </Typography>
+          </Stack>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#2e7d32 !important' }}>
+            Review Public Report
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            The site will stay on this page; the print form opens separately.
+          <Typography variant="body2" sx={{ mt: 0.5, color: '#2e7d32 !important' }}>
+            Please review the report details before approving
           </Typography>
+        </DialogTitle>
+        <DialogContent 
+          sx={{ 
+            pt: 3,
+            flex: 1,
+            overflowY: 'auto',
+            position: 'relative',
+            minHeight: 0
+          }}
+          onScroll={handleApprovalScroll}
+          ref={approvalContentRef}
+        >
+          {recordToApprove && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+              {/* Photo Section */}
+              {recordToApprove.photo_url && (
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Photo
+                  </Typography>
+                  <Box
+                    component="img"
+                    src={recordToApprove.photo_url}
+                    alt={recordToApprove.species_name}
+                    sx={{
+                      width: '100%',
+                      maxHeight: 350,
+                      objectFit: 'contain',
+                      borderRadius: 1.5,
+                      border: '1px solid rgba(46, 125, 50, 0.3)',
+                      bgcolor: 'background.default',
+                    }}
+                  />
+                </Card>
+              )}
+
+              {/* Information Grid */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                {/* Species Information */}
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Species Information
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        Species Name
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                        {recordToApprove.species_name}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        Status
+                      </Typography>
+                      <Chip
+                        label={recordToApprove.status}
+                        size="small"
+                        sx={{
+                          borderColor: '#2e7d32',
+                          color: '#2e7d32',
+                          '& .MuiChip-label': {
+                            color: '#2e7d32',
+                          }
+                        }}
+                        variant="outlined"
+                      />
+                    </Box>
+                  </Box>
+                </Card>
+
+                {/* Location Information */}
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Location Information
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    {recordToApprove.barangay && (
+                      <Box>
+                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                          Barangay
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                          {recordToApprove.barangay}
+                        </Typography>
+                      </Box>
+                    )}
+                    {recordToApprove.municipality && (
+                      <Box>
+                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                          Municipality
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                          {recordToApprove.municipality}
+                        </Typography>
+                      </Box>
+                    )}
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        Coordinates
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', color: '#2e7d32 !important' }}>
+                        {recordToApprove.latitude.toFixed(6)}, {recordToApprove.longitude.toFixed(6)}
+                      </Typography>
+                    </Box>
+                    {recordToApprove.has_exif_gps && (
+                      <Chip
+                        label="GPS from Photo EXIF"
+                        size="small"
+                        sx={{
+                          borderColor: '#2e7d32',
+                          color: '#2e7d32',
+                          mt: 0.5,
+                          '& .MuiChip-label': {
+                            color: '#2e7d32',
+                          }
+                        }}
+                        variant="outlined"
+                      />
+                    )}
+                  </Box>
+                </Card>
+              </Box>
+
+              {/* Reporter Information & Date */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                {(recordToApprove.reporter_name || recordToApprove.contact_number) && (
+                  <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                    <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                      Reporter Information
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {recordToApprove.reporter_name && (
+                        <Box>
+                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                            Reporter Name
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                            {recordToApprove.reporter_name}
+                          </Typography>
+                        </Box>
+                      )}
+                      {recordToApprove.contact_number && (
+                        <Box>
+                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                            Contact Number
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                            {recordToApprove.contact_number}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Card>
+                )}
+
+                {/* Report Details */}
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Report Details
+                  </Typography>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                      Date Captured
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                      {new Date(recordToApprove.timestamp_captured).toLocaleString()}
+                    </Typography>
+                  </Box>
+                </Card>
+              </Box>
+            </Box>
+          )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRejectDialogOpen(false)}>Cancel</Button>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 2, flexDirection: 'column', alignItems: 'stretch' }}>
+          {!hasScrolledToBottom && (
+            <Alert 
+              severity="info" 
+              sx={{ 
+                mb: 2, 
+                bgcolor: 'rgba(46, 125, 50, 0.1)',
+                border: '1px solid rgba(46, 125, 50, 0.3)',
+                '& .MuiAlert-icon': {
+                  color: '#2e7d32'
+                },
+                '& .MuiAlert-message': {
+                  color: '#2e7d32'
+                }
+              }}
+            >
+              Please scroll down to review all information before approving.
+            </Alert>
+          )}
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+            <Button 
+              onClick={() => {
+                setApprovalPreviewOpen(false);
+                setRecordToApprove(null);
+                setHasScrolledToBottom(false);
+              }}
+              variant="outlined"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleFinalApprove} 
+              variant="contained"
+              startIcon={<CheckCircle />}
+              disabled={!hasScrolledToBottom}
+              sx={{
+                bgcolor: hasScrolledToBottom ? '#4caf50' : 'rgba(46, 125, 50, 0.3)',
+                color: hasScrolledToBottom ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                '&:hover': {
+                  bgcolor: hasScrolledToBottom ? '#388e3c' : 'rgba(46, 125, 50, 0.3)'
+                },
+                '&:disabled': {
+                  bgcolor: 'rgba(46, 125, 50, 0.3)',
+                  color: 'rgba(255, 255, 255, 0.5)'
+                }
+              }}
+            >
+              Approve Report
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reject Confirmation Dialog */}
+      <Dialog 
+        open={rejectDialogOpen} 
+        onClose={() => setRejectDialogOpen(false)} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: environmentalBg
+              ? (theme.palette.mode === 'light'
+                  ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+                  : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))')
+              : undefined,
+            backgroundRepeat: environmentalBg ? 'no-repeat' : undefined,
+            backgroundSize: environmentalBg ? '100% 100%' : undefined,
+            backgroundAttachment: environmentalBg ? 'fixed' : undefined,
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 2, textAlign: 'center' }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mb: 2 }}>
+            <Box
+              component="img"
+              src="/images/kinaiyahanlogonobg.png"
+              alt="Kinaiyahan"
+              sx={{ width: 56, height: 56, objectFit: 'contain' }}
+            />
+            <Typography
+              variant="h5"
+              sx={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 800,
+                letterSpacing: '0.3em',
+                color: '#2e7d32 !important',
+                userSelect: 'none',
+                lineHeight: 1,
+              }}
+            >
+              ＫＩＮＡＩＹＡＨＡＮ
+            </Typography>
+          </Stack>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#2e7d32 !important' }}>
+            Create Report and Reject
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 0.5, color: '#2e7d32 !important' }}>
+            Opening the printable form in a new tab, then this record will be rejected. The site will stay on this page; the print form opens separately.
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          {recordToReject && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+              {/* Photo Section */}
+              {recordToReject.photo_url && (
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Photo
+                  </Typography>
+                  <Box
+                    component="img"
+                    src={recordToReject.photo_url}
+                    alt={recordToReject.species_name}
+                    sx={{
+                      width: '100%',
+                      maxHeight: 350,
+                      objectFit: 'contain',
+                      borderRadius: 1.5,
+                      border: '1px solid rgba(46, 125, 50, 0.3)',
+                      bgcolor: 'background.default',
+                    }}
+                  />
+                </Card>
+              )}
+
+              {/* Information Grid */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                {/* Species Information */}
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Species Information
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        Species Name
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                        {recordToReject.species_name}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        Status
+                      </Typography>
+                      <Chip
+                        label={recordToReject.status}
+                        size="small"
+                        sx={{
+                          borderColor: '#2e7d32',
+                          color: '#2e7d32',
+                          '& .MuiChip-label': {
+                            color: '#2e7d32',
+                          }
+                        }}
+                        variant="outlined"
+                      />
+                    </Box>
+                  </Box>
+                </Card>
+
+                {/* Location Information */}
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Location Information
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    {recordToReject.barangay && (
+                      <Box>
+                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                          Barangay
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                          {recordToReject.barangay}
+                        </Typography>
+                      </Box>
+                    )}
+                    {recordToReject.municipality && (
+                      <Box>
+                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                          Municipality
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                          {recordToReject.municipality}
+                        </Typography>
+                      </Box>
+                    )}
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        Coordinates
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', color: '#2e7d32 !important' }}>
+                        {recordToReject.latitude.toFixed(6)}, {recordToReject.longitude.toFixed(6)}
+                      </Typography>
+                    </Box>
+                    {recordToReject.has_exif_gps && (
+                      <Chip
+                        label="GPS from Photo EXIF"
+                        size="small"
+                        sx={{
+                          borderColor: '#2e7d32',
+                          color: '#2e7d32',
+                          mt: 0.5,
+                          '& .MuiChip-label': {
+                            color: '#2e7d32',
+                          }
+                        }}
+                        variant="outlined"
+                      />
+                    )}
+                  </Box>
+                </Card>
+              </Box>
+
+              {/* Reporter Information & Date */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                {(recordToReject.reporter_name || recordToReject.contact_number) && (
+                  <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                    <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                      Reporter Information
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {recordToReject.reporter_name && (
+                        <Box>
+                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                            Reporter Name
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                            {recordToReject.reporter_name}
+                          </Typography>
+                        </Box>
+                      )}
+                      {recordToReject.contact_number && (
+                        <Box>
+                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                            Contact Number
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                            {recordToReject.contact_number}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Card>
+                )}
+
+                {/* Report Details */}
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Report Details
+                  </Typography>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                      Date Captured
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                      {new Date(recordToReject.timestamp_captured).toLocaleString()}
+                    </Typography>
+                  </Box>
+                </Card>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+          <Button onClick={() => setRejectDialogOpen(false)} variant="outlined">Cancel</Button>
           <Button onClick={openPrintAndReject} color="error" variant="contained">Open Print & Reject</Button>
         </DialogActions>
       </Dialog>
