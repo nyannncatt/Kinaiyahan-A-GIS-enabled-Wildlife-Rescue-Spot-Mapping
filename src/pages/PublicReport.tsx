@@ -1561,6 +1561,17 @@ export default function PublicReport() {
                     <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
                       The detected location will be used for the map marker.
                     </Typography>
+                    <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
+                        Coordinates:
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                        Latitude: <strong>{extractedCoords.lat.toFixed(6)}</strong>
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                        Longitude: <strong>{extractedCoords.lng.toFixed(6)}</strong>
+                      </Typography>
+                    </Box>
                   </Alert>
                 ) : (
                   <Alert 
@@ -2553,8 +2564,10 @@ export default function PublicReport() {
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
-              width: isMobile ? '95%' : 600,
-              height: isMobile ? '70%' : 500,
+              width: isMobile ? '95%' : 800,
+              height: isMobile ? '85%' : 700,
+              maxWidth: '95vw',
+              maxHeight: '90vh',
               bgcolor: 'black',
               borderRadius: 2,
               overflow: 'hidden',
