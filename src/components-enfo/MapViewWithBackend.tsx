@@ -2095,6 +2095,9 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                marginLeft: environmentalBg ? '35%' : '39%',
                marginTop: '10%',
                transform: 'translateX(0)',
+               maxHeight: '80vh',
+               display: 'flex',
+               flexDirection: 'column',
                background: environmentalBg
                  ? (theme.palette.mode === 'light'
                      ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
@@ -2118,7 +2121,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                </Typography>
              </Box>
            </DialogTitle>
-          <DialogContent>
+          <DialogContent sx={{ overflowY: 'auto', maxHeight: 'calc(80vh - 140px)' }}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
                 {pendingWarning && (
                   <Alert severity="warning" sx={{ my: 0.5 }}>
