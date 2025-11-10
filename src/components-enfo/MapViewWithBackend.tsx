@@ -907,8 +907,14 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
         photoUrl = pendingMarker.photo;
       }
 
+      const rawSpecies = (pendingMarker.speciesName || '').trim();
+      const parts = rawSpecies.split('/');
+      const sci = parts.length > 1 ? parts[0].trim() : undefined;
+      const common = parts.length > 1 ? parts.slice(1).join('/').trim() : rawSpecies;
+
       const newRecord: CreateWildlifeRecord = {
-        species_name: pendingMarker.speciesName,
+        species_name: common,
+        scientific_name: sci,
         status: pendingMarker.status as any,
         latitude: pendingMarker.pos[0],
         longitude: pendingMarker.pos[1],
@@ -1650,21 +1656,21 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
               { 
                 value: 'rescued', 
                 label: 'Rescued', 
-                color: '#1e88e5',
+                color: '#2196f3',
                 icon: '🤝',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'rescued' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
               { 
                 value: 'turned over', 
                 label: 'Turned Over', 
-                color: '#fdd835',
+                color: '#ffc107',
                 icon: '🔄',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'turned over' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
               { 
                 value: 'released', 
                 label: 'Released', 
-                color: '#43a047',
+                color: '#4caf50',
                 icon: '🌀',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'released' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
@@ -2161,7 +2167,10 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                             onMouseDown={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              setPendingMarker((p) => (p ? { ...p, speciesName: opt.label } : p));
+                              const common = opt.common?.trim();
+                              const scientific = opt.label.trim();
+                              const combined = common ? `${scientific} / ${common}` : scientific;
+                              setPendingMarker((p) => (p ? { ...p, speciesName: combined } : p));
                               setShowSpeciesDropdown(false);
                             }}
                           >

@@ -28,6 +28,7 @@ export interface WildlifeRecord {
 
 export interface CreateWildlifeRecord {
   species_name: string;
+  scientific_name?: string;
   status: 'reported' | 'rescued' | 'turned over' | 'released' | 'dispersed';
   approval_status?: 'pending' | 'approved' | 'rejected';
   latitude: number;

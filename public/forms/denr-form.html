@@ -596,6 +596,7 @@ function loadFormIfAny() {
 (async function() {
   await initSupabase();
   loadFormIfAny();
+  await autofillFromRecord();
 })();
 
 // Track dirty state: set when any field changes; cleared on save
@@ -636,6 +637,49 @@ window.addEventListener('afterprint', () => {
     input.style.color = '';
   });
 });
+
+// Autofill from wildlife record details
+async function autofillFromRecord() {
+  try {
+    const recordId = getRecordId();
+    if (!recordId || recordId === 'no-record') return;
+    if (!supabaseClient) {
+      supabaseClient = await initSupabase();
+    }
+    if (!supabaseClient) return;
+
+    const { data, error } = await supabaseClient
+      .from('wildlife_records')
+      .select('id,species_name,scientific_name,municipality,barangay,reporter_name')
+      .eq('id', recordId)
+      .single();
+    if (error || !data) return;
+
+    // Helpers to target fields safely
+    const speciesInput = document.querySelector('table tr:nth-of-type(2) td:nth-of-type(1) input');
+    const scientificInput = document.querySelector('table tr:nth-of-type(2) td:nth-of-type(2) input');
+    const quantityInput = document.querySelector('table tr:nth-of-type(2) td:nth-of-type(3) input');
+    let originInput = null;
+    let witnessInput = null;
+    try {
+      const ps = Array.from(document.querySelectorAll('p'));
+      const originP = ps.find(p => (p.textContent || '').toUpperCase().includes('ORIGIN OF WILDLIFE'));
+      if (originP) originInput = originP.querySelector('input');
+      const witnessP = ps.find(p => (p.textContent || '').toUpperCase().includes('WITNESS BY'));
+      if (witnessP) witnessInput = witnessP.querySelector('input');
+    } catch {}
+
+    // Fill only if empty (respect saved/edited content)
+    if (speciesInput && !speciesInput.value) speciesInput.value = data.species_name || '';
+    const scientific = (data && data.scientific_name) || '';
+    if (scientificInput && !scientificInput.value) scientificInput.value = scientific;
+    if (quantityInput && !quantityInput.value) quantityInput.value = '1';
+    const origin = [data.municipality, data.barangay].filter(Boolean).join(', ');
+    if (originInput && !originInput.value) originInput.value = origin;
+    const reporter = (data && data.reporter_name) || '';
+    if (witnessInput && !witnessInput.value) witnessInput.value = reporter;
+  } catch {}
+}
 </script>
 
 <!-- Suppress transient 504/429 console noise on this page only -->
