@@ -1185,7 +1185,45 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
           {/* Results Summary */}
           <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography variant="body2" color="text.secondary">
-              Showing {filteredRecords.length} of {wildlifeRecords.length} records
+              {(() => {
+                const start = page * rowsPerPage + 1;
+                const end = Math.min(page * rowsPerPage + rowsPerPage, filteredRecords.length);
+                const total = filteredRecords.length;
+                // Calculate approved records count (matching analytics logic)
+                const approvedCount = wildlifeRecords.filter(r => r.approval_status === 'approved' || r.user_id !== null).length;
+                const totalRecords = wildlifeRecords.length;
+                
+                if (total === 0) {
+                  return 'No records found';
+                }
+                
+                // Build the message
+                let message = '';
+                if (start === end) {
+                  message = `Showing record ${start} of ${total}`;
+                } else {
+                  message = `Showing ${start}-${end} of ${total} records`;
+                }
+                
+                // Add context about total and approved counts
+                if (!hasActiveFilters) {
+                  // When no filters, show total vs approved to match analytics
+                  if (totalRecords !== approvedCount) {
+                    message += ` (${approvedCount} approved, ${totalRecords} total)`;
+                  } else {
+                    message += ` (${totalRecords} total)`;
+                  }
+                } else {
+                  // When filters are active, show filtered vs total
+                  message += ` (${totalRecords} total`;
+                  if (totalRecords !== approvedCount) {
+                    message += `, ${approvedCount} approved`;
+                  }
+                  message += ')';
+                }
+                
+                return message;
+              })()}
             </Typography>
             {hasActiveFilters && (
               <Chip
