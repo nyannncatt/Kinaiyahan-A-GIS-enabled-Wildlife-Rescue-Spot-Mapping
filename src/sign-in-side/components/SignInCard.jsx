@@ -355,7 +355,7 @@ export default function SignInCard() {
                 fontFamily: 'Inter, sans-serif',
                 fontWeight: 800,
                 letterSpacing: '0.4em',
-                color: '#000000 !important',
+                color: '#2e7d32 !important',
                 userSelect: 'none',
                 lineHeight: 1,
               }}
