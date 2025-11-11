@@ -1446,9 +1446,6 @@ export default function PublicReport() {
                       }}
                     >
                       <MenuItem value="Manolo Fortich">Manolo Fortich</MenuItem>
-                      <MenuItem value="Malitbog">Malitbog</MenuItem>
-                      <MenuItem value="Sumilao">Sumilao</MenuItem>
-                      <MenuItem value="Impasugong">Impasugong</MenuItem>
                     </Select>
                   </FormControl>
                 </Box>
