@@ -485,6 +485,12 @@ export default function SignUp() {
                       onClick={() => setShowPassword(v => !v)}
                       edge="end"
                       size="small"
+                      disableRipple
+                      sx={{
+                        outline: 'none',
+                        '&:focus': { outline: 'none' },
+                        '&.Mui-focusVisible': { outline: 'none' },
+                      }}
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
