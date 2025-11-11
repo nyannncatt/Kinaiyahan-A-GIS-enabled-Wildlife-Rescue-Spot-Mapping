@@ -1836,7 +1836,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             variant={isAddingMarker ? "contained" : "outlined"}
             color={isAddingMarker ? "primary" : "inherit"}
               size="small"
-              onClick={() => setIsAddingMarker((v) => !v)}
+              onClick={() => { if (role === 'enforcement') setIsAddingMarker((v) => !v); }}
+              disabled={role !== 'enforcement'}
             sx={{ 
               textTransform: 'none',
               fontWeight: 600,
@@ -2987,32 +2988,37 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                           <div><strong>📍 Released Location</strong></div>
                           <div>Original: {trace.originalBarangay || 'Unknown'} ({trace.originalLat.toFixed(5)}, {trace.originalLng.toFixed(5)})</div>
                           <div>Current: {trace.dispersedBarangay || 'Unknown'} ({trace.dispersedLat.toFixed(5)}, {trace.dispersedLng.toFixed(5)})</div>
-                      <Button
-                            variant="outlined"
-                            size="small"
-                            color="error"
-                            sx={{ 
-                              mt: 1,
-                              minWidth: 'fit-content',
-                              whiteSpace: 'nowrap',
-                              fontSize: '0.75rem',
-                              py: 0.5,
-                              px: 1,
-                              borderColor: '#d32f2f',
-                              color: '#d32f2f',
-                              '&:hover': {
-                                borderColor: '#b71c1c',
-                                color: '#b71c1c',
-                                bgcolor: 'rgba(211, 47, 47, 0.04)'
-                              }
-                            }}
-                            onClick={(e) => {
-                              try { e.preventDefault(); e.stopPropagation(); } catch {}
-                              handleUndispersed(m.id);
-                            }}
-                          >
-                            Unrelease
-                          </Button>
+                      <Tooltip title={role !== 'enforcement' ? 'Only enforcement can modify' : ''} disableHoverListener={role === 'enforcement'} arrow>
+                        <span>
+                          <Button
+                              variant="outlined"
+                              size="small"
+                              color="error"
+                              sx={{ 
+                                mt: 1,
+                                minWidth: 'fit-content',
+                                whiteSpace: 'nowrap',
+                                fontSize: '0.75rem',
+                                py: 0.5,
+                                px: 1,
+                                borderColor: '#d32f2f',
+                                color: '#d32f2f',
+                                '&:hover': {
+                                  borderColor: '#b71c1c',
+                                  color: '#b71c1c',
+                                  bgcolor: 'rgba(211, 47, 47, 0.04)'
+                                }
+                              }}
+                              onClick={(e) => {
+                                try { e.preventDefault(); e.stopPropagation(); } catch {}
+                                if (role === 'enforcement') handleUndispersed(m.id);
+                              }}
+                              disabled={role !== 'enforcement'}
+                            >
+                              Unrelease
+                            </Button>
+                        </span>
+                      </Tooltip>
                         </Box>
                       ) : null;
                     })()}
@@ -3025,75 +3031,125 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                     {m.reporter_name ? <div>Reported by: {m.reporter_name}</div> : null}
                     {m.contact_number ? <div>Contact: {m.contact_number}</div> : null}
                       <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
-                          onClick={(e) => {
-                            try { e.preventDefault(); e.stopPropagation(); } catch {}
-                            setEditDrafts((prev) => ({
-                              ...prev,
-                            [m.id]: {
-                              species_name: m.species_name,
-                              status: m.status,
-                              photo_url: m.photo_url ?? null,
-                              barangay: m.barangay ?? null,
-                              municipality: m.municipality ?? null,
-                              },
-                            }));
-                          setEditingMarkerId(m.id);
-                          setSpeciesSelectedFromDropdown(false); // Reset flag when starting to edit a new marker
-                            setTimeout(() => {
-                            try { markerRefs.current[m.id]?.openPopup?.(); } catch {}
-                            // Ensure no input is focused automatically
-                            try { (document.activeElement as HTMLElement | null)?.blur?.(); } catch {}
-                            }, 0);
-                          }}
-                        >
-                          Edit
-                        </Button>
+                        {role === 'enforcement' && (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            sx={{ 
+                              minWidth: 'fit-content', 
+                              whiteSpace: 'nowrap'
+                            }}
+                            onClick={(e) => {
+                              try { e.preventDefault(); e.stopPropagation(); } catch {}
+                              setEditDrafts((prev) => ({
+                                ...prev,
+                                [m.id]: {
+                                  species_name: m.species_name,
+                                  status: m.status,
+                                  photo_url: m.photo_url ?? null,
+                                  barangay: m.barangay ?? null,
+                                  municipality: m.municipality ?? null,
+                                },
+                              }));
+                              setEditingMarkerId(m.id);
+                              setSpeciesSelectedFromDropdown(false);
+                              setTimeout(() => {
+                                try { markerRefs.current[m.id]?.openPopup?.(); } catch {}
+                                try { (document.activeElement as HTMLElement | null)?.blur?.(); } catch {}
+                              }, 0);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                        )}
+                        <Tooltip title={role !== 'enforcement' ? 'Only enforcement can modify' : ''} disableHoverListener={role === 'enforcement'} arrow>
+                        <span>
                         <Button
                           variant="outlined"
                           size="small"
                           color="secondary"
-                          sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
+                          sx={{ 
+                            minWidth: 'fit-content', 
+                            whiteSpace: 'nowrap',
+                            '&.Mui-disabled': {
+                              opacity: 1,
+                              borderColor: 'divider',
+                              color: 'text.disabled',
+                              bgcolor: 'action.disabledBackground',
+                            }
+                          }}
                           onClick={(e) => {
                             try { e.preventDefault(); e.stopPropagation(); } catch {}
+                            if (role === 'enforcement') {
                             setRelocationOriginalLocation({ lat: m.latitude, lng: m.longitude });
                             setRelocatingMarkerId(m.id);
+                            }
                             // Close the popup to allow clicking on map
                             try { markerRefs.current[m.id]?.closePopup?.(); } catch {}
                           }}
+                          disabled={role !== 'enforcement'}
                         >
                           Relocate Pin
                         </Button>
+                        </span>
+                        </Tooltip>
+                        <Tooltip title={role !== 'enforcement' ? 'Only enforcement can modify' : ''} disableHoverListener={role === 'enforcement'} arrow>
+                        <span>
                         <Button
                           variant="outlined"
                           size="small"
                           color="warning"
-                          sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
+                          sx={{ 
+                            minWidth: 'fit-content', 
+                            whiteSpace: 'nowrap',
+                            '&.Mui-disabled': {
+                              opacity: 1,
+                              borderColor: 'divider',
+                              color: 'text.disabled',
+                              bgcolor: 'action.disabledBackground',
+                            }
+                          }}
                           onClick={(e) => {
                             try { e.preventDefault(); e.stopPropagation(); } catch {}
+                            if (role === 'enforcement') {
                             setOriginalLocation({ lat: m.latitude, lng: m.longitude });
                             setDispersingMarkerId(m.id);
+                            }
                             // Close the popup to allow clicking on map
                             try { markerRefs.current[m.id]?.closePopup?.(); } catch {}
                           }}
+                          disabled={role !== 'enforcement'}
                         >
                           Release
                         </Button>
+                        </span>
+                        </Tooltip>
+                        <Tooltip title={role !== 'enforcement' ? 'Only enforcement can modify' : ''} disableHoverListener={role === 'enforcement'} arrow>
+                        <span>
                         <Button
                           variant="outlined"
                           size="small"
                           color="error"
-                          sx={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
+                          sx={{ 
+                            minWidth: 'fit-content', 
+                            whiteSpace: 'nowrap',
+                            '&.Mui-disabled': {
+                              opacity: 1,
+                              borderColor: 'divider',
+                              color: 'text.disabled',
+                              bgcolor: 'action.disabledBackground',
+                            }
+                          }}
                         onClick={(e) => {
                             try { e.preventDefault(); e.stopPropagation(); } catch {}
-                          handleDeleteMarker(m.id);
+                            if (role === 'enforcement') handleDeleteMarker(m.id);
                           }}
+                          disabled={role !== 'enforcement'}
                         >
                           Delete
                         </Button>
+                        </span>
+                        </Tooltip>
                       </Box>
                   </Box>
                 )}

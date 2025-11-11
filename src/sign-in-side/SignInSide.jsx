@@ -25,11 +25,12 @@ export default function SignInSide(props) {
             .eq("id", user.id)
             .single();
 
-          if (userData?.role === "enforcement") {
+          const role = userData?.role || user?.user_metadata?.role || null;
+          if (role === "enforcement") {
             navigate("/enforcement", { replace: true });
-          } else if (userData?.role === "cenro") {
+          } else if (role === "cenro") {
             navigate("/cenro", { replace: true });
-          } else if (userData?.role === "admin") {
+          } else if (role === "admin") {
             navigate("/admin", { replace: true });
           } else {
             navigate("/enforcement", { replace: true }); // Default fallback

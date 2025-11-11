@@ -80,9 +80,29 @@ export default function SignInCard() {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      // No navigation here → AuthContext handles redirect automatically
+      // Determine role: prefer users table, else auth metadata
+      const user = data.user;
+      let role = null;
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+        role = userData?.role ?? null;
+      } catch {}
+      if (!role) role = user?.user_metadata?.role ?? null;
+
+      if (role === 'enforcement') navigate('/enforcement');
+      else if (role === 'cenro') navigate('/cenro');
     } catch (err) {
-      setLoginError(err?.message || "Invalid email or password");
+      const msg = err?.message ? String(err.message) : "Invalid email or password";
+      const lower = msg.toLowerCase();
+      if (lower.includes('not confirmed') || lower.includes('confirm your email')) {
+        setLoginError('Email not confirmed. Please check your inbox and confirm your account.');
+      } else {
+        setLoginError(msg);
+      }
     }
   };
 
@@ -163,6 +183,16 @@ export default function SignInCard() {
           <FormControlLabel control={<Checkbox value="remember" color="primary" />} label="Remember me" />
 
           <Button type="submit" fullWidth variant="contained">Sign in</Button>
+
+          {/* Create account CTA */}
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => navigate('/signup')}
+            aria-label="Create account"
+          >
+            Create account
+          </Button>
         </Box>
 
         <Divider>or</Divider>

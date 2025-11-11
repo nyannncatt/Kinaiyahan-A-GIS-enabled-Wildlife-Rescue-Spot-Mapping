@@ -54,10 +54,16 @@ function extractLatLngFromExif(file: File): Promise<{ lat?: number; lng?: number
     try {
       console.log('Starting EXIF extraction for file:', file.name, file.size, 'bytes');
       
-      // Parse EXIF data with GPS focus
+      // Parse EXIF data with GPS focus - get all GPS-related fields
       const exifData = await exifr.parse(file, { 
         gps: true,
-        pick: ['GPSLatitude', 'GPSLongitude', 'GPSLatitudeRef', 'GPSLongitudeRef', 'latitude', 'longitude']
+        pick: [
+          'GPSLatitude', 'GPSLongitude', 
+          'GPSLatitudeRef', 'GPSLongitudeRef',
+          'latitude', 'longitude',
+          'Latitude', 'Longitude',
+          'GPS', 'IFD0', 'Exif'
+        ]
       });
       
       console.log('Raw EXIF data:', exifData);
@@ -65,51 +71,128 @@ function extractLatLngFromExif(file: File): Promise<{ lat?: number; lng?: number
       let latitude: number | undefined;
       let longitude: number | undefined;
       
+      // Helper function to convert DMS (Degrees, Minutes, Seconds) to decimal
+      const dmsToDecimal = (dms: any, ref: string): number | null => {
+        if (!dms || !Array.isArray(dms) || dms.length < 3) return null;
+        
+        let degrees = Number(dms[0]) || 0;
+        let minutes = Number(dms[1]) || 0;
+        let seconds = Number(dms[2]) || 0;
+        
+        let decimal = degrees + (minutes / 60) + (seconds / 3600);
+        
+        // Apply reference (N/S, E/W)
+        if (ref === 'S' || ref === 'W') {
+          decimal = -decimal;
+        }
+        
+        return decimal;
+      };
+      
       // Try multiple possible GPS data locations
       if (exifData) {
-        // Standard GPS location
+        // Standard GPS location (already converted to decimal)
         if (exifData.latitude && exifData.longitude) {
-          latitude = exifData.latitude;
-          longitude = exifData.longitude;
+          latitude = Number(exifData.latitude);
+          longitude = Number(exifData.longitude);
         }
-        // GPS coordinates object
+        // GPS coordinates as DMS arrays with refs
         else if (exifData.GPSLatitude && exifData.GPSLongitude) {
-          latitude = exifData.GPSLatitude;
-          longitude = exifData.GPSLongitude;
+          const latRef = exifData.GPSLatitudeRef || 'N';
+          const lngRef = exifData.GPSLongitudeRef || 'E';
+          
+          // Check if already decimal
+          if (typeof exifData.GPSLatitude === 'number' && typeof exifData.GPSLongitude === 'number') {
+            latitude = exifData.GPSLatitude;
+            longitude = exifData.GPSLongitude;
+            // Apply refs if needed
+            if (latRef === 'S' && latitude !== undefined) latitude = -latitude;
+            if (lngRef === 'W' && longitude !== undefined) longitude = -longitude;
+          } else {
+            // Try to parse as DMS
+            const latDecimal = dmsToDecimal(exifData.GPSLatitude, latRef);
+            const lngDecimal = dmsToDecimal(exifData.GPSLongitude, lngRef);
+            if (latDecimal !== null && lngDecimal !== null) {
+              latitude = latDecimal;
+              longitude = lngDecimal;
+            }
+          }
         }
         // GPS data as nested object
-        else if (exifData.GPS && exifData.GPS.GPSLatitude && exifData.GPS.GPSLongitude) {
-          latitude = exifData.GPS.GPSLatitude;
-          longitude = exifData.GPS.GPSLongitude;
+        else if (exifData.GPS) {
+          const gps = exifData.GPS;
+          if (gps.GPSLatitude && gps.GPSLongitude) {
+            if (typeof gps.GPSLatitude === 'number' && typeof gps.GPSLongitude === 'number') {
+              latitude = gps.GPSLatitude;
+              longitude = gps.GPSLongitude;
+            } else {
+              const latRef = gps.GPSLatitudeRef || 'N';
+              const lngRef = gps.GPSLongitudeRef || 'E';
+              const latDecimal = dmsToDecimal(gps.GPSLatitude, latRef);
+              const lngDecimal = dmsToDecimal(gps.GPSLongitude, lngRef);
+              if (latDecimal !== null && lngDecimal !== null) {
+                latitude = latDecimal;
+                longitude = lngDecimal;
+              }
+            }
+          } else if (gps.latitude && gps.longitude) {
+            latitude = Number(gps.latitude);
+            longitude = Number(gps.longitude);
+          }
         }
         // Latitude/Longitude with different case
         else if (exifData.Latitude && exifData.Longitude) {
-          latitude = exifData.Latitude;
-          longitude = exifData.Longitude;
+          latitude = Number(exifData.Latitude);
+          longitude = Number(exifData.Longitude);
+        }
+        // Try nested Exif or IFD0
+        else if (exifData.Exif) {
+          const exif = exifData.Exif;
+          if (exif.latitude && exif.longitude) {
+            latitude = Number(exif.latitude);
+            longitude = Number(exif.longitude);
+          }
+        }
+        else if (exifData.IFD0) {
+          const ifd0 = exifData.IFD0;
+          if (ifd0.latitude && ifd0.longitude) {
+            latitude = Number(ifd0.latitude);
+            longitude = Number(ifd0.longitude);
+          }
         }
       }
       
       // Validate coordinates
       if (latitude !== undefined && longitude !== undefined) {
-        // Ensure coordinates are valid numbers
+        // Ensure coordinates are valid numbers and not 0,0
         const lat = Number(latitude);
         const lng = Number(longitude);
         
-        // Validate coordinate ranges (Manolo Fortich area: ~8.2-8.5N, ~124.8-125.0E)
+        // More precise validation for Manolo Fortich area: ~8.2-8.6N, ~124.8-125.1E
         if (!isNaN(lat) && !isNaN(lng) && 
-            lat >= 8.0 && lat <= 9.0 && 
-            lng >= 124.5 && lng <= 125.5) {
+            lat !== 0 && lng !== 0 &&
+            lat >= 8.15 && lat <= 8.60 && 
+            lng >= 124.75 && lng <= 125.15) {
+          // Round to 6 decimal places for accuracy
+          const roundedLat = Math.round(lat * 1000000) / 1000000;
+          const roundedLng = Math.round(lng * 1000000) / 1000000;
+          
           console.log('GPS coordinates validated and found:', { 
-            latitude: lat, 
-            longitude: lng,
-            precision: '6 decimals'
+            latitude: roundedLat, 
+            longitude: roundedLng,
+            precision: '6 decimals',
+            original: { lat, lng }
           });
           resolve({
-            lat: lat,
-            lng: lng
+            lat: roundedLat,
+            lng: roundedLng
           });
         } else {
-          console.log('GPS coordinates found but outside valid range:', { lat, lng });
+          console.log('GPS coordinates found but outside valid range or invalid:', { 
+            lat, 
+            lng, 
+            validRange: 'lat: 8.15-8.60, lng: 124.75-125.15' 
+          });
           resolve(null);
         }
       } else {
@@ -117,7 +200,7 @@ function extractLatLngFromExif(file: File): Promise<{ lat?: number; lng?: number
         resolve(null);
       }
     } catch (error) {
-      console.log('EXIF extraction failed:', error);
+      console.error('EXIF extraction failed:', error);
       resolve(null);
     }
   });
@@ -208,115 +291,196 @@ export default function PublicReport() {
   ];
 
   const getBarangayFromCoordinates = (lat: number, lng: number) => {
-    // More accurate coordinate ranges for Manolo Fortich barangays
-    // Expanded bounds for better coverage based on actual geographic boundaries
-    const barangayBounds = [
-      // Expanded bounds for better accuracy
-      { name: 'Agusan Canyon', latMin: 8.380, latMax: 8.400, lngMin: 124.880, lngMax: 124.890 },
-      { name: 'Alae', latMin: 8.420, latMax: 8.430, lngMin: 124.810, lngMax: 124.820 },
-      { name: 'Dahilayan', latMin: 8.210, latMax: 8.235, lngMin: 124.840, lngMax: 124.860 },
-      { name: 'Dalirig', latMin: 8.370, latMax: 8.385, lngMin: 124.895, lngMax: 124.910 },
-      { name: 'Damilag', latMin: 8.350, latMax: 8.365, lngMin: 124.810, lngMax: 124.820 },
-      { name: 'Diclum', latMin: 8.360, latMax: 8.375, lngMin: 124.845, lngMax: 124.860 },
-      { name: 'Guilang-guilang', latMin: 8.365, latMax: 8.375, lngMin: 124.860, lngMax: 124.870 },
-      { name: 'Kalugmanan', latMin: 8.270, latMax: 8.285, lngMin: 124.850, lngMax: 124.865 },
-      { name: 'Lindaban', latMin: 8.285, latMax: 8.305, lngMin: 124.840, lngMax: 124.855 },
-      { name: 'Lingion', latMin: 8.395, latMax: 8.415, lngMin: 124.880, lngMax: 124.895 },
-      { name: 'Lunocan', latMin: 8.410, latMax: 8.425, lngMin: 124.815, lngMax: 124.835 },
-      { name: 'Maluko', latMin: 8.370, latMax: 8.385, lngMin: 124.950, lngMax: 124.965 },
-      { name: 'Mambatangan', latMin: 8.425, latMax: 8.445, lngMin: 124.800, lngMax: 124.815 },
-      { name: 'Mampayag', latMin: 8.260, latMax: 8.275, lngMin: 124.820, lngMax: 124.835 },
-      { name: 'Minsuro', latMin: 8.505, latMax: 8.520, lngMin: 124.815, lngMax: 124.835 },
-      { name: 'Mantibugao', latMin: 8.450, latMax: 8.475, lngMin: 124.815, lngMax: 124.835 },
-      { name: 'Tankulan (Pob.)', latMin: 8.360, latMax: 8.375, lngMin: 124.860, lngMax: 124.870 },
-      { name: 'San Miguel', latMin: 8.375, latMax: 8.395, lngMin: 124.825, lngMax: 124.845 },
-      { name: 'Sankanan', latMin: 8.305, latMax: 8.325, lngMin: 124.850, lngMax: 124.865 },
-      { name: 'Santiago', latMin: 8.430, latMax: 8.445, lngMin: 124.985, lngMax: 125.000 },
-      { name: 'Santo Niño', latMin: 8.425, latMax: 8.440, lngMin: 124.855, lngMax: 124.870 },
-      { name: 'Ticala', latMin: 8.335, latMax: 8.355, lngMin: 124.885, lngMax: 124.900 },
+    // Use actual barangay center coordinates for more accurate distance-based matching
+    const barangayCenters = {
+      // Manolo Fortich barangays - using accurate center coordinates
+      'Agusan Canyon': { lat: 8.390019, lng: 124.884487, municipality: 'Manolo Fortich', radius: 0.02 },
+      'Alae': { lat: 8.424440, lng: 124.812780, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Dahilayan': { lat: 8.221500, lng: 124.849000, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Dalirig': { lat: 8.377220, lng: 124.901390, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Damilag': { lat: 8.354720, lng: 124.812220, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Diclum': { lat: 8.363745, lng: 124.850793, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Guilang-guilang': { lat: 8.369720, lng: 124.864440, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Kalugmanan': { lat: 8.277780, lng: 124.859720, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Lindaban': { lat: 8.291000, lng: 124.845500, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Lingion': { lat: 8.404000, lng: 124.887100, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Lunocan': { lat: 8.414300, lng: 124.823100, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Maluko': { lat: 8.373200, lng: 124.953800, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Mambatangan': { lat: 8.433330, lng: 124.805280, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Mampayag': { lat: 8.264440, lng: 124.828610, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Minsuro': { lat: 8.511200, lng: 124.829500, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Mantibugao': { lat: 8.459500, lng: 124.821900, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Tankulan (Pob.)': { lat: 8.368800, lng: 124.864100, municipality: 'Manolo Fortich', radius: 0.015 },
+      'San Miguel': { lat: 8.389000, lng: 124.833200, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Sankanan': { lat: 8.316000, lng: 124.857900, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Santiago': { lat: 8.438600, lng: 124.993400, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Santo Niño': { lat: 8.431100, lng: 124.861500, municipality: 'Manolo Fortich', radius: 0.015 },
+      'Ticala': { lat: 8.341200, lng: 124.891100, municipality: 'Manolo Fortich', radius: 0.015 },
       // Malitbog barangays
-      { name: 'Kalingking', latMin: 8.535, latMax: 8.545, lngMin: 124.875, lngMax: 124.885 },
-      { name: 'Kiabo', latMin: 8.515, latMax: 8.525, lngMin: 124.855, lngMax: 124.865 },
-      { name: 'Mindagat', latMin: 8.495, latMax: 8.505, lngMin: 124.895, lngMax: 124.905 },
-      { name: 'Omagling', latMin: 8.475, latMax: 8.485, lngMin: 124.835, lngMax: 124.845 },
-      { name: 'Patpat', latMin: 8.555, latMax: 8.565, lngMin: 124.915, lngMax: 124.925 },
-      { name: 'Poblacion', latMin: 8.525, latMax: 8.535, lngMin: 124.865, lngMax: 124.875 },
-      { name: 'Sampiano', latMin: 8.505, latMax: 8.515, lngMin: 124.845, lngMax: 124.855 },
-      { name: 'San Luis', latMin: 8.485, latMax: 8.495, lngMin: 124.885, lngMax: 124.895 },
-      { name: 'Santa Ines', latMin: 8.545, latMax: 8.555, lngMin: 124.905, lngMax: 124.915 },
-      { name: 'Silo-o', latMin: 8.465, latMax: 8.475, lngMin: 124.825, lngMax: 124.835 },
-      { name: 'Sumalsag', latMin: 8.520, latMax: 8.530, lngMin: 124.870, lngMax: 124.880 },
+      'Kalingking': { lat: 8.540000, lng: 124.880000, municipality: 'Malitbog', radius: 0.015 },
+      'Kiabo': { lat: 8.520000, lng: 124.860000, municipality: 'Malitbog', radius: 0.015 },
+      'Mindagat': { lat: 8.500000, lng: 124.900000, municipality: 'Malitbog', radius: 0.015 },
+      'Omagling': { lat: 8.480000, lng: 124.840000, municipality: 'Malitbog', radius: 0.015 },
+      'Patpat': { lat: 8.560000, lng: 124.920000, municipality: 'Malitbog', radius: 0.015 },
+      'Poblacion': { lat: 8.530000, lng: 124.870000, municipality: 'Malitbog', radius: 0.015 },
+      'Sampiano': { lat: 8.510000, lng: 124.850000, municipality: 'Malitbog', radius: 0.015 },
+      'San Luis': { lat: 8.490000, lng: 124.890000, municipality: 'Malitbog', radius: 0.015 },
+      'Santa Ines': { lat: 8.550000, lng: 124.910000, municipality: 'Malitbog', radius: 0.015 },
+      'Silo-o': { lat: 8.470000, lng: 124.830000, municipality: 'Malitbog', radius: 0.015 },
+      'Sumalsag': { lat: 8.525000, lng: 124.875000, municipality: 'Malitbog', radius: 0.015 },
       // Sumilao barangays
-      { name: 'Culasi', latMin: 8.295, latMax: 8.305, lngMin: 124.945, lngMax: 124.955 },
-      { name: 'Kisolon', latMin: 8.315, latMax: 8.325, lngMin: 124.935, lngMax: 124.945 },
-      { name: 'Licoan', latMin: 8.305, latMax: 8.315, lngMin: 124.925, lngMax: 124.935 },
-      { name: 'Lupiagan', latMin: 8.285, latMax: 8.295, lngMin: 124.915, lngMax: 124.925 },
-      { name: 'Ocasion', latMin: 8.275, latMax: 8.285, lngMin: 124.905, lngMax: 124.915 },
-      { name: 'Puntian', latMin: 8.265, latMax: 8.275, lngMin: 124.895, lngMax: 124.905 },
-      { name: 'San Roque', latMin: 8.255, latMax: 8.265, lngMin: 124.885, lngMax: 124.895 },
-      { name: 'San Vicente', latMin: 8.245, latMax: 8.255, lngMin: 124.875, lngMax: 124.885 },
-      { name: 'Poblacion(Sumilao)', latMin: 8.310, latMax: 8.320, lngMin: 124.940, lngMax: 124.950 },
-      { name: 'Vista Villa', latMin: 8.325, latMax: 8.335, lngMin: 124.930, lngMax: 124.940 },
+      'Culasi': { lat: 8.300000, lng: 124.950000, municipality: 'Sumilao', radius: 0.015 },
+      'Kisolon': { lat: 8.320000, lng: 124.940000, municipality: 'Sumilao', radius: 0.015 },
+      'Licoan': { lat: 8.310000, lng: 124.930000, municipality: 'Sumilao', radius: 0.015 },
+      'Lupiagan': { lat: 8.290000, lng: 124.920000, municipality: 'Sumilao', radius: 0.015 },
+      'Ocasion': { lat: 8.280000, lng: 124.910000, municipality: 'Sumilao', radius: 0.015 },
+      'Puntian': { lat: 8.270000, lng: 124.900000, municipality: 'Sumilao', radius: 0.015 },
+      'San Roque': { lat: 8.260000, lng: 124.890000, municipality: 'Sumilao', radius: 0.015 },
+      'San Vicente': { lat: 8.250000, lng: 124.880000, municipality: 'Sumilao', radius: 0.015 },
+      'Poblacion(Sumilao)': { lat: 8.315000, lng: 124.945000, municipality: 'Sumilao', radius: 0.015 },
+      'Vista Villa': { lat: 8.330000, lng: 124.935000, municipality: 'Sumilao', radius: 0.015 },
       // Impasugong barangays
-      { name: 'Bontongon', latMin: 8.295, latMax: 8.305, lngMin: 124.995, lngMax: 125.005 },
-      { name: 'Bulonay', latMin: 8.315, latMax: 8.325, lngMin: 125.015, lngMax: 125.025 },
-      { name: 'Capitan Bayong', latMin: 8.275, latMax: 8.285, lngMin: 125.005, lngMax: 125.015 },
-      { name: 'Cawayan', latMin: 8.345, latMax: 8.355, lngMin: 125.025, lngMax: 125.035 },
-      { name: 'Dumalaguing', latMin: 8.245, latMax: 8.255, lngMin: 125.000, lngMax: 125.010 },
-      { name: 'Guihean', latMin: 8.265, latMax: 8.275, lngMin: 125.010, lngMax: 125.020 },
-      { name: 'Hagpa', latMin: 8.285, latMax: 8.295, lngMin: 125.020, lngMax: 125.030 },
-      { name: 'Impalutao', latMin: 8.305, latMax: 8.315, lngMin: 125.030, lngMax: 125.040 },
-      { name: 'Kalabugao', latMin: 8.325, latMax: 8.335, lngMin: 125.035, lngMax: 125.045 },
-      { name: 'Kibenton', latMin: 8.255, latMax: 8.265, lngMin: 125.015, lngMax: 125.025 },
-      { name: 'La Fortuna', latMin: 8.335, latMax: 8.345, lngMin: 125.040, lngMax: 125.050 },
-      { name: 'Poblacion(Impasugong)', latMin: 8.310, latMax: 8.320, lngMin: 125.025, lngMax: 125.035 },
-      { name: 'Sayawan', latMin: 8.270, latMax: 8.280, lngMin: 125.007, lngMax: 125.017 }
-    ];
+      'Bontongon': { lat: 8.300000, lng: 125.000000, municipality: 'Impasugong', radius: 0.015 },
+      'Bulonay': { lat: 8.320000, lng: 125.020000, municipality: 'Impasugong', radius: 0.015 },
+      'Capitan Bayong': { lat: 8.280000, lng: 125.010000, municipality: 'Impasugong', radius: 0.015 },
+      'Cawayan': { lat: 8.350000, lng: 125.030000, municipality: 'Impasugong', radius: 0.015 },
+      'Dumalaguing': { lat: 8.250000, lng: 125.005000, municipality: 'Impasugong', radius: 0.015 },
+      'Guihean': { lat: 8.270000, lng: 125.015000, municipality: 'Impasugong', radius: 0.015 },
+      'Hagpa': { lat: 8.290000, lng: 125.025000, municipality: 'Impasugong', radius: 0.015 },
+      'Impalutao': { lat: 8.310000, lng: 125.035000, municipality: 'Impasugong', radius: 0.015 },
+      'Kalabugao': { lat: 8.330000, lng: 125.040000, municipality: 'Impasugong', radius: 0.015 },
+      'Kibenton': { lat: 8.260000, lng: 125.020000, municipality: 'Impasugong', radius: 0.015 },
+      'La Fortuna': { lat: 8.340000, lng: 125.045000, municipality: 'Impasugong', radius: 0.015 },
+      'Poblacion(Impasugong)': { lat: 8.315000, lng: 125.030000, municipality: 'Impasugong', radius: 0.015 },
+      'Sayawan': { lat: 8.275000, lng: 125.012000, municipality: 'Impasugong', radius: 0.015 }
+    };
 
-    // Find the barangay that contains these coordinates
-    for (const barangay of barangayBounds) {
-      if (lat >= barangay.latMin && lat <= barangay.latMax && 
-          lng >= barangay.lngMin && lng <= barangay.lngMax) {
-        console.log(`Found barangay ${barangay.name} for coordinates ${lat}, ${lng}`);
-        return barangay.name;
-      }
-    }
-
-    // If no exact match, try to find the closest one based on distance (using center points)
-    let closestBarangay = '';
-    let minDistance = Infinity;
-
-    for (const barangay of barangayBounds) {
-      const centerLat = (barangay.latMin + barangay.latMax) / 2;
-      const centerLng = (barangay.lngMin + barangay.lngMax) / 2;
-      // Use Haversine distance for better accuracy
+    // Haversine formula to calculate distance between two coordinates
+    const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
       const R = 6371; // Earth's radius in km
-      const dLat = (lat - centerLat) * Math.PI / 180;
-      const dLng = (lng - centerLng) * Math.PI / 180;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
       const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat * Math.PI / 180) * Math.cos(centerLat * Math.PI / 180) *
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
                 Math.sin(dLng / 2) * Math.sin(dLng / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      const distance = R * c;
+      return R * c; // Distance in km
+    };
+
+    // First, check if coordinates are within radius of any barangay center
+    let matchWithinRadius: { name: string; distance: number; municipality: string } | null = null;
+    let minDistance = Infinity;
+    let closestBarangay = '';
+
+    for (const [name, center] of Object.entries(barangayCenters)) {
+      const distance = calculateDistance(lat, lng, center.lat, center.lng);
       
+      // Check if within radius (typically ~1.5km for most barangays)
+      if (distance <= center.radius) {
+        if (distance < (matchWithinRadius?.distance || Infinity)) {
+          matchWithinRadius = { name, distance, municipality: center.municipality };
+        }
+      }
+      
+      // Also track the closest barangay regardless of radius
       if (distance < minDistance) {
         minDistance = distance;
-        closestBarangay = barangay.name;
+        closestBarangay = name;
       }
     }
 
-    console.log(`No exact match found, closest barangay: ${closestBarangay} (distance: ${minDistance.toFixed(2)} km)`);
-    return closestBarangay;
+    // If found a match within radius, return it
+    if (matchWithinRadius) {
+      console.log(`Found barangay ${matchWithinRadius.name} within radius (distance: ${matchWithinRadius.distance.toFixed(3)} km) for coordinates ${lat}, ${lng}`);
+      return matchWithinRadius.name;
+    }
+
+    // If within 5km of closest barangay, use it (reasonable for barangay-level accuracy)
+    const closestCenter = barangayCenters[closestBarangay as keyof typeof barangayCenters];
+    if (closestCenter && minDistance <= 5.0) {
+      console.log(`Found closest barangay ${closestBarangay} (distance: ${minDistance.toFixed(3)} km) for coordinates ${lat}, ${lng}`);
+      return closestBarangay;
+    }
+
+    // If too far from all barangays, return empty (let API reverse geocoding handle it)
+    console.log(`No barangay match found within 5km. Closest: ${closestBarangay} (${minDistance.toFixed(3)} km away)`);
+    return '';
   };
 
   const reverseGeocode = async (lat: number, lng: number) => {
     console.log('Starting reverse geocoding for coordinates:', { lat, lng });
     
-    // First, try coordinate-based mapping
+    // First, try coordinate-based mapping (most accurate)
     const coordinateBarangay = getBarangayFromCoordinates(lat, lng);
     if (coordinateBarangay) {
       console.log('Found barangay from coordinates:', coordinateBarangay);
-      setMunicipality('Manolo Fortich');
+      
+      // Determine municipality based on barangay
+      const barangayCenters: Record<string, { municipality: string }> = {
+        // Manolo Fortich
+        'Agusan Canyon': { municipality: 'Manolo Fortich' },
+        'Alae': { municipality: 'Manolo Fortich' },
+        'Dahilayan': { municipality: 'Manolo Fortich' },
+        'Dalirig': { municipality: 'Manolo Fortich' },
+        'Damilag': { municipality: 'Manolo Fortich' },
+        'Diclum': { municipality: 'Manolo Fortich' },
+        'Guilang-guilang': { municipality: 'Manolo Fortich' },
+        'Kalugmanan': { municipality: 'Manolo Fortich' },
+        'Lindaban': { municipality: 'Manolo Fortich' },
+        'Lingion': { municipality: 'Manolo Fortich' },
+        'Lunocan': { municipality: 'Manolo Fortich' },
+        'Maluko': { municipality: 'Manolo Fortich' },
+        'Mambatangan': { municipality: 'Manolo Fortich' },
+        'Mampayag': { municipality: 'Manolo Fortich' },
+        'Minsuro': { municipality: 'Manolo Fortich' },
+        'Mantibugao': { municipality: 'Manolo Fortich' },
+        'Tankulan (Pob.)': { municipality: 'Manolo Fortich' },
+        'San Miguel': { municipality: 'Manolo Fortich' },
+        'Sankanan': { municipality: 'Manolo Fortich' },
+        'Santiago': { municipality: 'Manolo Fortich' },
+        'Santo Niño': { municipality: 'Manolo Fortich' },
+        'Ticala': { municipality: 'Manolo Fortich' },
+        // Malitbog
+        'Kalingking': { municipality: 'Malitbog' },
+        'Kiabo': { municipality: 'Malitbog' },
+        'Mindagat': { municipality: 'Malitbog' },
+        'Omagling': { municipality: 'Malitbog' },
+        'Patpat': { municipality: 'Malitbog' },
+        'Poblacion': { municipality: 'Malitbog' },
+        'Sampiano': { municipality: 'Malitbog' },
+        'San Luis': { municipality: 'Malitbog' },
+        'Santa Ines': { municipality: 'Malitbog' },
+        'Silo-o': { municipality: 'Malitbog' },
+        'Sumalsag': { municipality: 'Malitbog' },
+        // Sumilao
+        'Culasi': { municipality: 'Sumilao' },
+        'Kisolon': { municipality: 'Sumilao' },
+        'Licoan': { municipality: 'Sumilao' },
+        'Lupiagan': { municipality: 'Sumilao' },
+        'Ocasion': { municipality: 'Sumilao' },
+        'Puntian': { municipality: 'Sumilao' },
+        'San Roque': { municipality: 'Sumilao' },
+        'San Vicente': { municipality: 'Sumilao' },
+        'Poblacion(Sumilao)': { municipality: 'Sumilao' },
+        'Vista Villa': { municipality: 'Sumilao' },
+        // Impasugong
+        'Bontongon': { municipality: 'Impasugong' },
+        'Bulonay': { municipality: 'Impasugong' },
+        'Capitan Bayong': { municipality: 'Impasugong' },
+        'Cawayan': { municipality: 'Impasugong' },
+        'Dumalaguing': { municipality: 'Impasugong' },
+        'Guihean': { municipality: 'Impasugong' },
+        'Hagpa': { municipality: 'Impasugong' },
+        'Impalutao': { municipality: 'Impasugong' },
+        'Kalabugao': { municipality: 'Impasugong' },
+        'Kibenton': { municipality: 'Impasugong' },
+        'La Fortuna': { municipality: 'Impasugong' },
+        'Poblacion(Impasugong)': { municipality: 'Impasugong' },
+        'Sayawan': { municipality: 'Impasugong' }
+      };
+      
+      const municipality = barangayCenters[coordinateBarangay]?.municipality || 'Manolo Fortich';
+      setMunicipality(municipality);
       setBarangay(coordinateBarangay);
       return;
     }
@@ -557,8 +721,8 @@ export default function PublicReport() {
         setError('⚠️ Please enter your name before proceeding.');
         return;
       }
-      if (!phoneNumber.trim()) {
-        setError('⚠️ Please enter your contact number before proceeding.');
+      if (phoneNumber.trim().length !== 10) {
+        setError('⚠️ Please enter a valid 10-digit contact number.');
         return;
       }
     }
@@ -793,12 +957,12 @@ export default function PublicReport() {
         // If has EXIF GPS, no additional validation needed
         return true;
       case 2:
-        return reporterName.trim() !== '' && phoneNumber.trim() !== '';
+        return reporterName.trim() !== '' && phoneNumber.trim().length === 10;
       case 3:
         return speciesName.trim() !== '' && 
                (hasExifGps || barangay.trim() !== '') && 
                reporterName.trim() !== '' && 
-               phoneNumber.trim() !== '';
+               phoneNumber.trim().length === 10;
       default:
         return false;
     }
@@ -1087,11 +1251,8 @@ export default function PublicReport() {
                         p: 2,
                         mb: 2
                       }}>
-                        <Typography variant="body2" sx={{ color: '#2e7d32', fontWeight: 600, mb: 0.5 }}>
+                        <Typography variant="body2" sx={{ color: '#2e7d32', fontWeight: 600 }}>
                           📍 GPS Location Ready
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: '#4caf50', fontFamily: 'monospace' }}>
-                          Lat: {currentLocation.lat.toFixed(6)}, Lng: {currentLocation.lng.toFixed(6)}
                         </Typography>
                       </Box>
                     )}
@@ -1391,14 +1552,10 @@ export default function PublicReport() {
                     }}
                   >
                     <Typography variant="body2">
-                      <strong>GPS Location Found!</strong> We've extracted coordinates from your photo:
-                    </Typography>
-                    <Typography variant="body2" sx={{ mt: 1, fontFamily: 'monospace', bgcolor: 'rgba(0,0,0,0.05)', p: 1, borderRadius: 1 }}>
-                      <strong>Latitude:</strong> {extractedCoords.lat.toFixed(8)}<br/>
-                      <strong>Longitude:</strong> {extractedCoords.lng.toFixed(8)}
+                      <strong>GPS Location Found!</strong> We've extracted location from your photo.
                     </Typography>
                     <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
-                      These coordinates will be used for the map marker location.
+                      The detected location will be used for the map marker.
                     </Typography>
                   </Alert>
                 ) : (
@@ -1508,7 +1665,7 @@ export default function PublicReport() {
                        value={phoneNumber}
                        onChange={(e) => {
                          const inputValue = e.target.value;
-                         const phoneNumberValue = inputValue.replace(/[^0-9]/g, '');
+                         const phoneNumberValue = inputValue.replace(/[^0-9]/g, '').slice(0, 10);
                          
                          // Show warning if non-numeric characters were removed
                          if (inputValue !== phoneNumberValue) {
@@ -1563,6 +1720,15 @@ export default function PublicReport() {
                          </InputAdornment>
                        }
                        label="Contact Number"
+                       inputProps={{ maxLength: 10, inputMode: 'numeric', pattern: '[0-9]*' }}
+                       error={phoneNumber.length > 0 && phoneNumber.length !== 10}
+                       endAdornment={
+                         phoneNumber.length > 0 && phoneNumber.length !== 10 ? (
+                           <Typography variant="caption" color="error" sx={{ ml: 1 }}>
+                             10 digits
+                           </Typography>
+                         ) : undefined
+                       }
                        sx={{
                          borderRadius: 2,
                          '& .MuiOutlinedInput-root': {
@@ -1656,7 +1822,7 @@ export default function PublicReport() {
                     flex: 1, 
                     minWidth: isSmallMobile ? '100%' : 200 
                   }}>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.5, color: '#2e7d32', fontWeight: 700 }}>
                       Species
                     </Typography>
                     <Typography 
@@ -1673,7 +1839,7 @@ export default function PublicReport() {
                     flex: 1, 
                     minWidth: isSmallMobile ? '100%' : 200 
                   }}>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.5, color: '#2e7d32', fontWeight: 700 }}>
                       Location
                     </Typography>
                     <Typography 
@@ -1697,7 +1863,7 @@ export default function PublicReport() {
                     flex: 1, 
                     minWidth: isSmallMobile ? '100%' : 200 
                   }}>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.5, color: '#2e7d32', fontWeight: 700 }}>
                       Reporter
                     </Typography>
                     <Typography 
@@ -1714,7 +1880,7 @@ export default function PublicReport() {
                     flex: 1, 
                     minWidth: isSmallMobile ? '100%' : 200 
                   }}>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.5, color: '#2e7d32', fontWeight: 700 }}>
                       Contact
                     </Typography>
                     <Typography 
@@ -1729,7 +1895,7 @@ export default function PublicReport() {
                   </Box>
                 </Box>
                 <Box>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 0.5, textAlign: 'center', color: '#2e7d32', fontWeight: 700 }}>
                     Photo
                   </Typography>
                   {photoPreview ? (
@@ -1738,7 +1904,9 @@ export default function PublicReport() {
                         display: 'flex', 
                         flexDirection: 'column', 
                         gap: 1,
-                        alignItems: 'flex-start'
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center'
                       }}
                     >
                       <Box
@@ -1753,6 +1921,8 @@ export default function PublicReport() {
                           border: '2px solid #e0e0e0',
                           cursor: 'pointer',
                           transition: 'all 0.2s ease-in-out',
+                          display: 'block',
+                          mx: 'auto',
                           '&:hover': {
                             transform: 'scale(1.02)',
                             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
@@ -1763,8 +1933,7 @@ export default function PublicReport() {
                       />
                       <Typography 
                         variant="caption" 
-                        color="text.secondary"
-                        sx={{ fontSize: '0.75rem' }}
+                        sx={{ fontSize: '0.75rem', color: '#2e7d32', fontWeight: 600 }}
                       >
                         Click to view full size
                       </Typography>
@@ -1775,7 +1944,8 @@ export default function PublicReport() {
                       sx={{ 
                         fontWeight: 'medium',
                         fontSize: isMobile ? '0.875rem' : '1rem',
-                        color: 'text.secondary'
+                        color: 'text.secondary',
+                        textAlign: 'center'
                       }}
                     >
                       No photo uploaded
@@ -1802,13 +1972,39 @@ export default function PublicReport() {
         justifyContent: 'center',
         py: isMobile ? 2 : 4,
         px: isMobile ? 1 : 2,
+        position: 'relative'
       }}
     >
+      {/* Animated background species */}
+      <Box className="bg-animals">
+        {/* Right -> Left */}
+        <span className="animal rtl" title="Philippine Eagle" style={{ top: '10%', animationDuration: '22s', animationDelay: '0s', animationName: 'popFloatA' }}>🦅</span>
+        <span className="animal rtl" title="Philippine Crocodile" style={{ top: '22%', animationDuration: '27s', animationDelay: '0s', animationName: 'zigZagA' }}>🐊</span>
+        <span className="animal rtl" title="Whale Shark" style={{ top: '34%', animationDuration: '24s', animationDelay: '0s', animationName: 'popFloatA' }}>🦈</span>
+        <span className="animal rtl" title="Philippine Eagle-Owl" style={{ top: '46%', animationDuration: '29s', animationDelay: '0s', animationName: 'zigZagA' }}>🦉</span>
+        <span className="animal rtl" title="Philippine Deer" style={{ top: '58%', animationDuration: '26s', animationDelay: '0s', animationName: 'popFloatA' }}>🦌</span>
+
+        {/* Left -> Right */}
+        <span className="animal ltr" title="Hawksbill Turtle" style={{ top: '16%', animationDuration: '24s', animationDelay: '0s', animationName: 'popFloatB' }}>🐢</span>
+        <span className="animal ltr" title="Tamaraw" style={{ top: '28%', animationDuration: '26s', animationDelay: '0s', animationName: 'zigZagB' }}>🐃</span>
+        <span className="animal ltr" title="Visayan Warty Pig" style={{ top: '40%', animationDuration: '23s', animationDelay: '0s', animationName: 'popFloatB' }}>🐗</span>
+        <span className="animal ltr" title="Philippine Tarsier" style={{ top: '52%', animationDuration: '29s', animationDelay: '0s', animationName: 'zigZagB' }}>🐵</span>
+        <span className="animal ltr" title="Philippine Hornbill" style={{ top: '64%', animationDuration: '27s', animationDelay: '0s', animationName: 'popFloatB' }}>🐦</span>
+
+        {/* Free-form wanderers */}
+        <span className="animal" title="Philippine Freshwater Crocodile" style={{ top: '12%', left: '8%', animationDuration: '26s', animationDelay: '0s', animationName: 'wanderA', animationDirection: 'alternate' }}>🐊</span>
+        <span className="animal" title="Rufous Hornbill" style={{ top: '72%', left: '12%', animationDuration: '28s', animationDelay: '0s', animationName: 'wanderB', animationDirection: 'alternate' }}>🐦</span>
+        <span className="animal" title="Palawan Peacock-Pheasant" style={{ top: '44%', left: '18%', animationDuration: '24s', animationDelay: '0s', animationName: 'wanderA', animationDirection: 'alternate' }}>🦚</span>
+        <span className="animal" title="Green Sea Turtle" style={{ top: '26%', left: '70%', animationDuration: '30s', animationDelay: '0s', animationName: 'wanderB', animationDirection: 'alternate' }}>🐢</span>
+      </Box>
+
       <Container 
         maxWidth="md" 
         sx={{ 
           width: '100%',
-          maxWidth: isMobile ? '100%' : 'md'
+          maxWidth: isMobile ? '100%' : 'md',
+          position: 'relative',
+          zIndex: 1
         }}
       >
         <Fade in timeout={800}>
@@ -2131,7 +2327,7 @@ export default function PublicReport() {
 
             {/* Progress Indicator */}
             <Box sx={{ mt: isMobile ? 3 : 4, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              <Typography variant="body2" sx={{ mb: 1, color: '#2e7d32', fontWeight: 700 }}>
                 Step {activeStep + 1} of {steps.length}
               </Typography>
               <Box 

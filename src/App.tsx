@@ -4,6 +4,7 @@ import Enforcement from "./pages/Enforcement";
 import Cenro from "./pages/Cenro";
 import PublicReport from "./pages/PublicReport";
 import SignIn from "./sign-in-side/SignInSide";
+import SignUp from "./sign-in-side/SignUp";
 import { CircularProgress, Box } from "@mui/material";
 import React, { ReactElement, useEffect } from "react";
 
@@ -47,7 +48,9 @@ function App() {
     <Routes>
       <Route path="/login" element={<SignIn />} />
       <Route path="/enforcement" element={<RequireAuth><Enforcement /></RequireAuth>} />
-      <Route path="/cenro" element={<RequireAuth><Cenro /></RequireAuth>} />
+      <Route path="/signup" element={<SignUp />} />
+      {/* Alias: show /cenro URL but render Enforcement view (CENRO is view-only in components) */}
+      <Route path="/cenro" element={<RequireAuth><Enforcement /></RequireAuth>} />
       {/** removed legacy /report-sighting route */}
       {/* Public report route (no auth) */}
       <Route path="/public-report" element={<PublicReport />} />

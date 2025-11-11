@@ -47,16 +47,18 @@ export default function SignInCard() {
         return;
       }
 
-      // ✅ Fetch role from Supabase "users" table
-      const { data: userData, error: roleError } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (roleError) {
-        setLoginError("Error fetching user role.");
-        return;
+      // Try to get role from public.users first, then fall back to auth metadata
+      let role: string | null = null;
+      try {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
+        role = userData?.role ?? null;
+      } catch {}
+      if (!role) {
+        role = (user.user_metadata as any)?.role ?? null;
       }
 
       const go = (path: string) => {
@@ -68,22 +70,25 @@ export default function SignInCard() {
         }
       };
 
-      if (userData?.role === "enforcement") {
+      if (role === "enforcement") {
         go("/enforcement");
-      } else if (userData?.role === "cenro") {
+      } else if (role === "cenro") {
         go("/cenro");
-      } else if (userData?.role === "admin") {
+      } else if (role === "admin") {
         go("/admin");
       } else {
         setLoginError("No role assigned. Please contact admin.");
       }
     } catch (error: unknown) {
-      // ✅ Safe error handling
+      // ✅ Safe error handling + special case for unconfirmed email
       let message = "Invalid credentials";
-      if (error instanceof Error) {
-        message = error.message;
-      } else if (typeof error === "string") {
-        message = error;
+      const raw = error as any;
+      const msg = (raw?.message || (error instanceof Error ? error.message : String(error || ""))) as string;
+      const lower = msg.toLowerCase();
+      if (lower.includes("not confirmed") || lower.includes("confirm your email")) {
+        message = "Email not confirmed. Please check your inbox and confirm your account.";
+      } else {
+        message = msg || message;
       }
       setLoginError(message);
     }
@@ -135,11 +140,17 @@ export default function SignInCard() {
         Log In
       </Button>
 
+      {/* Clear Sign Up call-to-action */}
+      <Button
+        fullWidth
+        variant="outlined"
+        onClick={() => navigate('/signup')}
+      >
+        Create account
+      </Button>
+
       <Typography sx={{ textAlign: "center" }}>
-        Don&apos;t have an account?{" "}
-        <Button variant="text" onClick={() => navigate("/signup")}>
-          Sign Up
-        </Button>
+        Don&apos;t have an account? <Button variant="text" onClick={() => navigate('/signup')}>Sign Up</Button>
       </Typography>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 2 }}>

@@ -46,7 +46,8 @@ import {
   Close,
   FileDownload as FileDownloadIcon,
 } from '@mui/icons-material';
-import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
+import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, getUserRole, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
+import { useAuth } from '../context/AuthContext';
 import { useMapNavigation } from '../context/MapNavigationContext';
 import * as XLSX from 'xlsx';
 
@@ -55,6 +56,8 @@ interface WildlifeRescueStatisticsProps {
 }
 
 const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ showPendingOnly = false }) => {
+  const { user } = useAuth();
+  const [resolvedRole, setResolvedRole] = useState<string | null>((user?.user_metadata as any)?.role || null);
   const theme = useTheme();
   const { navigateToLocation, refreshRecordsVersion } = useMapNavigation();
   const [wildlifeRecords, setWildlifeRecords] = useState<WildlifeRecord[]>([]);
@@ -109,6 +112,20 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     open: false,
     message: '',
   });
+
+  // Resolve role from DB if not in auth metadata
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!resolvedRole) {
+        try {
+          const r = await getUserRole();
+          if (!cancelled) setResolvedRole(r);
+        } catch {}
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [resolvedRole]);
 
   // Load wildlife records (initial + on refresh signal)
   useEffect(() => {
@@ -1319,21 +1336,23 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     >
                       View Map
                     </Button>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEditRecord(record)}
-                      sx={{ 
-                        color: 'text.secondary',
-                        '&:hover': { 
-                          bgcolor: theme.palette.mode === 'dark' 
-                            ? 'rgba(25, 118, 210, 0.1)' 
-                            : 'rgba(25, 118, 210, 0.04)',
-                          color: theme.palette.primary.main
-                        }
-                      }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
+                    {resolvedRole === 'enforcement' && (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleEditRecord(record)}
+                        sx={{ 
+                          color: 'text.secondary',
+                          '&:hover': { 
+                            bgcolor: theme.palette.mode === 'dark' 
+                              ? 'rgba(25, 118, 210, 0.1)' 
+                              : 'rgba(25, 118, 210, 0.04)',
+                            color: theme.palette.primary.main
+                          }
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    )}
                     <IconButton
                       size="small"
                       onClick={() => handlePrintRecord(record)}
@@ -1410,21 +1429,23 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     >
                       View Form
                     </Button>
-                    <Button
-                      size="small"
-                      variant="text"
-                      onClick={() => handleDeleteRecord(record.id)}
-                      sx={{ 
-                        color: '#ff1744 !important',
-                        textTransform: 'none',
-                        fontWeight: 700,
-                        '&:hover': { 
-                          bgcolor: 'rgba(255, 23, 68, 0.08)'
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
+                    {resolvedRole === 'enforcement' && (
+                      <Button
+                        size="small"
+                        variant="text"
+                        onClick={() => handleDeleteRecord(record.id)}
+                        sx={{ 
+                          color: '#ff1744 !important',
+                          textTransform: 'none',
+                          fontWeight: 700,
+                          '&:hover': { 
+                            bgcolor: 'rgba(255, 23, 68, 0.08)'
+                          }
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    )}
                   </Box>
                 </TableCell>
               </TableRow>
