@@ -1647,21 +1647,23 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                         </span>
                       </Tooltip>
                     )}
-                    <IconButton
-                      size="small"
-                      onClick={() => handlePrintRecord(record)}
-                      sx={{ 
-                        color: 'text.secondary',
-                        '&:hover': { 
-                          bgcolor: theme.palette.mode === 'dark' 
-                            ? 'rgba(76, 175, 80, 0.1)' 
-                            : 'rgba(76, 175, 80, 0.04)',
-                          color: '#4caf50'
-                        }
-                      }}
-                    >
-                      <PrintIcon fontSize="small" />
-                    </IconButton>
+                    <Tooltip title="Print" enterDelay={500}>
+                      <IconButton
+                        size="small"
+                        onClick={() => handlePrintRecord(record)}
+                        sx={{ 
+                          color: 'text.secondary',
+                          '&:hover': { 
+                            bgcolor: theme.palette.mode === 'dark' 
+                              ? 'rgba(76, 175, 80, 0.1)' 
+                              : 'rgba(76, 175, 80, 0.04)',
+                            color: '#4caf50'
+                          }
+                        }}
+                      >
+                        <PrintIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                     {record.approval_status === 'pending' && record.user_id === null && (
                       <>
                         <Button
