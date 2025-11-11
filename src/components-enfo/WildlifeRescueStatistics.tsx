@@ -1706,46 +1706,64 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     </Tooltip>
                     {record.approval_status === 'pending' && record.user_id === null && (
                       <>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<CheckCircle fontSize="small" />}
-                          onClick={(e) => { e.stopPropagation(); handleApproveClick(record); }}
-                          sx={{ 
-                            color: '#4caf50',
-                            borderColor: '#4caf50',
-                            textTransform: 'none',
-                            fontWeight: 500,
-                            '&:hover': { 
-                              bgcolor: theme.palette.mode === 'dark' 
-                                ? 'rgba(76, 175, 80, 0.1)' 
-                                : 'rgba(76, 175, 80, 0.04)',
-                              borderColor: '#4caf50'
-                            }
-                          }}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<Close fontSize="small" />}
-                          onClick={(e) => { e.stopPropagation(); handleRejectRecord(record.id); }}
-                          sx={{ 
-                            color: theme.palette.error.main,
-                            borderColor: theme.palette.error.main,
-                            textTransform: 'none',
-                            fontWeight: 500,
-                            '&:hover': { 
-                              bgcolor: theme.palette.mode === 'dark' 
-                                ? 'rgba(239, 68, 68, 0.1)' 
-                                : 'rgba(239, 68, 68, 0.04)',
-                              borderColor: theme.palette.error.main
-                            }
-                          }}
-                        >
-                          Rejected
-                        </Button>
+                        <Tooltip title={resolvedRole === 'cenro' ? 'Only enforcement can approve or reject' : ''}>
+                          <span>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<CheckCircle fontSize="small" />}
+                              onClick={(e) => { e.stopPropagation(); handleApproveClick(record); }}
+                              disabled={resolvedRole === 'cenro'}
+                              sx={{ 
+                                color: '#4caf50',
+                                borderColor: '#4caf50',
+                                textTransform: 'none',
+                                fontWeight: 500,
+                                '&:hover': { 
+                                  bgcolor: theme.palette.mode === 'dark' 
+                                    ? 'rgba(76, 175, 80, 0.1)' 
+                                    : 'rgba(76, 175, 80, 0.04)',
+                                  borderColor: '#4caf50'
+                                },
+                                '&.Mui-disabled': {
+                                  color: 'rgba(0, 0, 0, 0.26)',
+                                  borderColor: 'rgba(0, 0, 0, 0.12)',
+                                }
+                              }}
+                            >
+                              Approve
+                            </Button>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title={resolvedRole === 'cenro' ? 'Only enforcement can approve or reject' : ''}>
+                          <span>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<Close fontSize="small" />}
+                              onClick={(e) => { e.stopPropagation(); handleRejectRecord(record.id); }}
+                              disabled={resolvedRole === 'cenro'}
+                              sx={{ 
+                                color: theme.palette.error.main,
+                                borderColor: theme.palette.error.main,
+                                textTransform: 'none',
+                                fontWeight: 500,
+                                '&:hover': { 
+                                  bgcolor: theme.palette.mode === 'dark' 
+                                    ? 'rgba(239, 68, 68, 0.1)' 
+                                    : 'rgba(239, 68, 68, 0.04)',
+                                  borderColor: theme.palette.error.main
+                                },
+                                '&.Mui-disabled': {
+                                  color: 'rgba(0, 0, 0, 0.26)',
+                                  borderColor: 'rgba(0, 0, 0, 0.12)',
+                                }
+                              }}
+                            >
+                              Rejected
+                            </Button>
+                          </span>
+                        </Tooltip>
                       </>
                     )}
                     {resolvedRole === 'enforcement' && (
