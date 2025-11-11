@@ -3165,8 +3165,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
           ) : null;
         })()}
 
-        {/* Dispersal trace lines with multiple curves */}
-        {dispersalTraces.map(trace => {
+        {/* Dispersal trace lines with multiple curves (show only if 'rescued' filter is enabled) */}
+        {enabledStatuses.includes('rescued') && dispersalTraces.map(trace => {
           const startLat = trace.originalLat;
           const startLng = trace.originalLng;
           const endLat = trace.dispersedLat;
@@ -3321,8 +3321,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
           );
         })()}
 
-        {/* Dynamic trace line following cursor during dispersal (green) */}
-        {dispersingMarkerId && cursorPosition && originalLocation && (() => {
+        {/* Dynamic trace line following cursor during dispersal (green) - also gated by 'rescued' filter */}
+        {enabledStatuses.includes('rescued') && dispersingMarkerId && cursorPosition && originalLocation && (() => {
           const startLat = originalLocation.lat;
           const startLng = originalLocation.lng;
           const endLat = cursorPosition.lat;
