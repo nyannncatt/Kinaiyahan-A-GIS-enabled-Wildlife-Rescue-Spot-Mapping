@@ -98,6 +98,12 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const [editFormData, setEditFormData] = useState<UpdateWildlifeRecord>({});
   const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
   const [editPhotoPreview, setEditPhotoPreview] = useState<string | null>(null);
+  // Visible species input value (prevents cursor jump and keeps UX smooth)
+  const [editSpeciesInput, setEditSpeciesInput] = useState<string>('');
+  // iNaturalist species autocomplete (edit modal)
+  const [editSpeciesOptions, setEditSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
+  const [editSpeciesLoading, setEditSpeciesLoading] = useState(false);
+  const [showEditSpeciesDropdown, setShowEditSpeciesDropdown] = useState(false);
   
   const [editError, setEditError] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
@@ -263,8 +269,74 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     setEditPhotoFile(null);
     setEditPhotoPreview(record.photo_url || null);
     setEditError(null);
+    // Initialize the visible species input from existing record fields
+    const combined =
+      [record.scientific_name, record.species_name].filter(Boolean).join(' / ') ||
+      (record.species_name || '');
+    setEditSpeciesInput(combined);
     setEditDialogOpen(true);
   };
+
+  // Load initial species suggestions when opening Edit dialog (mirror add-marker UX)
+  useEffect(() => {
+    if (!editDialogOpen) return;
+    let cancelled = false;
+    const loadInitial = async () => {
+      setEditSpeciesLoading(true);
+      try {
+        const url = `https://api.inaturalist.org/v1/taxa/autocomplete?q=wildlife&per_page=12`;
+        const res = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled) {
+            const options = (data?.results || [])
+              .map((r: any) => ({ label: r?.name || '', common: r?.preferred_common_name || undefined }))
+              .filter((o: any) => o.label);
+            setEditSpeciesOptions(options);
+            setShowEditSpeciesDropdown(true);
+          }
+        }
+      } catch {
+      } finally {
+        if (!cancelled) setEditSpeciesLoading(false);
+      }
+    };
+    const t = setTimeout(loadInitial, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [editDialogOpen]);
+
+  // Debounced iNaturalist query for edit species field
+  useEffect(() => {
+    if (!editDialogOpen) return;
+    const qRaw = (editSpeciesInput || '').trim();
+    // If user has typed combined format, search by scientific part before '/'
+    const query = qRaw.includes('/') ? qRaw.split('/')[0].trim() : qRaw;
+    if (query.length < 2) {
+      setEditSpeciesOptions([]);
+      setEditSpeciesLoading(false);
+      setShowEditSpeciesDropdown(false);
+      return;
+    }
+    setEditSpeciesLoading(true);
+    setShowEditSpeciesDropdown(true);
+    const controller = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const url = `https://api.inaturalist.org/v1/taxa/autocomplete?q=${encodeURIComponent(query)}&per_page=8`;
+        const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: controller.signal });
+        if (!res.ok) throw new Error('inat autocomplete failed');
+        const data = await res.json();
+        const options = (data?.results || [])
+          .map((r: any) => ({ label: r?.name || '', common: r?.preferred_common_name || undefined }))
+          .filter((o: any) => o.label);
+        setEditSpeciesOptions(options);
+      } catch {
+      } finally {
+        setEditSpeciesLoading(false);
+      }
+    }, 350);
+    return () => { clearTimeout(t); controller.abort(); };
+  }, [editDialogOpen, editSpeciesInput]);
 
   // Handle edit form submission
   const handleEditSubmit = async () => {
@@ -274,13 +346,27 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     setEditLoading(true);
 
     try {
+      // Parse combined "Scientific / Common" input into separate fields if needed
+      const parsed = { ...editFormData };
+      const raw = (editSpeciesInput || '').trim();
+      if (raw.includes('/')) {
+        const parts = raw.split('/');
+        const sci = parts[0]?.trim();
+        const common = parts.slice(1).join('/').trim();
+        if (sci) parsed.scientific_name = sci;
+        if (common) parsed.species_name = common;
+      } else if (raw) {
+        // If only one value provided, treat it as the species_name (common) unless we already have scientific_name set
+        if (!parsed.species_name) parsed.species_name = raw;
+      }
+
       // Get the current record from the list to ensure we have the latest photo_url
       const currentRecord = wildlifeRecords.find(r => r.id === editingRecord.id);
       const originalPhotoUrl = currentRecord?.photo_url || editingRecord.photo_url;
       
       // Filter out phone_number and country_code as they're not database columns
       // Also exclude photo_url from form data since we'll handle it separately
-      const { phone_number, country_code, photo_url: formPhotoUrl, ...baseUpdateData } = editFormData;
+      const { phone_number, country_code, photo_url: formPhotoUrl, ...baseUpdateData } = parsed;
       
       // Build update data
       const updateData: UpdateWildlifeRecord = {
@@ -526,7 +612,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       'Status': formatStatusLabel(record.status),
       'Location': record.barangay || '',
       'Reporter': record.reporter_name || '',
-      'Contact': record.reporter_contact || '',
+      'Contact': record.contact_number || record.reporter_contact || '',
       'Date Reported': record.timestamp_captured ? new Date(record.timestamp_captured).toLocaleDateString() : '',
       'Approval Status': record.approval_status || '',
       'Notes': record.notes || ''
@@ -1100,7 +1186,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             variant="contained"
             startIcon={<PrintIcon />}
             onClick={handlePrint}
-            sx={{ 
+            sx={{
               bgcolor: theme.palette.primary.main,
               '&:hover': { bgcolor: theme.palette.primary.dark }
             }}
@@ -2369,10 +2455,52 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   variant="outlined"
                   fullWidth
                   margin="dense"
-                  value={editFormData.species_name || ''}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, species_name: e.target.value }))}
+                  value={editSpeciesInput}
+                  onChange={(e) => setEditSpeciesInput(e.target.value)}
                   required
+                  onFocus={() => {
+                    if (editSpeciesOptions.length > 0) setShowEditSpeciesDropdown(true);
+                  }}
+                  onBlur={() => {
+                    // slight delay so click on option still registers
+                    setTimeout(() => setShowEditSpeciesDropdown(false), 200);
+                  }}
                 />
+                {showEditSpeciesDropdown && (
+                  <Box sx={{ mt: 0.5, border: '1px solid', borderColor: 'divider', borderRadius: 1, maxHeight: 128, overflow: 'auto' }}>
+                    {editSpeciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1, color: '#2e7d32 !important' }}>Searching…</Box>}
+                    {!editSpeciesLoading && editSpeciesOptions.length === 0 && (
+                      <Box sx={{ fontSize: 12, opacity: 0.5, p: 1, color: '#2e7d32 !important' }}>No suggestions</Box>
+                    )}
+                    {!editSpeciesLoading && editSpeciesOptions.length > 0 && (
+                      <Box sx={{ color: '#2e7d32 !important' }}>
+                        {editSpeciesOptions.map((opt) => (
+                          <Box
+                            key={`${opt.label}-${opt.common || ''}`}
+                            sx={{ px: 1, py: 0.5, cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              // Set both fields and the visible input to "sci / common"
+                              const nextScientific = opt.label;
+                              const nextCommon = opt.common || opt.label;
+                              setEditFormData(prev => ({
+                                ...prev,
+                                scientific_name: nextScientific,
+                                species_name: nextCommon,
+                              }));
+                              setEditSpeciesInput([nextScientific, nextCommon].filter(Boolean).join(' / '));
+                              setTimeout(() => setShowEditSpeciesDropdown(false), 120);
+                            }}
+                          >
+                            {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold', color: '#2e7d32 !important' }}>{opt.common}</Box>}
+                            <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.9, color: '#2e7d32 !important' }}>{opt.label}</Box>
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                )}
                 
                 <TextField
                   select

@@ -4,6 +4,7 @@ export interface WildlifeRecord {
   id: string;
   user_id: string;
   species_name: string;
+  scientific_name?: string;
   status: 'reported' | 'rescued' | 'turned over' | 'released' | 'dispersed';
   approval_status: 'pending' | 'approved' | 'rejected';
   latitude: number;
@@ -51,6 +52,7 @@ export interface CreateWildlifeRecord {
 
 export interface UpdateWildlifeRecord {
   species_name?: string;
+  scientific_name?: string;
   status?: 'reported' | 'rescued' | 'turned over' | 'released';
   approval_status?: 'pending' | 'approved' | 'rejected';
   latitude?: number;
