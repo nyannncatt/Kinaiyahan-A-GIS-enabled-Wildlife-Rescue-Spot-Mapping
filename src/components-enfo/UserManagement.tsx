@@ -815,8 +815,34 @@ export default function UserManagement() {
         </Stack>
       </Box>
       {/* Pending details dialog */}
-      <Dialog open={pendingDetailsOpen} onClose={() => setPendingDetailsOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Pending Applicant Details</DialogTitle>
+      <Dialog 
+        open={pendingDetailsOpen} 
+        onClose={() => setPendingDetailsOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: (theme) => ({
+            background: theme.palette.mode === 'light'
+              ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+              : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))',
+            backgroundRepeat: 'no-repeat',
+            backgroundSize: '100% 100%',
+          })
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+            <Box
+              component="img"
+              src="/images/kinaiyahanlogonobg.png"
+              alt="Kinaiyahan"
+              sx={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }}
+            />
+            <Typography component="span" variant="h6" sx={{ color: '#2e7d32 !important', fontWeight: 700 }}>
+              Kinaiyahan • Pending Applicant Details
+            </Typography>
+          </Box>
+        </DialogTitle>
         <DialogContent dividers>
           {selectedPending ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
@@ -824,40 +850,55 @@ export default function UserManagement() {
                 {selectedPending.avatarUrl ? (
                   <Box component="img" src={selectedPending.avatarUrl} alt="avatar" sx={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '1px solid', borderColor: 'divider' }} />
                 ) : (
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>No Avatar</Typography>
+                  <Typography variant="caption" sx={{ color: '#2e7d32 !important' }}>No Avatar</Typography>
                 )}
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>ID</Typography>
-                <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{selectedPending.id}</Typography>
+                <Typography variant="caption" sx={{ color: '#2e7d32 !important' }}>ID</Typography>
+                <Typography variant="body2" sx={{ fontFamily: 'monospace', color: '#2e7d32 !important' }}>{selectedPending.id}</Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>Name</Typography>
-                <Typography variant="body2">{selectedPending.name || 'N/A'}</Typography>
+                <Typography variant="caption" sx={{ color: '#2e7d32 !important' }}>Name</Typography>
+                <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>{selectedPending.name || 'N/A'}</Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>Email</Typography>
-                <Typography variant="body2">{selectedPending.email || 'N/A'}</Typography>
+                <Typography variant="caption" sx={{ color: '#2e7d32 !important' }}>Email</Typography>
+                <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>{selectedPending.email || 'N/A'}</Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>Contact</Typography>
-                <Typography variant="body2">{selectedPending.contactNumber || 'N/A'}</Typography>
+                <Typography variant="caption" sx={{ color: '#2e7d32 !important' }}>Contact</Typography>
+                <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>{selectedPending.contactNumber || 'N/A'}</Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>Gender</Typography>
-                <Typography variant="body2">{selectedPending.gender || 'N/A'}</Typography>
+                <Typography variant="caption" sx={{ color: '#2e7d32 !important' }}>Gender</Typography>
+                <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>
+                  {selectedPending.gender ? (selectedPending.gender.charAt(0).toUpperCase() + selectedPending.gender.slice(1)) : 'N/A'}
+                </Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>Role</Typography>
-                <Typography variant="body2" sx={{ textTransform: 'capitalize' }}>{selectedPending.role || 'pending'}</Typography>
+                <Typography variant="caption" sx={{ color: '#2e7d32 !important' }}>Role</Typography>
+                <Typography variant="body2" sx={{ textTransform: 'capitalize', color: '#2e7d32 !important' }}>{selectedPending.role || 'pending'}</Typography>
               </Box>
             </Box>
           ) : (
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>No record selected.</Typography>
+            <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>No record selected.</Typography>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPendingDetailsOpen(false)}>Close</Button>
+          <Button 
+            variant="outlined"
+            onClick={() => setPendingDetailsOpen(false)}
+            sx={{
+              color: '#2e7d32 !important',
+              borderColor: '#2e7d32 !important',
+              '&:hover': {
+                backgroundColor: 'rgba(46, 125, 50, 0.08)',
+                borderColor: '#2e7d32 !important',
+              }
+            }}
+          >
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
       {/* Users sort menu */}
@@ -1116,7 +1157,14 @@ export default function UserManagement() {
           return (
             <React.Fragment key={`pending-row-${entry.id || idx}`}>
               <ListItem
-                sx={{ py: 2, minHeight: 64, cursor: isPlaceholder ? 'default' : 'pointer' }}
+                sx={{ 
+                  py: 2, 
+                  minHeight: 64, 
+                  cursor: isPlaceholder ? 'default' : 'pointer',
+                  '&:hover': { 
+                    backgroundColor: 'action.hover' 
+                  }
+                }}
                 onClick={() => {
                   if (isPlaceholder) return;
                   setSelectedPending(entry);
