@@ -367,6 +367,9 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
   const [speciesSelectedFromDropdown, setSpeciesSelectedFromDropdown] = useState(false);
   const [hasLoadedRecords, setHasLoadedRecords] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  // Inline input validations for Add Marker modal
+  const [nameHasDigits, setNameHasDigits] = useState(false);
+  const [speciesHasDigits, setSpeciesHasDigits] = useState(false);
 
   // Validate and clean up traces when records are loaded
   useEffect(() => {
@@ -2187,6 +2190,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                   value={pendingMarker?.speciesName || ''}
                   onChange={(e) =>
                     setPendingMarker((p) => {
+                      setSpeciesHasDigits(/\d/.test(e.target.value));
                       const next = p ? { ...p, speciesName: e.target.value } : p;
                       if (next && isPendingComplete(next)) setPendingWarning(null);
                       return next as PendingMarker;
@@ -2202,7 +2206,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                     setTimeout(() => setShowSpeciesDropdown(false), 200);
                   }}
                   required
-                  error={Boolean(pendingWarning) && !(pendingMarker?.speciesName || '').trim()}
+                  error={speciesHasDigits || (Boolean(pendingWarning) && !(pendingMarker?.speciesName || '').trim())}
+                  helperText={speciesHasDigits ? 'Numbers are not allowed in species.' : undefined}
                   inputRef={(el) => { pendingSpeciesRef.current = el; }}
                 />
                 {showSpeciesDropdown && (
@@ -2271,12 +2276,17 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                   margin="dense"
                   value={pendingMarker?.reporterName || ""}
                   onChange={(e) => setPendingMarker((p) => {
-                    const next = p ? { ...p, reporterName: e.target.value } : p;
+                    // Allow only letters, spaces, dots and hyphens
+                    const hasDigits = /\d/.test(e.target.value);
+                    setNameHasDigits(hasDigits);
+                    const cleaned = e.target.value.replace(/[^A-Za-z .-]/g, '');
+                    const next = p ? { ...p, reporterName: cleaned } : p;
                     if (next && isPendingComplete(next)) setPendingWarning(null);
                     return next as PendingMarker;
                   })}
                   required
-                  error={Boolean(pendingWarning) && !(pendingMarker?.reporterName || '').trim()}
+                  error={nameHasDigits || (Boolean(pendingWarning) && !(pendingMarker?.reporterName || '').trim())}
+                  helperText={nameHasDigits ? 'Numbers are not allowed in name.' : 'Letters only'}
                   inputRef={(el) => { pendingReporterRef.current = el; }}
                 />
                 <TextField
@@ -2287,7 +2297,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                   margin="dense"
                   value={pendingMarker?.phoneNumber || ""}
                   onChange={(e) => {
-                    const phoneNumber = e.target.value;
+                    // Digits only, max length 10
+                    const phoneNumber = e.target.value.replace(/\\D/g, '').slice(0, 10);
                     const countryCode = pendingMarker?.countryCode || '+63';
                     const fullNumber = countryCode + phoneNumber;
                     setPendingMarker((p) => {
@@ -2297,7 +2308,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                     });
                   }}
                   required
-                  error={Boolean(pendingWarning) && !(pendingMarker?.phoneNumber || '').trim()}
+                  error={(pendingMarker?.phoneNumber ? pendingMarker.phoneNumber.length !== 10 : false) || (Boolean(pendingWarning) && !(pendingMarker?.phoneNumber || '').trim())}
+                  helperText="Enter 10 digits"
                   inputRef={(el) => { pendingContactRef.current = el; }}
                   InputProps={{
                     startAdornment: (
@@ -2331,6 +2343,11 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                         </FormControl>
                       </Box>
                     )
+                  }}
+                  inputProps={{
+                    inputMode: 'numeric',
+                    pattern: '\\d*',
+                    maxLength: 10
                   }}
                 />
 
