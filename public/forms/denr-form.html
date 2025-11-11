@@ -650,7 +650,7 @@ async function autofillFromRecord() {
 
     const { data, error } = await supabaseClient
       .from('wildlife_records')
-      .select('id,species_name,scientific_name,municipality,barangay,reporter_name')
+      .select('id,species_name,scientific_name,municipality,barangay,reporter_name,speciespf_id')
       .eq('id', recordId)
       .single();
     if (error || !data) return;
@@ -667,6 +667,17 @@ async function autofillFromRecord() {
       if (originP) originInput = originP.querySelector('input');
       const witnessP = ps.find(p => (p.textContent || '').toUpperCase().includes('WITNESS BY'));
       if (witnessP) witnessInput = witnessP.querySelector('input');
+    } catch {}
+
+    // Fill CODE input (left-aligned) with speciespf_id
+    try {
+      const codeLine = Array.from(document.querySelectorAll('p')).find(p => (p.textContent || '').includes('CODE-DENR-CENRO'));
+      if (codeLine) {
+        const codeInput = codeLine.querySelector('input.fillable');
+        if (codeInput && !codeInput.value && data.speciespf_id) {
+          codeInput.value = data.speciespf_id;
+        }
+      }
     } catch {}
 
     // Fill only if empty (respect saved/edited content)
