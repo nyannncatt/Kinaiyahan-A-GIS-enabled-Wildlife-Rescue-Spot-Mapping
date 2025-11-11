@@ -260,6 +260,8 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
 
   const [speciesOptions, setSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
   const [speciesLoading, setSpeciesLoading] = useState(false);
+  const [editSpeciesOptions, setEditSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
+  const [editSpeciesLoading, setEditSpeciesLoading] = useState(false);
   const [editDrafts, setEditDrafts] = useState<Record<number, { speciesName: string; status: string; photo?: string | null; reporterName?: string; contactNumber?: string }>>({});
   const [editingMarkerId, setEditingMarkerId] = useState<number | null>(null);
   const editInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
@@ -475,6 +477,45 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
       controller.abort();
     };
   }, [pendingMarker?.speciesName]);
+
+  // iNaturalist autocomplete for Edit Marker (mirror Add Marker behavior)
+  useEffect(() => {
+    if (!editingMarkerId) {
+      setEditSpeciesOptions([]);
+      setEditSpeciesLoading(false);
+      return;
+    }
+    const current = editDrafts[editingMarkerId];
+    // Fallback to existing marker speciesName if no draft yet
+    const existing = userMarkers.find((m) => m.id === editingMarkerId);
+    const query = (current?.speciesName ?? existing?.speciesName ?? "").trim();
+    if (query.length < 2) {
+      setEditSpeciesOptions([]);
+      setEditSpeciesLoading(false);
+      return;
+    }
+    setEditSpeciesLoading(true);
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const url = `https://api.inaturalist.org/v1/taxa/autocomplete?q=${encodeURIComponent(query)}&per_page=8`;
+        const res = await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
+        if (!res.ok) throw new Error("inat autocomplete failed");
+        const data = await res.json();
+        const options = (data?.results || [])
+          .map((r: any) => ({ label: r?.name || "", common: r?.preferred_common_name || undefined }))
+          .filter((o: any) => o.label);
+        setEditSpeciesOptions(options);
+      } catch {
+      } finally {
+        setEditSpeciesLoading(false);
+      }
+    }, 350);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [editingMarkerId, editDrafts, userMarkers]);
 
   // Debounced place search
   useEffect(() => {
@@ -1102,6 +1143,33 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                       }
                       inputRef={(el) => { editInputRefs.current[m.id] = el; }}
                     />
+                    <Box sx={{ mt: 0.5, border: "1px solid", borderColor: "divider", borderRadius: 1, maxHeight: 128, overflow: "auto" }}>
+                      {editSpeciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
+                      {!editSpeciesLoading && editSpeciesOptions.length === 0 && (
+                        <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
+                      )}
+                      {!editSpeciesLoading && editSpeciesOptions.length > 0 && (
+                        <Box>
+                          {editSpeciesOptions.map((opt) => (
+                            <Box
+                              key={`${opt.label}-${opt.common || ""}`}
+                              sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEditDrafts((prev) => ({
+                                  ...prev,
+                                  [m.id]: { ...(prev[m.id] || {}), speciesName: opt.label, status: prev[m.id]?.status ?? m.status, photo: prev[m.id]?.photo ?? m.photo },
+                                }));
+                              }}
+                            >
+                              {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                              <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
                     <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Status</Box>
                     <TextField
                       select
@@ -1211,6 +1279,38 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                       }
                       inputRef={(el) => { editInputRefs.current[m.id] = el; }}
                     />
+                    <Box sx={{ mt: 0.5, border: "1px solid", borderColor: "divider", borderRadius: 1, maxHeight: 128, overflow: "auto" }}>
+                      {editSpeciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
+                      {!editSpeciesLoading && editSpeciesOptions.length === 0 && (
+                        <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
+                      )}
+                      {!editSpeciesLoading && editSpeciesOptions.length > 0 && (
+                        <Box>
+                          {editSpeciesOptions.map((opt) => (
+                            <Box
+                              key={`${opt.label}-${opt.common || ""}`}
+                              sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEditDrafts((prev) => ({
+                                  ...prev,
+                                  [m.id]: {
+                                    ...prev[m.id],
+                                    speciesName: opt.label,
+                                    status: prev[m.id]?.status ?? m.status,
+                                    photo: prev[m.id]?.photo ?? m.photo,
+                                  },
+                                }));
+                              }}
+                            >
+                              {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                              <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
                     <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Status</Box>
                     <TextField
                       select

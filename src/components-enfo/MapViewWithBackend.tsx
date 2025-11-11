@@ -746,6 +746,31 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
     };
   }, [pendingMarker?.speciesName]);
 
+  // Load initial species suggestions when opening Edit Marker (mirror Add Marker)
+  useEffect(() => {
+    if (!editingMarkerId) return;
+    const loadInitialEditSpecies = async () => {
+      setEditSpeciesLoading(true);
+      try {
+        const url = `https://api.inaturalist.org/v1/taxa/autocomplete?q=wildlife&per_page=12`;
+        const res = await fetch(url, { headers: { Accept: "application/json" } });
+        if (res.ok) {
+          const data = await res.json();
+          const options = (data?.results || [])
+            .map((r: any) => ({ label: r?.name || "", common: r?.preferred_common_name || undefined }))
+            .filter((o: any) => o.label);
+          setEditSpeciesOptions(options);
+          setShowEditSpeciesDropdown(true);
+        }
+      } catch {
+      } finally {
+        setEditSpeciesLoading(false);
+      }
+    };
+    const t = setTimeout(loadInitialEditSpecies, 400);
+    return () => clearTimeout(t);
+  }, [editingMarkerId]);
+
   // Species autocomplete for edit mode
   useEffect(() => {
     const currentDraft = editingMarkerId ? editDrafts[editingMarkerId] : null;
@@ -956,7 +981,24 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
     if (!updates) return;
 
     try {
-      const updatedRecord = await updateWildlifeRecord(id, updates);
+      // Derive species_name and scientific_name similar to Add Marker flow
+      const rawSpecies = (updates.species_name ?? editingMarker?.species_name ?? '').trim();
+      let nextSpeciesName = updates.species_name;
+      let nextScientificName = (updates as any).scientific_name as string | undefined;
+      if (!nextScientificName) {
+        const parts = rawSpecies.split('/');
+        if (parts.length > 1) {
+          nextScientificName = parts[0].trim();
+          nextSpeciesName = parts.slice(1).join('/').trim();
+        }
+      }
+      const payload = {
+        ...updates,
+        species_name: nextSpeciesName ?? rawSpecies,
+        scientific_name: nextScientificName,
+      };
+
+      const updatedRecord = await updateWildlifeRecord(id, payload);
       setWildlifeRecords(prev => 
         prev.map(record => record.id === id ? updatedRecord : record)
       );
@@ -2678,12 +2720,17 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                   variant="outlined"
                   fullWidth
                     margin="dense"
-                    value={currentDraft.species_name !== undefined ? currentDraft.species_name : editingMarker.species_name}
+                    value={
+                      (currentDraft.scientific_name !== undefined || currentDraft.species_name !== undefined)
+                        ? [currentDraft.scientific_name, currentDraft.species_name].filter(Boolean).join(' / ')
+                        : ([editingMarker.scientific_name, editingMarker.species_name].filter(Boolean).join(' / ') || editingMarker.species_name)
+                    }
                     onChange={(e) => {
                       setEditDrafts((prev) => ({
                         ...prev,
                         [editingMarker.id]: {
                           ...(prev[editingMarker.id] || {}),
+                          // Store raw input; will be parsed on save into sci/common
                           species_name: e.target.value,
                           status: prev[editingMarker.id]?.status ?? editingMarker.status,
                           photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
@@ -2694,8 +2741,61 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                         },
                       }));
                     }}
+                    onFocus={() => {
+                      if (editSpeciesOptions.length > 0) {
+                        setShowEditSpeciesDropdown(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setShowEditSpeciesDropdown(false), 200);
+                    }}
                     inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
                   />
+                  {showEditSpeciesDropdown && (
+                    <Box sx={{ mt: 0.5, border: "1px solid", borderColor: "divider", borderRadius: 1, maxHeight: 128, overflow: "auto" }}>
+                      {editSpeciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1, color: '#2e7d32 !important' }}>Searching…</Box>}
+                      {!editSpeciesLoading && editSpeciesOptions.length === 0 && (
+                        <Box sx={{ fontSize: 12, opacity: 0.5, p: 1, color: '#2e7d32 !important' }}>No suggestions</Box>
+                      )}
+                      {!editSpeciesLoading && editSpeciesOptions.length > 0 && (
+                        <Box sx={{ color: '#2e7d32 !important' }}>
+                          {editSpeciesOptions.map((opt) => (
+                            <Box
+                              key={`${opt.label}-${opt.common || ""}`}
+                              sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSpeciesSelectedFromDropdown(true);
+                                setEditDrafts((prev) => ({
+                                  ...prev,
+                                  [editingMarker.id]: {
+                                    ...(prev[editingMarker.id] || {}),
+                                    // Store both names in draft: scientific and common
+                                    species_name: opt.common || opt.label,
+                                    scientific_name: opt.label,
+                                    status: prev[editingMarker.id]?.status ?? editingMarker.status,
+                                    photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                                    barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay,
+                                    municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality,
+                                    reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
+                                    contact_number: prev[editingMarker.id]?.contact_number ?? editingMarker.contact_number,
+                                  },
+                                }));
+                                setTimeout(() => {
+                                  setShowEditSpeciesDropdown(false);
+                                  setSpeciesSelectedFromDropdown(false);
+                                }, 150);
+                              }}
+                            >
+                              {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold', color: '#2e7d32 !important' }}>{opt.common}</Box>}
+                              <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.9, color: '#2e7d32 !important' }}>{opt.label}</Box>
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
+                  )}
                   <TextField
                     select
                   size="small"
@@ -2914,6 +3014,17 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                       <Button
                         variant="contained"
                         color="primary"
+                        className="confirm-btn"
+                        sx={(theme) => ({
+                          bgcolor: theme.palette.primary.main,
+                          color: theme.palette.mode === 'light' ? '#fff' : '#000',
+                          '&:hover': { bgcolor: theme.palette.primary.dark },
+                          '&.Mui-disabled': {
+                            opacity: 1,
+                            bgcolor: theme.palette.action.disabledBackground,
+                            color: theme.palette.mode === 'light' ? '#fff' : '#000',
+                          },
+                        })}
                         onClick={() => {
                           const d = editDrafts[editingMarker.id] || {};
                           if (!d.species_name || !d.status) return;
