@@ -19,6 +19,7 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ForgotPassword from "./ForgotPassword";
 import { useColorScheme } from "@mui/material/styles";
+import ColorModeSelect from "../../shared-theme/ColorModeSelect";
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
@@ -293,6 +294,25 @@ export default function SignInCard() {
   return (
     <>
       <Card variant="outlined" sx={{ backgroundColor: isEffectiveLight ? '#ffffff' : undefined }}>
+        {showCardHeader && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+            <ColorModeSelect
+              size="small"
+              sx={{
+                fontSize: '0.65rem',
+                minWidth: '56px',
+                '& .MuiSelect-select': {
+                  padding: '2px 16px 2px 6px',
+                  fontSize: '0.65rem'
+                },
+                '& .MuiSvgIcon-root': {
+                  fontSize: '0.75rem'
+                }
+              }}
+            />
+          </Box>
+        )}
+
         {/* Logo and Header - Only visible on mobile/portrait (opposite of main header) */}
         {showCardHeader && (
           <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mb: 2 }}>

@@ -87,7 +87,26 @@ export default function SignInSide(props) {
       <CssBaseline enableColorScheme />
 
       {/* Fixed top-right color mode toggle */}
-      <ColorModeSelect sx={{ position: "fixed", top: "1rem", right: "1rem", zIndex: (theme) => (theme.zIndex?.modal ?? 1300) + 1 }} />
+      {!isPortraitMode && (
+        <ColorModeSelect 
+          size="small"
+          sx={{ 
+            position: "fixed", 
+            top: "1rem", 
+            right: "1rem", 
+            zIndex: (theme) => (theme.zIndex?.modal ?? 1300) + 1,
+            fontSize: '0.75rem',
+            minWidth: '64px',
+            '& .MuiSelect-select': {
+              padding: '3px 18px 3px 8px',
+              fontSize: '0.75rem'
+            },
+            '& .MuiSvgIcon-root': {
+              fontSize: '0.875rem'
+            }
+          }} 
+        />
+      )}
 
       {/* Centered Header - Hidden on mobile/portrait/zoomed */}
       {showHeader && (
