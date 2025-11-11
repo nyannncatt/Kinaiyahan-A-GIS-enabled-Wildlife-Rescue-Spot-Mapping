@@ -306,8 +306,10 @@ export default function ProfileSection({ fullWidth = false, showTitle = true }: 
     setResetPasswordSuccess(false);
 
     try {
+      // Use environment variable for production, fallback to window.location.origin for development
+      const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
       const { error } = await supabase.auth.resetPasswordForEmail(userProfile.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${baseUrl}/reset-password`,
       });
 
       if (error) throw error;

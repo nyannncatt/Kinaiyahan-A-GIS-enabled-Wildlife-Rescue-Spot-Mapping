@@ -29,8 +29,10 @@ export default function ForgotPassword({ open, handleClose }: ForgotPasswordProp
     setSuccess(false);
 
     try {
+      // Use environment variable for production, fallback to window.location.origin for development
+      const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`, // <-- Supabase requires a redirect URL
+        redirectTo: `${baseUrl}/reset-password`,
       });
 
       if (error) throw error;
