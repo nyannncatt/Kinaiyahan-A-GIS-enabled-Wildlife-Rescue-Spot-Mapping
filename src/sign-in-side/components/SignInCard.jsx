@@ -1,5 +1,5 @@
 // src/sign-in-side/SignInCard.jsx
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../services/supabase";
 
@@ -72,9 +72,44 @@ export default function SignInCard() {
   const [captchaSuccess, setCaptchaSuccess] = useState(false);
   const [pendingCredentials, setPendingCredentials] = useState(null);
   const [capsLockOn, setCapsLockOn] = useState(false);
+  const [showCardHeader, setShowCardHeader] = useState(false);
   const passwordInputRef = useRef(null);
   const navigate = useNavigate();
   const { mode, systemMode } = useColorScheme();
+
+  // Detect mobile/portrait view to show header in card (opposite of main header)
+  useEffect(() => {
+    const checkViewport = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const isPortrait = height > width;
+      const isMobile = width < 900; // md breakpoint - mobile devices
+      // Show header in card on mobile or when in portrait orientation (opposite of main header)
+      // Also show if viewport is very narrow (zoomed in)
+      const shouldShow = isMobile || isPortrait || width < 800;
+      setShowCardHeader(shouldShow);
+    };
+
+    // Check on mount
+    checkViewport();
+
+    // Check on resize and orientation change
+    window.addEventListener('resize', checkViewport);
+    window.addEventListener('orientationchange', checkViewport);
+    
+    // Also check on visual viewport changes (for mobile browsers)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', checkViewport);
+    }
+
+    return () => {
+      window.removeEventListener('resize', checkViewport);
+      window.removeEventListener('orientationchange', checkViewport);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', checkViewport);
+      }
+    };
+  }, []);
 
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -258,7 +293,27 @@ export default function SignInCard() {
   return (
     <>
       <Card variant="outlined" sx={{ backgroundColor: isEffectiveLight ? '#ffffff' : undefined }}>
-        <Typography component="h1" variant="h4" sx={{ width: "100%", fontSize: "clamp(2rem, 10vw, 2.15rem)" }}>
+        {/* Logo and Header - Only visible on mobile/portrait (opposite of main header) */}
+        {showCardHeader && (
+          <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mb: 2 }}>
+            <Box component="img" src="/images/kinaiyahanlogonobg.png" alt="Kinaiyahan" sx={{ width: 48, height: 48, objectFit: 'contain' }} />
+            <Typography
+              variant="h5"
+              sx={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 700,
+                letterSpacing: '0.15em',
+                color: '#2e7d32 !important',
+                userSelect: 'none',
+                lineHeight: 1,
+              }}
+            >
+              Kinaiyahan
+            </Typography>
+          </Stack>
+        )}
+
+        <Typography component="h1" variant="h4" sx={{ width: "100%", fontSize: "clamp(2rem, 10vw, 2.15rem)", textAlign: "center" }}>
           Sign in
         </Typography>
 
