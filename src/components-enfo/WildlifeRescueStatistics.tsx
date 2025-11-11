@@ -48,7 +48,7 @@ import {
   FileDownload as FileDownloadIcon,
   InfoOutlined as InfoOutlinedIcon,
 } from '@mui/icons-material';
-import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, getUserRole, uploadWildlifePhoto, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
+import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, getUserRole, uploadWildlifePhoto, archiveWildlifeRecord, getArchivedWildlifeRecords, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
 import { useAuth } from '../context/AuthContext';
 import { useMapNavigation } from '../context/MapNavigationContext';
 import * as XLSX from 'xlsx';
@@ -71,6 +71,14 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any[]>([]);
+  // Archive dialog state
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [archivedRecords, setArchivedRecords] = useState<any[]>([]);
+  const [archivePage, setArchivePage] = useState(1);
+  const archivePageSize = 5;
+  const [archiveDateFrom, setArchiveDateFrom] = useState('');
+  const [archiveDateTo, setArchiveDateTo] = useState('');
+  const [archiveSort, setArchiveSort] = useState<'deleted_desc' | 'deleted_asc' | 'species_asc' | 'species_desc'>('deleted_desc');
   const [printDateFrom, setPrintDateFrom] = useState('');
   const [printDateTo, setPrintDateTo] = useState('');
   // Reject confirmation dialog
@@ -199,13 +207,17 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     
     if (window.confirm('Are you sure you want to delete this wildlife record?')) {
       try {
+        // Archive before delete
+        if (recordToDelete) {
+          try { await archiveWildlifeRecord(recordToDelete); } catch (e) { console.error('Archive failed, proceeding to delete:', e); }
+        }
         await deleteWildlifeRecord(id);
         setWildlifeRecords(prev => prev.filter(record => record.id !== id));
         
         // Show success message
         setSuccessSnackbar({
           open: true,
-          message: `Wildlife record "${recordName}" has been successfully deleted!`,
+          message: `Wildlife record "${recordName}" has been archived and deleted.`,
         });
       } catch (error) {
         console.error('Error deleting wildlife record:', error);
@@ -1204,6 +1216,34 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
           >
             Export Excel
           </Button>
+          <Button
+            variant="outlined"
+            onClick={async () => {
+              try {
+                const data = await getArchivedWildlifeRecords();
+                setArchivedRecords(data);
+                setArchivePage(1);
+                setArchiveDialogOpen(true);
+              } catch {
+                setArchivedRecords([]);
+                setArchivePage(1);
+                setArchiveDialogOpen(true);
+              }
+            }}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 500,
+              borderColor: 'secondary.main',
+              color: 'secondary.main',
+              '&:hover': {
+                backgroundColor: 'secondary.main',
+                color: 'white',
+                borderColor: 'secondary.main',
+              }
+            }}
+          >
+            View Archive
+          </Button>
         </Box>
       </Box>
 
@@ -2075,6 +2115,84 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               Approve and Print Report
             </Button>
           </Box>
+        </DialogActions>
+      </Dialog>
+
+      {/* Archive Dialog */}
+      <Dialog 
+        open={archiveDialogOpen} 
+        onClose={() => setArchiveDialogOpen(false)} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: theme.palette.mode === 'light'
+              ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+              : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))',
+            backgroundRepeat: 'no-repeat',
+            backgroundSize: '100% 100%',
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+            <Box
+              component="img"
+              src="/images/kinaiyahanlogonobg.png"
+              alt="Kinaiyahan"
+              sx={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }}
+            />
+            <Typography component="span" variant="h6" sx={{ color: '#2e7d32 !important', fontWeight: 700 }}>
+              Kinaiyahan • Archived Wildlife Records
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {archivedRecords.length === 0 ? (
+            <Typography sx={{ color: '#2e7d32 !important' }}>No archived records found.</Typography>
+          ) : (
+            <TableContainer component={Paper} sx={{ maxHeight: 420, bgcolor: 'transparent', boxShadow: 'none' }}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32 !important' }}>ID</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32 !important' }}>Species</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32 !important' }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32 !important' }}>Deleted At</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {archivedRecords.slice(0, 100).map((rec, idx) => (
+                    <TableRow key={`${rec.id}-${idx}`}>
+                      <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#2e7d32 !important' }}>
+                        {rec.speciespf_id || rec.original_id || rec.id}
+                      </TableCell>
+                      <TableCell sx={{ color: '#2e7d32 !important' }}>{rec.species_name}</TableCell>
+                      <TableCell sx={{ textTransform: 'capitalize', color: '#2e7d32 !important' }}>{rec.status}</TableCell>
+                      <TableCell sx={{ color: '#2e7d32 !important' }}>{rec.deleted_at ? new Date(rec.deleted_at).toLocaleString() : ''}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="outlined"
+            onClick={() => setArchiveDialogOpen(false)}
+            sx={{
+              color: '#2e7d32 !important',
+              borderColor: '#2e7d32 !important',
+              borderWidth: 2,
+              '&:hover': {
+                backgroundColor: 'rgba(46, 125, 50, 0.08)',
+                borderColor: '#2e7d32 !important'
+              }
+            }}
+          >
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
 

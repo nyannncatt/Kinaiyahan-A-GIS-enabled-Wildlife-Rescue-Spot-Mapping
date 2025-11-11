@@ -73,6 +73,52 @@ export interface UpdateWildlifeRecord {
   timestamp_captured?: string;
 }
 
+// Archive a wildlife record (copy to archive table)
+export async function archiveWildlifeRecord(record: WildlifeRecord): Promise<void> {
+  const archivePayload = {
+    original_id: record.id,
+    user_id: record.user_id,
+    species_name: record.species_name,
+    scientific_name: (record as any).scientific_name || null,
+    speciespf_id: (record as any).speciespf_id || null,
+    status: record.status,
+    approval_status: record.approval_status,
+    latitude: record.latitude,
+    longitude: record.longitude,
+    barangay: record.barangay,
+    municipality: record.municipality,
+    reporter_name: record.reporter_name,
+    contact_number: record.contact_number,
+    reporter_contact: record.reporter_contact,
+    notes: record.notes,
+    photo_url: record.photo_url,
+    has_exif_gps: record.has_exif_gps,
+    timestamp_captured: record.timestamp_captured,
+    created_at: record.created_at,
+    updated_at: record.updated_at,
+    deleted_at: new Date().toISOString(),
+  };
+  const { error } = await supabase
+    .from('wildlife_records_archive')
+    .insert([archivePayload]);
+  if (error) {
+    console.error('Error archiving wildlife record:', error);
+    throw error;
+  }
+}
+
+export async function getArchivedWildlifeRecords(): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('wildlife_records_archive')
+    .select('*')
+    .order('deleted_at', { ascending: false });
+  if (error) {
+    console.error('Error fetching archived records:', error);
+    throw error;
+  }
+  return data || [];
+}
+
 // Get all wildlife records
 export async function getWildlifeRecords(): Promise<WildlifeRecord[]> {
   const { data, error } = await supabase
