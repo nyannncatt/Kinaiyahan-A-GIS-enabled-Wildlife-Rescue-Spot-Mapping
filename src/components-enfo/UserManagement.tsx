@@ -36,6 +36,8 @@ interface LoginEntry {
   email: string;
   contactNumber: string;
   role: 'admin' | 'enforcement' | 'cenro' | 'reporter' | 'suspended' | 'pending';
+  gender?: string;
+  avatarUrl?: string;
 }
 
 interface ReportEntry {
@@ -104,6 +106,9 @@ export default function UserManagement() {
   const [pendingSearchQuery, setPendingSearchQuery] = React.useState('');
   const [pendingSortAnchorEl, setPendingSortAnchorEl] = React.useState<null | HTMLElement>(null);
   const [pendingSortOption, setPendingSortOption] = React.useState<'name_asc' | 'name_desc' | 'email_asc' | 'email_desc' | 'id_asc' | 'id_desc'>('name_asc');
+  // Pending details modal
+  const [pendingDetailsOpen, setPendingDetailsOpen] = React.useState(false);
+  const [selectedPending, setSelectedPending] = React.useState<LoginEntry | null>(null);
 
   // Reports list state
   const [reports, setReports] = React.useState<ReportEntry[]>([]);
@@ -187,7 +192,7 @@ export default function UserManagement() {
       const to = from + pageSize - 1;
       const { data, error, count } = await supabase
         .from('pending_applications')
-        .select('id,name,email,contact_number', { count: 'exact' })
+        .select('id,name,email,contact_number,gender,avatar_url', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, to);
       if (!error && data) {
@@ -196,7 +201,9 @@ export default function UserManagement() {
           name: app.name ?? '',
           email: app.email ?? '',
           contactNumber: app.contact_number ?? '',
-          role: 'pending' as const
+          role: 'pending' as const,
+          gender: app.gender ?? '',
+          avatarUrl: app.avatar_url ?? '',
         }));
         setPending(mapped);
         setTotalPendingCount(count ?? 0);
@@ -326,7 +333,7 @@ export default function UserManagement() {
         const to = from + pageSize - 1;
         const { data, error, count } = await supabase
           .from('pending_applications')
-          .select('id,name,email,contact_number,role', { count: 'exact' })
+          .select('id,name,email,contact_number,role,gender,avatar_url', { count: 'exact' })
           .order('name', { ascending: true, nullsFirst: false })
           .range(from, to);
 
@@ -339,6 +346,8 @@ export default function UserManagement() {
           email: u.email ?? '',
           contactNumber: u.contact_number ?? '',
           role: 'pending' as const,
+          gender: u.gender ?? '',
+          avatarUrl: u.avatar_url ?? '',
         }));
         setPending(mapped);
         setTotalPendingCount(count ?? 0);
@@ -805,6 +814,52 @@ export default function UserManagement() {
           </Button>
         </Stack>
       </Box>
+      {/* Pending details dialog */}
+      <Dialog open={pendingDetailsOpen} onClose={() => setPendingDetailsOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Pending Applicant Details</DialogTitle>
+        <DialogContent dividers>
+          {selectedPending ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                {selectedPending.avatarUrl ? (
+                  <Box component="img" src={selectedPending.avatarUrl} alt="avatar" sx={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '1px solid', borderColor: 'divider' }} />
+                ) : (
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>No Avatar</Typography>
+                )}
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>ID</Typography>
+                <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{selectedPending.id}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>Name</Typography>
+                <Typography variant="body2">{selectedPending.name || 'N/A'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>Email</Typography>
+                <Typography variant="body2">{selectedPending.email || 'N/A'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>Contact</Typography>
+                <Typography variant="body2">{selectedPending.contactNumber || 'N/A'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>Gender</Typography>
+                <Typography variant="body2">{selectedPending.gender || 'N/A'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>Role</Typography>
+                <Typography variant="body2" sx={{ textTransform: 'capitalize' }}>{selectedPending.role || 'pending'}</Typography>
+              </Box>
+            </Box>
+          ) : (
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>No record selected.</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingDetailsOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
       {/* Users sort menu */}
       <Menu
         anchorEl={sortAnchorEl}
@@ -1060,7 +1115,14 @@ export default function UserManagement() {
           const isPlaceholder = !entry.name && !entry.email && !entry.contactNumber;
           return (
             <React.Fragment key={`pending-row-${entry.id || idx}`}>
-              <ListItem sx={{ py: 2, minHeight: 64 }}>
+              <ListItem
+                sx={{ py: 2, minHeight: 64, cursor: isPlaceholder ? 'default' : 'pointer' }}
+                onClick={() => {
+                  if (isPlaceholder) return;
+                  setSelectedPending(entry);
+                  setPendingDetailsOpen(true);
+                }}
+              >
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 140, textAlign: 'center' }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.75rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showPendingIds, 2)}</Typography>
