@@ -102,8 +102,8 @@ export default function ResetPassword() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters long.");
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters long.");
       return;
     }
 
@@ -227,7 +227,7 @@ export default function ResetPassword() {
               fullWidth
               required
               autoFocus
-              helperText="Password must be at least 6 characters"
+              helperText="Password must be at least 8 characters"
             />
             <TextField
               label="Confirm Password"
