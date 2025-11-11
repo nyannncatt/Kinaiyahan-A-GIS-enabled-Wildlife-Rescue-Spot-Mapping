@@ -1732,11 +1732,19 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                     color="inherit"
                     size="small"
                     onClick={() => {
-                      if (isSelected) {
-                        setEnabledStatuses(prev => prev.filter(s => s !== status.value));
-                      } else {
-                        setEnabledStatuses(prev => [...prev, status.value]);
-                      }
+                      setEnabledStatuses(prev => {
+                        let next: string[];
+                        if (isSelected) {
+                          next = prev.filter(s => s !== status.value);
+                        } else {
+                          next = [...prev, status.value];
+                        }
+                        // If toggling any non-'reported' status, automatically disable 'reported'
+                        if (status.value !== 'reported') {
+                          next = next.filter(s => s !== 'reported');
+                        }
+                        return Array.from(new Set(next));
+                      });
                     }}
                     sx={{
                       textTransform: 'none',
