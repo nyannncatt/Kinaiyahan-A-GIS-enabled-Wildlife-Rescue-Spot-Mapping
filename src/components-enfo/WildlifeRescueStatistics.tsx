@@ -1513,7 +1513,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                 }}
               >
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2, fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                  {record.id}
+                  {record.speciespf_id || record.id}
                 </TableCell>
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
                   <Typography variant="body2" sx={{ fontWeight: 500, color: 'text.primary' }}>
@@ -1668,7 +1668,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                           size="small"
                           variant="outlined"
                           startIcon={<CheckCircle fontSize="small" />}
-                          onClick={() => handleApproveClick(record)}
+                          onClick={(e) => { e.stopPropagation(); handleApproveClick(record); }}
                           sx={{ 
                             color: '#4caf50',
                             borderColor: '#4caf50',
@@ -1688,7 +1688,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                           size="small"
                           variant="outlined"
                           startIcon={<Close fontSize="small" />}
-                          onClick={() => handleRejectRecord(record.id)}
+                          onClick={(e) => { e.stopPropagation(); handleRejectRecord(record.id); }}
                           sx={{ 
                             color: theme.palette.error.main,
                             borderColor: theme.palette.error.main,
