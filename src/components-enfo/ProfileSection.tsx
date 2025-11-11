@@ -18,6 +18,12 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import LockResetIcon from '@mui/icons-material/LockReset';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogActions from '@mui/material/DialogActions';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/supabase';
@@ -59,6 +65,12 @@ export default function ProfileSection({ fullWidth = false, showTitle = true }: 
   
   // State for User ID visibility (default to hidden)
   const [showUserId, setShowUserId] = useState(false);
+  
+  // State for reset password modal
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
+  const [resetPasswordError, setResetPasswordError] = useState<string | null>(null);
+  const [resetPasswordSuccess, setResetPasswordSuccess] = useState(false);
   
   // Fetch user profile data - only when user ID changes
   useEffect(() => {
@@ -282,6 +294,37 @@ export default function ProfileSection({ fullWidth = false, showTitle = true }: 
     }
   };
 
+  // Handle reset password
+  const handleResetPassword = async () => {
+    if (!userProfile?.email) {
+      setResetPasswordError('Email not found');
+      return;
+    }
+
+    setResetPasswordLoading(true);
+    setResetPasswordError(null);
+    setResetPasswordSuccess(false);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(userProfile.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+      setResetPasswordSuccess(true);
+    } catch (err: any) {
+      setResetPasswordError(err.message || 'Failed to send reset email');
+    } finally {
+      setResetPasswordLoading(false);
+    }
+  };
+
+  const handleCloseResetPassword = () => {
+    setResetPasswordOpen(false);
+    setResetPasswordError(null);
+    setResetPasswordSuccess(false);
+  };
+
   return (
     <Box 
       component={motion.div}
@@ -308,22 +351,41 @@ export default function ProfileSection({ fullWidth = false, showTitle = true }: 
           )}
           <Box sx={{ display: 'flex', gap: 2, mb: 3, minHeight: '32.5px', alignItems: 'center' }}>
             {!isEditMode && userProfile && (
-              <Box
-                component={motion.div}
-                key="edit-button"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Button
-                  variant="outlined"
-                  startIcon={<EditIcon />}
-                  onClick={handleEditClick}
-                  size="small"
+              <>
+                <Box
+                  component={motion.div}
+                  key="edit-button"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3 }}
                 >
-                  Edit
-                </Button>
-              </Box>
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditIcon />}
+                    onClick={handleEditClick}
+                    size="small"
+                  >
+                    Edit
+                  </Button>
+                </Box>
+                <Box
+                  component={motion.div}
+                  key="reset-password-button"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3, delay: 0.1 }}
+                >
+                  <Button
+                    variant="outlined"
+                    startIcon={<LockResetIcon />}
+                    onClick={() => setResetPasswordOpen(true)}
+                    size="small"
+                    color="warning"
+                  >
+                    Reset Password
+                  </Button>
+                </Box>
+              </>
             )}
             {isEditMode && (
               <Box
@@ -851,6 +913,53 @@ export default function ProfileSection({ fullWidth = false, showTitle = true }: 
           </Box>
         )}
       </Card>
+
+      {/* Reset Password Modal */}
+      <Dialog
+        open={resetPasswordOpen}
+        onClose={handleCloseResetPassword}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+          },
+        }}
+      >
+        <DialogTitle>Reset Password</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            We'll send a password reset link to your email address: <strong>{userProfile?.email}</strong>
+          </DialogContentText>
+
+          {resetPasswordError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {resetPasswordError}
+            </Alert>
+          )}
+
+          {resetPasswordSuccess && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              Password reset email sent! Please check your inbox and follow the instructions to reset your password.
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ pb: 3, px: 3 }}>
+          <Button onClick={handleCloseResetPassword} disabled={resetPasswordLoading}>
+            {resetPasswordSuccess ? 'Close' : 'Cancel'}
+          </Button>
+          {!resetPasswordSuccess && (
+            <Button
+              variant="contained"
+              onClick={handleResetPassword}
+              disabled={resetPasswordLoading}
+              color="warning"
+            >
+              {resetPasswordLoading ? 'Sending...' : 'Send Reset Link'}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
