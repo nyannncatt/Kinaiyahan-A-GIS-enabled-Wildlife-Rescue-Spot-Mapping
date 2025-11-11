@@ -2,8 +2,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../services/supabase";
-import { Box, Button, Card, TextField, Typography, Alert, CircularProgress, Stack } from "@mui/material";
+import { Box, Button, Card, TextField, Typography, Alert, CircularProgress, Stack, InputAdornment, IconButton } from "@mui/material";
 import LockResetIcon from "@mui/icons-material/LockReset";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 
 export default function ResetPassword() {
   const [newPassword, setNewPassword] = useState("");
@@ -12,6 +14,8 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState("");
   const [isReady, setIsReady] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -221,21 +225,63 @@ export default function ResetPassword() {
             </Typography>
             <TextField
               label="New Password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               fullWidth
               required
               autoFocus
               helperText="Password must be at least 8 characters"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                      aria-label="toggle password visibility"
+                      sx={{
+                        '&:focus': {
+                          outline: 'none',
+                        },
+                        '&:focus-visible': {
+                          outline: 'none',
+                        },
+                      }}
+                    >
+                      {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
             <TextField
               label="Confirm Password"
-              type="password"
+              type={showConfirmPassword ? "text" : "password"}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               fullWidth
               required
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      edge="end"
+                      aria-label="toggle confirm password visibility"
+                      sx={{
+                        '&:focus': {
+                          outline: 'none',
+                        },
+                        '&:focus-visible': {
+                          outline: 'none',
+                        },
+                      }}
+                    >
+                      {showConfirmPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
             <Button 
               variant="contained" 
