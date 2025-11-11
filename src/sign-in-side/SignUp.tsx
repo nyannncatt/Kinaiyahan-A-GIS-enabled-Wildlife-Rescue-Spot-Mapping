@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { Box, Button, TextField, Typography, Avatar, MenuItem, InputLabel, FormControl, Select, Alert, CircularProgress, Link, Card as MuiCard, Fade, Slide, Modal, Backdrop, Stack } from '@mui/material';
-import { CloudUpload, CheckCircle } from '@mui/icons-material';
+import { Box, Button, TextField, Typography, Avatar, MenuItem, InputLabel, FormControl, Select, Alert, CircularProgress, Link, Card as MuiCard, Fade, Slide, Modal, Backdrop, Stack, InputAdornment, IconButton } from '@mui/material';
+import { CloudUpload, CheckCircle, Visibility, VisibilityOff } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { supabase } from '../services/supabase';
 
@@ -26,6 +26,7 @@ export default function SignUp() {
   const [gender, setGender] = useState<'male' | 'female' | 'prefer_not_to_say'>('prefer_not_to_say');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   // role selection removed; all new signups are pending approval
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -453,7 +454,7 @@ export default function SignUp() {
             <TextField
               size="small"
               label="Password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               required
               value={password}
               onChange={(e) => {
@@ -475,6 +476,20 @@ export default function SignUp() {
                   '&.Mui-focused fieldset': { borderColor: '#2e7d32' },
                 },
                 '& .MuiInputLabel-root.Mui-focused': { color: '#2e7d32' },
+              }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowPassword(v => !v)}
+                      edge="end"
+                      size="small"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                )
               }}
             />
 
