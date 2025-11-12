@@ -22,7 +22,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/supabase';
 
-export default function ProfileSection() {
+export default function ProfileSection({ fullWidth = false, showTitle = true }: { fullWidth?: boolean; showTitle?: boolean }) {
   const { user, session } = useAuth();
   
   // State for user profile data
@@ -83,25 +83,26 @@ export default function ProfileSection() {
         // Get user metadata from auth
         const userMetadata = user.user_metadata || {};
         
-        // Fetch role from users table
+        // Fetch user data from users table (this is the source of truth)
         const { data: userData, error: userError } = await supabase
           .from('users')
-          .select('role')
+          .select('role, first_name, last_name, gender, contact_number, avatar_url, email')
           .eq('id', user.id)
           .single();
 
         if (userError && userError.code !== 'PGRST116') {
-          console.error('Error fetching user role:', userError);
+          console.error('Error fetching user data:', userError);
         }
 
+        // Use data from users table first, fallback to auth metadata
         const role = userData?.role || userMetadata?.role || 'reporter';
-        const firstName = userMetadata?.first_name || userMetadata?.full_name || '';
-        const lastName = userMetadata?.last_name || '';
-        const gender = userMetadata?.gender || 'Not specified';
-        const contactNumber = userMetadata?.phone || userMetadata?.contact_number || 'Not provided';
-        const avatarPhoto = userMetadata?.avatar_url || null;
+        const firstName = userData?.first_name || userMetadata?.first_name || userMetadata?.full_name || '';
+        const lastName = userData?.last_name || userMetadata?.last_name || '';
+        const gender = userData?.gender || userMetadata?.gender || 'Not specified';
+        const contactNumber = userData?.contact_number || userMetadata?.phone || userMetadata?.contact_number || 'Not provided';
+        const avatarPhoto = userData?.avatar_url || userMetadata?.avatar_url || null;
         const dateCreated = user.created_at || new Date().toISOString();
-        const email = user.email || userMetadata?.email || 'Not provided';
+        const email = userData?.email || user.email || userMetadata?.email || 'Not provided';
 
         setUserProfile({
           userId: user.id,
@@ -289,13 +290,22 @@ export default function ProfileSection() {
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       data-profile 
-      sx={{ mt: 2, mb: 3, maxWidth: { xs: '100%', md: '1577px' }, mx: 'auto', minHeight: { xs: 'auto', md: '650px' } }}
+      sx={{
+        mt: 2,
+        mb: 3,
+        width: fullWidth ? '100%' : undefined,
+        maxWidth: fullWidth ? { xs: '100%', md: '100%' } : { xs: '100%', md: '1577px' },
+        mx: fullWidth ? 0 : 'auto',
+        minHeight: { xs: 'auto', md: '650px' }
+      }}
     >
       <Card sx={{ p: 3.5, boxShadow: 1, minHeight: { xs: 'auto', md: '650px' }, display: 'flex', flexDirection: 'column', position: 'relative' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: -8, flexShrink: 0 }}>
-          <Typography variant="h4" component="h2" sx={{ color: 'primary.main', mb: 3 }}>
-            My Profile
-          </Typography>
+          {showTitle && (
+            <Typography variant="h4" component="h2" sx={{ color: 'primary.main', mb: 3 }}>
+              My Profile
+            </Typography>
+          )}
           <Box sx={{ display: 'flex', gap: 2, mb: 3, minHeight: '32.5px', alignItems: 'center' }}>
             {!isEditMode && userProfile && (
               <Box

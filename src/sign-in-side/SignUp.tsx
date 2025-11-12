@@ -26,7 +26,7 @@ export default function SignUp() {
   const [gender, setGender] = useState<'male' | 'female' | 'prefer_not_to_say'>('prefer_not_to_say');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'cenro' | 'enforcement'>('enforcement');
+  // role selection removed; all new signups are pending approval
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -88,12 +88,17 @@ export default function SignUp() {
         setSubmitting(false);
         return;
       }
+      
+      // Build complete contact number only if phone number is valid (10 digits)
+      const completeContactNumber = phoneNumber.length === 10 ? `${countryCode}${phoneNumber}` : null;
+      
       // Sign up user with metadata
       const { data: signData, error: signErr } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { full_name: fullName, phone: contactNumber, role },
+          // Do NOT set role in auth metadata to prevent unapproved login routing
+          data: { full_name: fullName, phone: completeContactNumber || contactNumber },
           emailRedirectTo: `${location.origin}/login`
         }
       });
@@ -101,51 +106,35 @@ export default function SignUp() {
       const userId = signData.user?.id;
       if (!userId) throw new Error('Failed to create user');
 
-      // If email confirmation is enabled, there is no active session yet.
-      // Only perform avatar upload and metadata update when a session exists.
-      const hasSession = !!signData.session?.access_token;
-      // With email confirmation disabled, there should be a session now.
-      // Upload avatar if provided
+      // Upload avatar if provided (before sign out)
+      // Note: We upload before sign out to ensure we have a session if needed
       let avatarUrl: string | null = null;
-      if (avatarFile && hasSession) {
-        avatarUrl = await uploadAvatar(userId);
+      if (avatarFile) {
+        try {
+          avatarUrl = await uploadAvatar(userId);
+        } catch (avatarErr) {
+          console.warn('Avatar upload failed, continuing without avatar:', avatarErr);
+          // Continue without avatar rather than failing the entire signup
+        }
       }
 
-      // Persist profile details in auth metadata
-      if (hasSession) {
-        const { error: metaErr } = await supabase.auth.updateUser({
-          data: {
-            first_name: fullName,
-            full_name: fullName,
-            last_name: lastName,
-            phone: contactNumber,
-            gender,
-            role,
-            avatar_url: avatarUrl || undefined,
-          },
-        });
-        if (metaErr) throw metaErr;
-      }
-
-      // Create/Update row in public.users (RLS passes with session)
-      if (hasSession) {
-        const { error: upsertErr } = await supabase
-          .from('users')
-          .upsert({ 
-            id: userId, 
-            role, 
-            first_name: fullName, 
-            last_name: lastName,
-            contact_number: contactNumber || null,
-            avatar_url: avatarUrl || null,
-            gender: gender,
-            email: email
-          }, { onConflict: 'id' });
-        if (upsertErr) throw upsertErr;
-      }
-
-      // Do not keep user logged in after signup: sign out and send to login
+      // Sign out IMMEDIATELY after auth user creation (before inserting pending)
+      // This prevents any session from existing until admin approval
       try { await supabase.auth.signOut(); } catch {}
+
+      // Insert to pending applications (approval required before role is applied)
+      await supabase
+        .from('pending_applications')
+        .insert([{ 
+          name: `${fullName} ${lastName}`.trim(),
+          first_name: fullName,
+          last_name: lastName,
+          email: email,
+          contact_number: completeContactNumber,
+          gender: gender,
+          avatar_url: avatarUrl,
+          auth_user_id: userId
+        }]);
       
       // Show success modal
       setShowSuccessModal(true);
@@ -471,23 +460,7 @@ export default function SignUp() {
               }}
             />
 
-            <FormControl
-              size="small"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': { borderColor: '#c8e6c9' },
-                  '&:hover fieldset': { borderColor: '#81c784' },
-                  '&.Mui-focused fieldset': { borderColor: '#2e7d32' },
-                },
-                '& .MuiInputLabel-root.Mui-focused': { color: '#2e7d32' },
-              }}
-            >
-              <InputLabel id="role-label">Role</InputLabel>
-              <Select labelId="role-label" label="Role" value={role} onChange={(e) => setRole(e.target.value as any)}>
-                <MenuItem value="cenro">CENRO</MenuItem>
-                <MenuItem value="enforcement">Enforcement</MenuItem>
-              </Select>
-            </FormControl>
+            {/* Role selection removed: all new signups are pending approval */}
 
             <Button
               type="submit"

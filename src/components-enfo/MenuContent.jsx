@@ -149,6 +149,7 @@ const utilityItems = [
 export default function MenuContent() {
   const [activeTab, setActiveTab] = useState('mapping');
   const theme = useTheme();
+  const isAdminRoute = typeof window !== 'undefined' && window.location && window.location.pathname.startsWith('/admin');
 
   // Track scroll position to update active tab
   useEffect(() => {
@@ -156,6 +157,7 @@ export default function MenuContent() {
       const mapContainer = document.querySelector('[data-map-container]');
       const recordListElement = document.querySelector('[data-record-list]');
       const analyticsElement = document.querySelector('[data-analytics]');
+      const auditElement = document.querySelector('[data-audit]');
       const profileElement = document.querySelector('[data-profile]');
       
       const distances = [];
@@ -176,11 +178,18 @@ export default function MenuContent() {
         distances.push({ tab: 'records', distance: recordDistance, rect: recordRect });
       }
       
-      // Analytics section
+      // Analytics (Reports Logs) section
       if (analyticsElement) {
         const analyticsRect = analyticsElement.getBoundingClientRect();
         const analyticsDistance = Math.abs(analyticsRect.top + analyticsRect.height / 2 - viewportCenter);
         distances.push({ tab: 'analytics', distance: analyticsDistance, rect: analyticsRect });
+      }
+
+      // Recent Logins section (admin only)
+      if (auditElement) {
+        const auditRect = auditElement.getBoundingClientRect();
+        const auditDistance = Math.abs(auditRect.top + auditRect.height / 2 - viewportCenter);
+        distances.push({ tab: 'audit', distance: auditDistance, rect: auditRect });
       }
       
       // Profile section
@@ -197,13 +206,11 @@ export default function MenuContent() {
       distances.sort((a, b) => a.distance - b.distance);
       
       // Check all visible sections and pick the one closest to center
-      const visibleSections = distances.filter(item => 
-        item.rect.top < windowHeight && item.rect.bottom > 0
-      );
+      const visibleSections = distances
+        .filter(item => item.rect.top < windowHeight && item.rect.bottom > 0)
+        .sort((a, b) => a.distance - b.distance);
       
-      if (visibleSections.length > 0) {
-        setActiveTab(visibleSections[0].tab);
-      }
+      if (visibleSections.length > 0) setActiveTab(visibleSections[0].tab);
     };
 
     // Add scroll listener
@@ -235,6 +242,14 @@ export default function MenuContent() {
     // Handle Analytics tab - scroll to analytics section
     if (tabId === 'analytics') {
       scrollToAnalytics();
+    }
+
+    // Handle Audit tab - scroll to audit logs section
+    if (tabId === 'audit') {
+      const auditEl = document.querySelector('[data-audit]');
+      if (auditEl) {
+        auditEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      }
     }
     
     // Handle Mapping tab - scroll to top
@@ -274,17 +289,11 @@ export default function MenuContent() {
       // Wait for next frame to ensure element is fully rendered and positioned
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          // Calculate absolute position using offsetTop (more reliable than getBoundingClientRect)
-          let elementTop = 0;
-          let element = analyticsElement;
-          while (element) {
-            elementTop += element.offsetTop;
-            element = element.offsetParent;
-          }
-          const offset = 10; // Offset from top of viewport
-          window.scrollTo({ 
-            top: elementTop - offset, 
-            behavior: 'smooth' 
+          // Scroll to center the analytics section in the viewport
+          analyticsElement.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest'
           });
         });
       });
@@ -375,7 +384,23 @@ export default function MenuContent() {
       <Box sx={{ flex: 1, px: 2, mt: 5 }}>
         <SectionTitle>MAIN</SectionTitle>
         <List dense>
-          {mainNavigationItems.map((item) => (
+          {mainNavigationItems.map((item) => {
+            const isMapping = item.id === 'mapping';
+            const isRecords = item.id === 'records';
+            const isAnalytics = item.id === 'analytics';
+            const text = isAdminRoute
+              ? (isMapping ? 'User Management' : isRecords ? 'Applications' : isAnalytics ? 'Report Logs' : item.text)
+              : item.text;
+            const description = isAdminRoute
+              ? (isMapping
+                  ? 'Manage users and roles'
+                  : isRecords
+                  ? 'Pending and processed applications'
+                  : isAnalytics
+                  ? 'View wildlife reports and logs'
+                  : item.description)
+              : item.description;
+            return (
             <ListItem key={item.id} disablePadding sx={{ display: 'block' }}>
               <TabButton
                 active={activeTab === item.id}
@@ -393,20 +418,56 @@ export default function MenuContent() {
                         fontWeight: activeTab === item.id ? 600 : 500,
                         fontSize: '14px'
                       }}>
-                        {item.text}
+                        {text}
                       </Typography>
                       <Typography variant="caption" sx={{ 
                         color: 'text.secondary',
                         fontSize: '11px'
                       }}>
-                        {item.description}
+                        {description}
                       </Typography>
                     </Box>
                   }
                 />
               </TabButton>
             </ListItem>
-          ))}
+            );
+          })}
+
+          {/* Admin-only: Recent Logins tab */}
+          {isAdminRoute && (
+            <ListItem disablePadding sx={{ display: 'block' }}>
+              <TabButton
+                active={activeTab === 'audit'}
+                onClick={() => handleTabClick('audit')}
+              >
+                <ListItemIcon>
+                  <IconWrapper active={activeTab === 'audit'}>
+                    {/* reuse analytics icon for logs */}
+                    <AnalyticsRoundedIcon sx={{ fontSize: 20 }} />
+                  </IconWrapper>
+                </ListItemIcon>
+                <ListItemText 
+                  primary={
+                    <Box>
+                      <Typography variant="body2" sx={{ 
+                        fontWeight: activeTab === 'audit' ? 600 : 500,
+                        fontSize: '14px'
+                      }}>
+                        Login Logs
+                      </Typography>
+                      <Typography variant="caption" sx={{ 
+                        color: 'text.secondary',
+                        fontSize: '11px'
+                      }}>
+                        Latest login entries
+                      </Typography>
+                    </Box>
+                  }
+                />
+              </TabButton>
+            </ListItem>
+          )}
         </List>
       </Box>
 
@@ -414,7 +475,7 @@ export default function MenuContent() {
       <Box sx={{ px: 2, pb: 2 }}>
         <SectionTitle>UTILITY</SectionTitle>
         <List dense>
-          {utilityItems.map((item) => (
+          {(isAdminRoute ? utilityItems.filter((i) => i.id !== 'settings') : utilityItems).map((item) => (
             <ListItem key={item.id} disablePadding sx={{ display: 'block' }}>
               <TabButton
                 active={activeTab === item.id}

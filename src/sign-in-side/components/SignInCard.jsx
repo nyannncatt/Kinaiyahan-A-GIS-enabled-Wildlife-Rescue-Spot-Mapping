@@ -12,9 +12,11 @@ import FormLabel from "@mui/material/FormLabel";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { styled } from "@mui/material/styles";
-import { FormControl, InputAdornment, Alert, Divider, SvgIcon } from "@mui/material";
+import { FormControl, InputAdornment, Alert, Divider, SvgIcon, Snackbar, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import MuiAlert from "@mui/material/Alert";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import ForgotPassword from "./ForgotPassword";
 
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -40,6 +42,16 @@ function GoogleColoredIcon(props) {
   );
 }
 
+// Generate random captcha string (mix of letters and numbers)
+const generateCaptcha = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let result = '';
+  for (let i = 0; i < 5; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
 export default function SignInCard() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,10 +62,27 @@ export default function SignInCard() {
   const [loginError, setLoginError] = useState("");
   const [open, setOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [logToastOpen, setLogToastOpen] = useState(false);
+  const [logToastMessage, setLogToastMessage] = useState("");
+  const [captchaModalOpen, setCaptchaModalOpen] = useState(false);
+  const [captchaValue, setCaptchaValue] = useState(() => generateCaptcha());
+  const [captchaInput, setCaptchaInput] = useState("");
+  const [captchaError, setCaptchaError] = useState(false);
+  const [captchaSuccess, setCaptchaSuccess] = useState(false);
+  const [pendingCredentials, setPendingCredentials] = useState(null);
   const navigate = useNavigate();
 
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
+
+  const refreshCaptcha = (keepError = false) => {
+    setCaptchaValue(generateCaptcha());
+    setCaptchaInput("");
+    if (!keepError) {
+      setCaptchaError(false);
+    }
+    setCaptchaSuccess(false);
+  };
 
   const validateInputs = () => {
     let valid = true;
@@ -75,11 +104,44 @@ export default function SignInCard() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError("");
-    if (!validateInputs()) return;
+    
+    // Validate email and password only
+    if (!validateInputs()) {
+      return;
+    }
+
+    // Store credentials and show captcha modal
+    setPendingCredentials({ email, password });
+    setCaptchaModalOpen(true);
+    refreshCaptcha();
+  };
+
+  const handleCaptchaVerify = async () => {
+    // Validate captcha
+    if (!captchaInput || captchaInput.toLowerCase() !== captchaValue.toLowerCase()) {
+      setCaptchaError(true);
+      setCaptchaSuccess(false);
+      refreshCaptcha(true); // Keep error state when refreshing
+      return;
+    }
+
+    // Captcha verified, show success message
+    setCaptchaError(false);
+    setCaptchaSuccess(true);
+    
+    if (!pendingCredentials) {
+      setCaptchaModalOpen(false);
+      setLoginError("Session expired. Please try again.");
+      return;
+    }
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ 
+        email: pendingCredentials.email, 
+        password: pendingCredentials.password 
+      });
       if (error) throw error;
+      
       // Determine role: prefer users table, else auth metadata
       const user = data.user;
       let role = null;
@@ -93,8 +155,44 @@ export default function SignInCard() {
       } catch {}
       if (!role) role = user?.user_metadata?.role ?? null;
 
+      // Record login (RPC with fallback direct insert); non-blocking
+      try {
+        let ok = false;
+        try {
+          const { error: logErr } = await supabase.rpc('log_login');
+          if (logErr) throw logErr;
+          ok = true;
+          console.info('login_logs: recorded via rpc for', user.id);
+        } catch (rpcErr) {
+          console.warn('login_logs rpc failed, trying direct insert', rpcErr);
+          const { error: insErr } = await supabase
+            .from('login_logs')
+            .insert({ user_id: user.id }, { returning: 'minimal' });
+          if (insErr) throw insErr;
+          ok = true;
+          console.info('login_logs: recorded via direct insert for', user.id);
+        }
+        if (ok) {
+          await new Promise((r) => setTimeout(r, 150));
+        }
+      } catch (e2) {
+        const msg = e2?.message ? String(e2.message) : 'Failed to record login';
+        setLogToastMessage(msg);
+        setLogToastOpen(true);
+      }
+
+      // Close modal and reset after a brief delay to show success
+      setTimeout(() => {
+        setCaptchaModalOpen(false);
+        setCaptchaInput("");
+        setPendingCredentials(null);
+        setCaptchaSuccess(false);
+        refreshCaptcha();
+      }, 500);
+
       if (role === 'enforcement') navigate('/enforcement');
       else if (role === 'cenro') navigate('/cenro');
+      else if (role === 'admin') navigate('/admin');
     } catch (err) {
       const msg = err?.message ? String(err.message) : "Invalid email or password";
       const lower = msg.toLowerCase();
@@ -103,7 +201,24 @@ export default function SignInCard() {
       } else {
         setLoginError(msg);
       }
+      // Close modal on error
+      setCaptchaModalOpen(false);
+      setCaptchaInput("");
+      setPendingCredentials(null);
+      setCaptchaSuccess(false);
+      refreshCaptcha();
     }
+  };
+
+  const handleCaptchaModalClose = () => {
+    // Sign out if user closes modal without completing captcha
+    setCaptchaModalOpen(false);
+    setCaptchaInput("");
+    setCaptchaError(false);
+    setCaptchaSuccess(false);
+    setPendingCredentials(null);
+    // Sign out any partial session
+    supabase.auth.signOut();
   };
 
   const goPublicReport = () => navigate('/public-report');
@@ -203,6 +318,140 @@ export default function SignInCard() {
       </Card>
 
       <ForgotPassword open={open} handleClose={handleClose} />
+      
+      {/* Captcha Verification Modal */}
+      <Dialog 
+        open={captchaModalOpen} 
+        onClose={handleCaptchaModalClose}
+        maxWidth="sm"
+        fullWidth
+        disableEscapeKeyDown
+      >
+        <DialogTitle>Verify Captcha to Sign In</DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+            Please enter the captcha code below to complete your login.
+          </Typography>
+          
+          {captchaError && (
+            <Box
+              sx={{
+                mt: 2,
+                mb: 2,
+                p: 1.5,
+                bgcolor: (theme) => theme.palette.mode === 'dark' 
+                  ? 'rgba(211, 47, 47, 0.15)' 
+                  : 'rgba(211, 47, 47, 0.08)',
+                borderRadius: 1,
+              }}
+            >
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: (theme) => theme.palette.mode === 'dark' 
+                    ? '#ff6b6b' 
+                    : '#c62828',
+                  fontWeight: 500,
+                  lineHeight: 1.6,
+                }}
+              >
+                ⚠️ Incorrect captcha code. Please try again.
+              </Typography>
+            </Box>
+          )}
+          
+          {captchaSuccess && (
+            <Alert severity="success" sx={{ mb: 2, mt: 1 }}>
+              ✅ Captcha verified! Signing you in...
+            </Alert>
+          )}
+          
+          <FormControl fullWidth>
+            <FormLabel htmlFor="modal-captcha">Enter Captcha</FormLabel>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', mt: 1 }}>
+              <Box
+                sx={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '56px',
+                  border: '2px solid',
+                  borderColor: captchaError ? 'error.main' : 'divider',
+                  borderRadius: 1,
+                  backgroundColor: 'background.paper',
+                  fontFamily: 'monospace',
+                  fontSize: '1.5rem',
+                  fontWeight: 'bold',
+                  letterSpacing: '0.3rem',
+                  color: 'text.primary',
+                  userSelect: 'none',
+                  px: 2,
+                }}
+              >
+                {captchaValue}
+              </Box>
+              <IconButton
+                onClick={refreshCaptcha}
+                sx={{
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  '&:hover': {
+                    backgroundColor: 'action.hover',
+                  },
+                }}
+                aria-label="Refresh captcha"
+              >
+                <RefreshIcon />
+              </IconButton>
+            </Box>
+            <TextField
+              error={captchaError}
+              id="modal-captcha"
+              placeholder="Enter code above"
+              required
+              fullWidth
+              variant="outlined"
+              value={captchaInput}
+              onChange={(e) => {
+                setCaptchaInput(e.target.value);
+                // Clear error when user starts typing
+                if (captchaError) {
+                  setCaptchaError(false);
+                }
+                setCaptchaSuccess(false);
+              }}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleCaptchaVerify();
+                }
+              }}
+              sx={{ mt: 2 }}
+              autoComplete="off"
+              autoFocus
+            />
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCaptchaModalClose} color="inherit">
+            Cancel
+          </Button>
+          <Button onClick={handleCaptchaVerify} variant="contained">
+            Sign In
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={logToastOpen}
+        autoHideDuration={3000}
+        onClose={() => setLogToastOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <MuiAlert onClose={() => setLogToastOpen(false)} severity="warning" sx={{ width: '100%' }}>
+          {logToastMessage}
+        </MuiAlert>
+      </Snackbar>
     </>
   );
 }

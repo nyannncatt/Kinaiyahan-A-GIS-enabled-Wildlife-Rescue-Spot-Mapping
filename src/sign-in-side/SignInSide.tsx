@@ -1,10 +1,59 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Box, CssBaseline } from "@mui/material";
 import AppTheme from "../shared-theme/AppTheme";
 import ColorModeSelect from "../shared-theme/ColorModeSelect";
 import SignInCard from "./components/SignInCard";
 import Content from "./components/Content";
+import { useAuth } from "../context/AuthContext";
+import { supabase } from "../services/supabase";
 
 export default function SignInSide(props: { disableCustomTheme?: boolean }) {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+
+  // If user is logged in, ONLY redirect if they have a role in public.users
+  // If auth user exists but no role in public.users = pending approval = sign out immediately
+  useEffect(() => {
+    if (!loading && user) {
+      const redirectUser = async () => {
+        try {
+          const { data: userData, error: userError } = await supabase
+            .from("users")
+            .select("role")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          // If query fails or no row found, user is not approved - sign out
+          if (userError || !userData || !userData.role) {
+            await supabase.auth.signOut();
+            return; // Stay on login page
+          }
+
+          const role = userData.role;
+          
+          // Only redirect if role exists and is valid
+          if (role === "enforcement") {
+            navigate("/enforcement", { replace: true });
+          } else if (role === "cenro") {
+            navigate("/cenro", { replace: true });
+          } else if (role === "admin") {
+            navigate("/admin", { replace: true });
+          } else {
+            // Invalid role - sign out
+            await supabase.auth.signOut();
+          }
+        } catch (error) {
+          console.error("Error getting user role:", error);
+          // On any error, sign out to prevent unauthorized access
+          await supabase.auth.signOut();
+        }
+      };
+
+      redirectUser();
+    }
+  }, [user, loading, navigate]);
+
   return (
     <AppTheme {...props}>
       <CssBaseline enableColorScheme />
