@@ -557,7 +557,10 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
       const targetRecord = wildlifeRecords.find(record => record.id === targetRecordId);
       if (targetRecord) {
         // Navigate to the location
-        mapInstance.setView([targetRecord.latitude, targetRecord.longitude], 16, { animate: true });
+        const maxZoom = mapInstance.getMaxZoom() ?? 18;
+        const currentZoom = mapInstance.getZoom();
+        const desiredZoom = Math.min(maxZoom, Math.max(currentZoom, 18));
+        mapInstance.setView([targetRecord.latitude, targetRecord.longitude], desiredZoom, { animate: true });
         
         // Open the popup after a short delay to ensure the marker is visible
         setTimeout(() => {
