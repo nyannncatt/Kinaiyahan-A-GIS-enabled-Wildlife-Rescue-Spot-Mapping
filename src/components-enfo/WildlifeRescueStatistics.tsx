@@ -138,6 +138,10 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [recordToView, setRecordToView] = useState<WildlifeRecord | null>(null);
 
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState<WildlifeRecord | null>(null);
+
   // Resolve role from DB if not in auth metadata
   useEffect(() => {
     let cancelled = false;
@@ -201,31 +205,40 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   };
 
   // Handle delete record
-  const handleDeleteRecord = async (id: string) => {
-    const recordToDelete = wildlifeRecords.find(r => r.id === id);
-    const recordName = recordToDelete?.species_name || 'record';
-    
-    if (window.confirm('Are you sure you want to delete this wildlife record?')) {
-      try {
-        // Archive before delete
-        if (recordToDelete) {
-          try { await archiveWildlifeRecord(recordToDelete); } catch (e) { console.error('Archive failed, proceeding to delete:', e); }
-        }
-        await deleteWildlifeRecord(id);
-        setWildlifeRecords(prev => prev.filter(record => record.id !== id));
-        
-        // Show success message
-        setSuccessSnackbar({
-          open: true,
-          message: `Wildlife record "${recordName}" has been archived and deleted.`,
-        });
-      } catch (error) {
-        console.error('Error deleting wildlife record:', error);
-        setErrorSnackbar({
-          open: true,
-          message: 'Failed to delete wildlife record. Please try again.',
-        });
-      }
+  const handleOpenDeleteDialog = (record: WildlifeRecord) => {
+    setRecordToDelete(record);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setRecordToDelete(null);
+  };
+
+  const handleDeleteRecord = async () => {
+    if (!recordToDelete) return;
+
+    const recordName = recordToDelete.species_name || 'record';
+
+    try {
+      // Archive before delete
+      try { await archiveWildlifeRecord(recordToDelete); } catch (e) { console.error('Archive failed, proceeding to delete:', e); }
+
+      await deleteWildlifeRecord(recordToDelete.id);
+      setWildlifeRecords(prev => prev.filter(record => record.id !== recordToDelete.id));
+
+      setSuccessSnackbar({
+        open: true,
+        message: `Wildlife record "${recordName}" has been archived and deleted.`,
+      });
+      handleCloseDeleteDialog();
+    } catch (error) {
+      console.error('Error deleting record:', error);
+      setErrorSnackbar({
+        open: true,
+        message: 'Failed to delete wildlife record',
+      });
+      handleCloseDeleteDialog();
     }
   };
 
@@ -1770,7 +1783,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       <Tooltip title="Delete">
                         <IconButton
                           size="small"
-                          onClick={(e) => { e.stopPropagation(); handleDeleteRecord(record.id); }}
+                          onClick={(e) => { e.stopPropagation(); handleOpenDeleteDialog(record); }}
                           sx={{ 
                             color: '#ff1744',
                             '&:hover': { 
@@ -3006,6 +3019,104 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
          </DialogContent>
          <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
            <Button onClick={() => { setDetailsDialogOpen(false); setRecordToView(null); }} variant="outlined">Close</Button>
+         </DialogActions>
+       </Dialog>
+
+       {/* Delete Confirmation Dialog */}
+       <Dialog
+         open={deleteDialogOpen}
+         onClose={handleCloseDeleteDialog}
+         maxWidth="sm"
+         fullWidth
+         PaperProps={{
+           sx: {
+             borderRadius: 3,
+             background: environmentalBg
+               ? (theme.palette.mode === 'light'
+                   ? '#f0f8f0'
+                   : '#1b5e20')
+               : '#ffffff',
+             border: '1px solid rgba(46, 125, 50, 0.45)',
+             boxShadow: '0 24px 48px rgba(46, 125, 50, 0.3)',
+           },
+         }}
+       >
+         <DialogTitle sx={{ pb: 1.5 }}>
+           <Stack direction="row" spacing={1.5} alignItems="center">
+             <Box
+               component="img"
+               src="/images/kinaiyahanlogonobg.png"
+               alt="Kinaiyahan"
+               sx={{ width: 48, height: 48, objectFit: 'contain' }}
+             />
+             <Box>
+               <Typography variant="h6" sx={{ fontWeight: 700, color: '#2e7d32 !important' }}>
+                 Confirm Record Deletion
+               </Typography>
+               <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>
+                 This action will archive the record and remove it from the active list.
+               </Typography>
+             </Box>
+           </Stack>
+         </DialogTitle>
+         <DialogContent sx={{ pt: 1.5 }}>
+           <Alert
+             severity="warning"
+             sx={{
+               mb: 2,
+               color: '#2e7d32 !important',
+               '& .MuiAlert-icon': { color: '#2e7d32 !important' },
+               '& .MuiAlert-message': { color: '#2e7d32 !important' },
+             }}
+           >
+             Deleting cannot be undone. You can still find the archived record in the history section.
+           </Alert>
+           {recordToDelete && (
+             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                 <Typography variant="subtitle2" sx={{ color: '#2e7d32 !important', fontWeight: 600 }}>
+                   Species
+                 </Typography>
+                 <Typography variant="body1" sx={{ fontWeight: 600, color: '#2e7d32 !important' }}>
+                   {recordToDelete.species_name || 'Unknown species'}
+                 </Typography>
+               </Box>
+               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                 <Typography variant="subtitle2" sx={{ color: '#2e7d32 !important', fontWeight: 600 }}>
+                   Location
+                 </Typography>
+                 <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>
+                   {[recordToDelete.barangay, recordToDelete.municipality]
+                     .filter(Boolean)
+                     .join(', ') || 'No location specified'}
+                 </Typography>
+                 <Typography variant="caption" sx={{ fontFamily: 'monospace', color: '#2e7d32 !important' }}>
+                   {recordToDelete.latitude.toFixed(6)}, {recordToDelete.longitude.toFixed(6)}
+                 </Typography>
+               </Box>
+             </Box>
+           )}
+         </DialogContent>
+         <DialogActions sx={{ px: 3, pb: 3 }}>
+           <Button onClick={handleCloseDeleteDialog} variant="outlined">Cancel</Button>
+           <Button
+             onClick={handleDeleteRecord}
+             variant="outlined"
+             sx={{
+               textTransform: 'none',
+               fontWeight: 600,
+               borderColor: '#2e7d32',
+               color: '#2e7d32 !important',
+               borderWidth: 2,
+               '&:hover': {
+                 borderColor: '#1b5e20',
+                 backgroundColor: 'rgba(46, 125, 50, 0.08)',
+                 color: '#1b5e20 !important',
+               },
+             }}
+           >
+             Delete Record
+           </Button>
          </DialogActions>
        </Dialog>
      </Box>
