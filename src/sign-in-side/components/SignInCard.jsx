@@ -326,6 +326,7 @@ export default function SignInCard() {
                 color: '#2e7d32 !important',
                 userSelect: 'none',
                 lineHeight: 1,
+                textTransform: 'uppercase',
               }}
             >
               Kinaiyahan
