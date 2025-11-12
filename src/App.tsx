@@ -6,6 +6,7 @@ import Admin from "./pages/Admin";
 import PublicReport from "./pages/PublicReport";
 import SignIn from "./sign-in-side/SignInSide";
 import SignUp from "./sign-in-side/SignUp";
+import ArchivedRecords from "./pages/ArchivedRecords";
 import ResetPassword from "./pages/ResetPassword";
 import { CircularProgress, Box, Paper, Avatar, Button, Typography, Fade, useTheme, useMediaQuery } from "@mui/material";
 import { HourglassEmpty } from "@mui/icons-material";
@@ -305,6 +306,7 @@ function App() {
       {/* Public report route (no auth) */}
       <Route path="/public-report" element={<PublicReport />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/archived-records" element={<RequireAuth><ArchivedRecords /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/login" />} />
     </Routes>
   );
