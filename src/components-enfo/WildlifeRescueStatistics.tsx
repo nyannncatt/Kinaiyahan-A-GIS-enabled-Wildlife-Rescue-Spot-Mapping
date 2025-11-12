@@ -115,6 +115,9 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   
   const [editError, setEditError] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
+  // No-saved-form dialog state
+  const [noFormDialogOpen, setNoFormDialogOpen] = useState(false);
+  const [recordForNoForm, setRecordForNoForm] = useState<WildlifeRecord | null>(null);
   
   // Success notification state
   const [successSnackbar, setSuccessSnackbar] = useState<{
@@ -601,7 +604,8 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       const key = `denrForm:${rec.id}`;
       const exists = !!localStorage.getItem(key);
       if (!exists) {
-        alert('No saved form exists yet for this record. You can fill and save from the form page.');
+        setRecordForNoForm(rec);
+        setNoFormDialogOpen(true);
         return; // do not open if nothing saved yet
       }
     } catch {}
@@ -3116,6 +3120,66 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
              }}
            >
              Delete Record
+           </Button>
+         </DialogActions>
+       </Dialog>
+
+       {/* No Saved Form Dialog */}
+       <Dialog
+         open={noFormDialogOpen}
+         onClose={() => { setNoFormDialogOpen(false); setRecordForNoForm(null); }}
+         maxWidth="sm"
+         fullWidth
+         PaperProps={{
+           sx: {
+             borderRadius: 3,
+             background: environmentalBg
+               ? (theme.palette.mode === 'light' ? '#f0f8f0' : '#1b5e20')
+               : '#ffffff',
+             border: '1px solid rgba(46, 125, 50, 0.45)',
+             boxShadow: '0 24px 48px rgba(46, 125, 50, 0.3)'
+           }
+         }}
+       >
+         <DialogTitle sx={{ pb: 0.5, textAlign: 'center' }}>
+           <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
+             <Box
+               component="img"
+               src="/images/kinaiyahanlogonobg.png"
+               alt="Kinaiyahan"
+               sx={{ width: 48, height: 48, objectFit: 'contain' }}
+             />
+             <Box sx={{ textAlign: 'center' }}>
+               <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: '0.02em', color: '#2e7d32 !important' }}>
+                 No Saved Form Found
+               </Typography>
+             </Box>
+           </Stack>
+         </DialogTitle>
+         <DialogContent sx={{ pt: 1.5 }}>
+           <Box sx={{ textAlign: 'center' }}>
+             <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>
+               You can fill and save from the form page by using the print button on the specific record.
+             </Typography>
+           </Box>
+         </DialogContent>
+         <DialogActions sx={{ px: 3, pb: 3 }}>
+           <Button
+             onClick={() => { setNoFormDialogOpen(false); setRecordForNoForm(null); }}
+             variant="outlined"
+             sx={{
+               borderColor: '#2e7d32',
+               color: '#2e7d32 !important',
+               borderWidth: 2,
+               textTransform: 'none',
+               fontWeight: 600,
+               '&:hover': {
+                 borderColor: '#1b5e20',
+                 backgroundColor: 'rgba(46, 125, 50, 0.08)',
+               },
+             }}
+           >
+             Close
            </Button>
          </DialogActions>
        </Dialog>
