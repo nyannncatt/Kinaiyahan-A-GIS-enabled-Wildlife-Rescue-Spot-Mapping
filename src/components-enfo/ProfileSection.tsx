@@ -366,6 +366,14 @@ export default function ProfileSection({ fullWidth = false, showTitle = true }: 
                     startIcon={<EditIcon />}
                     onClick={handleEditClick}
                     size="small"
+                    sx={{
+                      borderColor: '#4caf50',
+                      color: '#4caf50',
+                      '&:hover': {
+                        borderColor: '#388e3c',
+                        backgroundColor: 'rgba(76, 175, 80, 0.04)',
+                      },
+                    }}
                   >
                     Edit
                   </Button>
@@ -382,7 +390,14 @@ export default function ProfileSection({ fullWidth = false, showTitle = true }: 
                     startIcon={<LockResetIcon />}
                     onClick={() => setResetPasswordOpen(true)}
                     size="small"
-                    color="warning"
+                    sx={{
+                      borderColor: '#4caf50',
+                      color: '#4caf50',
+                      '&:hover': {
+                        borderColor: '#388e3c',
+                        backgroundColor: 'rgba(76, 175, 80, 0.04)',
+                      },
+                    }}
                   >
                     Reset Password
                   </Button>
@@ -404,6 +419,18 @@ export default function ProfileSection({ fullWidth = false, showTitle = true }: 
                   onClick={handleCancelEdit}
                   disabled={updatingProfile}
                   size="small"
+                  sx={{
+                    borderColor: '#4caf50',
+                    color: '#4caf50',
+                    '&:hover': {
+                      borderColor: '#388e3c',
+                      backgroundColor: 'rgba(76, 175, 80, 0.04)',
+                    },
+                    '&.Mui-disabled': {
+                      borderColor: 'rgba(0, 0, 0, 0.12)',
+                      color: 'rgba(0, 0, 0, 0.26)',
+                    },
+                  }}
                 >
                   Cancel
                 </Button>
