@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Box, 
@@ -237,6 +237,24 @@ export default function PublicReport() {
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   const todayIso = useMemo(() => new Date().toISOString(), []);
+
+  // Auto-hide location permission banner after 2 seconds
+  useEffect(() => {
+    if (locationPermission !== null) {
+      const timer = setTimeout(() => {
+        setLocationPermission(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [locationPermission]);
+
+  // Clear location banner when step changes (e.g., next/prev page)
+  useEffect(() => {
+    if (locationPermission !== null) {
+      setLocationPermission(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStep]);
 
   // Define barangays by municipality
   const manoloFortichBarangays = [
