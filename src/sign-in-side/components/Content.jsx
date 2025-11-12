@@ -90,7 +90,7 @@ export default function Content() {
               sx={{
                 fontWeight: 'medium',
                 transition: 'all 0.5s ease',
-                color: index === activeIndex ? 'primary.main' : '#000000',
+                color: index === activeIndex ? '#4caf50' : '#000000',
               }}
             >
               {item.title}
@@ -100,7 +100,7 @@ export default function Content() {
             <Typography
               variant="body2"
               sx={{
-                color: index === activeIndex ? 'primary.main' : '#000000',
+                color: index === activeIndex ? '#4caf50' : '#000000',
                 pl: 4,
                 transition: 'all 0.5s ease',
               }}
