@@ -514,8 +514,14 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
       setWildlifeRecords(records);
       setHasLoadedRecords(true);
       
-      // Force map re-render to ensure markers are displayed
-      setVisibilityBump(prev => prev + 1);
+      // Ensure map layout recalculates without remounting
+      try {
+        if (mapInstance && typeof (mapInstance as any).invalidateSize === 'function') {
+          setTimeout(() => {
+            (mapInstance as any).invalidateSize(true);
+          }, 200);
+        }
+      } catch {}
       
       // Close fetching modal after a short delay to show it was successful
       setTimeout(() => {
@@ -550,6 +556,17 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
       loadWildlifeRecords();
     }
   }, [user, loadUserRole, loadWildlifeRecords]);
+
+  // Invalidate map size when tab becomes visible (prevents layout issues without remounting)
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && mapInstance && typeof (mapInstance as any).invalidateSize === 'function') {
+        try { (mapInstance as any).invalidateSize(true); } catch {}
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [mapInstance]);
 
   // Handle navigation to specific record
   useEffect(() => {
@@ -2088,7 +2105,6 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
       )}
 
       <MapContainer
-        key={`map-${visibilityBump}`}
         center={[8.371964645263802, 124.85604137091526]}
         zoom={15}
         style={{
