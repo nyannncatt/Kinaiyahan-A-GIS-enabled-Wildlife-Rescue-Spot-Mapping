@@ -1194,19 +1194,14 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
-            variant="outlined"
+            variant="contained"
             startIcon={<MapIcon />}
             onClick={handleBackToMap}
             sx={{
               textTransform: 'none',
               fontWeight: 500,
-              borderColor: 'secondary.main',
-              color: 'secondary.main',
-              '&:hover': {
-                backgroundColor: 'secondary.main',
-                color: 'white',
-                borderColor: 'secondary.main',
-              }
+              bgcolor: theme.palette.primary.main,
+              '&:hover': { bgcolor: theme.palette.primary.dark },
             }}
           >
             Back to Map
@@ -1234,7 +1229,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             Export Excel
           </Button>
           <Button
-            variant="outlined"
+            variant="contained"
             onClick={async () => {
               try {
                 const data = await getArchivedWildlifeRecords();
@@ -1250,13 +1245,8 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             sx={{
               textTransform: 'none',
               fontWeight: 500,
-              borderColor: 'secondary.main',
-              color: 'secondary.main',
-              '&:hover': {
-                backgroundColor: 'secondary.main',
-                color: 'white',
-                borderColor: 'secondary.main',
-              }
+              bgcolor: theme.palette.success.main,
+              '&:hover': { bgcolor: theme.palette.success.dark },
             }}
           >
             View Archive
