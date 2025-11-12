@@ -48,7 +48,7 @@ import {
   FileDownload as FileDownloadIcon,
   InfoOutlined as InfoOutlinedIcon,
 } from '@mui/icons-material';
-import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, getUserRole, uploadWildlifePhoto, archiveWildlifeRecord, getArchivedWildlifeRecords, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
+import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, getUserRole, uploadWildlifePhoto, archiveWildlifeRecord, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
 import { useAuth } from '../context/AuthContext';
 import { useMapNavigation } from '../context/MapNavigationContext';
 import * as XLSX from 'xlsx';
@@ -71,16 +71,6 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any[]>([]);
-  // Archive dialog state
-  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
-  const [archivedRecords, setArchivedRecords] = useState<any[]>([]);
-  const [archivePage, setArchivePage] = useState(1);
-  const archivePageSize = 5;
-  const [archiveDateFrom, setArchiveDateFrom] = useState('');
-  const [archiveDateTo, setArchiveDateTo] = useState('');
-  const [archiveSort, setArchiveSort] = useState<'deleted_desc' | 'deleted_asc' | 'species_asc' | 'species_desc'>('deleted_desc');
-  const [printDateFrom, setPrintDateFrom] = useState('');
-  const [printDateTo, setPrintDateTo] = useState('');
   // Reject confirmation dialog
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [recordToReject, setRecordToReject] = useState<WildlifeRecord | null>(null);
@@ -99,6 +89,8 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [printDateFrom, setPrintDateFrom] = useState('');
+  const [printDateTo, setPrintDateTo] = useState('');
   
   // Edit dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -230,10 +222,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       await deleteWildlifeRecord(recordToDelete.id);
       setWildlifeRecords(prev => prev.filter(record => record.id !== recordToDelete.id));
 
-      setSuccessSnackbar({
-        open: true,
-        message: `Wildlife record "${recordName}" has been archived and deleted.`,
-      });
+      showSuccess(`Wildlife record "${recordName}" has been archived and deleted.`);
       handleCloseDeleteDialog();
     } catch (error) {
       console.error('Error deleting record:', error);
@@ -443,10 +432,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       setEditPhotoPreview(null);
       
       // Show success popup
-      setSuccessSnackbar({
-        open: true,
-        message: `Wildlife record for "${updatedRecord.species_name}" has been updated successfully!`,
-      });
+      showSuccess(`Wildlife record for "${updatedRecord.species_name}" has been updated successfully!`);
     } catch (error) {
       console.error('Error updating wildlife record:', error);
       setEditError(error instanceof Error ? error.message : 'Failed to update wildlife record');
@@ -507,10 +493,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       setWildlifeRecords(prev => 
         prev.map(record => record.id === recordToApprove.id ? updatedRecord : record)
       );
-      setSuccessSnackbar({
-        open: true,
-        message: 'Wildlife record has been approved successfully! Refreshing data...',
-      });
+      showSuccess('Wildlife record has been approved successfully! Refreshing data...');
       
       // Close modal
       setApprovalPreviewOpen(false);
@@ -539,10 +522,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       setWildlifeRecords(prev => 
         prev.map(record => record.id === recordToApprove.id ? updatedRecord : record)
       );
-      setSuccessSnackbar({
-        open: true,
-        message: 'Wildlife record has been approved successfully! Opening print form...',
-      });
+      showSuccess('Wildlife record has been approved successfully! Opening print form...');
       
       // Close modal
       setApprovalPreviewOpen(false);
@@ -579,7 +559,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     try {
       const updatedRecord = await rejectWildlifeRecord(recordToReject.id);
       setWildlifeRecords(prev => prev.map(record => record.id === recordToReject.id ? updatedRecord : record));
-      setSuccessSnackbar({ open: true, message: 'Wildlife record has been rejected successfully! Refreshing data...' });
+      showSuccess('Wildlife record has been rejected successfully! Refreshing data...');
       setRejectDialogOpen(false);
       setRecordToReject(null);
       setTimeout(() => { window.location.reload(); }, 1500);
@@ -1185,6 +1165,12 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     );
   }
 
+  function showSuccess(message: string, delayMs: number = 700) {
+    window.setTimeout(() => {
+      setSuccessSnackbar({ open: true, message });
+    }, delayMs);
+  }
+
   return (
     <Box sx={{ width: '100%', p: 3 }}>
       {/* Header with Print and Back to Map Buttons */}
@@ -1230,18 +1216,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
           </Button>
           <Button
             variant="contained"
-            onClick={async () => {
-              try {
-                const data = await getArchivedWildlifeRecords();
-                setArchivedRecords(data);
-                setArchivePage(1);
-                setArchiveDialogOpen(true);
-              } catch {
-                setArchivedRecords([]);
-                setArchivePage(1);
-                setArchiveDialogOpen(true);
-              }
-            }}
+            onClick={() => window.open('/archived-records', '_blank')}
             sx={{
               textTransform: 'none',
               fontWeight: 500,
@@ -2143,84 +2118,6 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
         </DialogActions>
       </Dialog>
 
-      {/* Archive Dialog */}
-      <Dialog 
-        open={archiveDialogOpen} 
-        onClose={() => setArchiveDialogOpen(false)} 
-        maxWidth="md" 
-        fullWidth
-        PaperProps={{
-          sx: {
-            background: theme.palette.mode === 'light'
-              ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
-              : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))',
-            backgroundRepeat: 'no-repeat',
-            backgroundSize: '100% 100%',
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-            <Box
-              component="img"
-              src="/images/kinaiyahanlogonobg.png"
-              alt="Kinaiyahan"
-              sx={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }}
-            />
-            <Typography component="span" variant="h6" sx={{ color: '#2e7d32 !important', fontWeight: 700 }}>
-              Kinaiyahan • Archived Wildlife Records
-            </Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          {archivedRecords.length === 0 ? (
-            <Typography sx={{ color: '#2e7d32 !important' }}>No archived records found.</Typography>
-          ) : (
-            <TableContainer component={Paper} sx={{ maxHeight: 420, bgcolor: 'transparent', boxShadow: 'none' }}>
-              <Table stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32 !important' }}>ID</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32 !important' }}>Species</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32 !important' }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32 !important' }}>Deleted At</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {archivedRecords.slice(0, 100).map((rec, idx) => (
-                    <TableRow key={`${rec.id}-${idx}`}>
-                      <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#2e7d32 !important' }}>
-                        {rec.speciespf_id || rec.original_id || rec.id}
-                      </TableCell>
-                      <TableCell sx={{ color: '#2e7d32 !important' }}>{rec.species_name}</TableCell>
-                      <TableCell sx={{ textTransform: 'capitalize', color: '#2e7d32 !important' }}>{rec.status}</TableCell>
-                      <TableCell sx={{ color: '#2e7d32 !important' }}>{rec.deleted_at ? new Date(rec.deleted_at).toLocaleString() : ''}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button
-            variant="outlined"
-            onClick={() => setArchiveDialogOpen(false)}
-            sx={{
-              color: '#2e7d32 !important',
-              borderColor: '#2e7d32 !important',
-              borderWidth: 2,
-              '&:hover': {
-                backgroundColor: 'rgba(46, 125, 50, 0.08)',
-                borderColor: '#2e7d32 !important'
-              }
-            }}
-          >
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       {/* Reject Confirmation Dialog */}
       <Dialog 
         open={rejectDialogOpen} 
@@ -2601,7 +2498,11 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   fullWidth
                   margin="dense"
                   value={editSpeciesInput}
-                  onChange={(e) => setEditSpeciesInput(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditSpeciesInput(val);
+                    setEditFormData(prev => ({ ...prev, species_name: val }));
+                  }}
                   required
                   onFocus={() => {
                     if (editSpeciesOptions.length > 0) setShowEditSpeciesDropdown(true);
@@ -2850,7 +2751,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                 variant="contained"
                 color="primary"
                 onClick={handleEditSubmit}
-                disabled={editLoading || !editFormData.species_name?.trim()}
+                disabled={editLoading || !(editSpeciesInput?.trim())}
               >
                 {editLoading ? 'Updating...' : 'Save'}
               </Button>
@@ -3043,15 +2944,13 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                alt="Kinaiyahan"
                sx={{ width: 48, height: 48, objectFit: 'contain' }}
              />
-             <Box>
-               <Typography variant="h6" sx={{ fontWeight: 700, color: '#2e7d32 !important' }}>
-                 Confirm Record Deletion
-               </Typography>
-               <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>
-                 This action will archive the record and remove it from the active list.
-               </Typography>
-             </Box>
+             <Typography variant="h6" sx={{ fontWeight: 700, color: '#2e7d32 !important' }}>
+               Confirm Record Deletion
+             </Typography>
            </Stack>
+           <Typography variant="body2" sx={{ mt: 1, color: '#2e7d32 !important', textAlign: 'center' }}>
+             This action will archive the record and remove it from the active list.
+           </Typography>
          </DialogTitle>
          <DialogContent sx={{ pt: 1.5 }}>
            <Alert
@@ -3092,7 +2991,26 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
            )}
          </DialogContent>
          <DialogActions sx={{ px: 3, pb: 3 }}>
-           <Button onClick={handleCloseDeleteDialog} variant="outlined">Cancel</Button>
+           <Button
+             onClick={handleCloseDeleteDialog}
+             variant="outlined"
+             sx={{
+               textTransform: 'none',
+               fontWeight: 600,
+               borderColor: '#2e7d32',
+               color: '#2e7d32 !important',
+               backgroundColor: '#ffffff !important',
+               borderWidth: 2,
+               boxShadow: 'none',
+               '&:hover': {
+                 borderColor: '#1b5e20',
+                 color: '#1b5e20 !important',
+                 backgroundColor: 'rgba(46, 125, 50, 0.1) !important',
+               },
+             }}
+           >
+             Cancel
+           </Button>
            <Button
              onClick={handleDeleteRecord}
              variant="outlined"
@@ -3101,11 +3019,13 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                fontWeight: 600,
                borderColor: '#2e7d32',
                color: '#2e7d32 !important',
+               backgroundColor: '#ffffff !important',
                borderWidth: 2,
+               boxShadow: 'none',
                '&:hover': {
                  borderColor: '#1b5e20',
-                 backgroundColor: 'rgba(46, 125, 50, 0.08)',
                  color: '#1b5e20 !important',
+                 backgroundColor: 'rgba(46, 125, 50, 0.1) !important',
                },
              }}
            >
@@ -3158,14 +3078,17 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
              onClick={() => { setNoFormDialogOpen(false); setRecordForNoForm(null); }}
              variant="outlined"
              sx={{
-               borderColor: '#2e7d32',
-               color: '#2e7d32 !important',
-               borderWidth: 2,
                textTransform: 'none',
                fontWeight: 600,
+               borderColor: '#2e7d32',
+               color: '#2e7d32 !important',
+               backgroundColor: '#ffffff !important',
+               borderWidth: 2,
+               boxShadow: 'none',
                '&:hover': {
                  borderColor: '#1b5e20',
-                 backgroundColor: 'rgba(46, 125, 50, 0.08)',
+                 color: '#1b5e20 !important',
+                 backgroundColor: 'rgba(46, 125, 50, 0.1) !important',
                },
              }}
            >
