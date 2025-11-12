@@ -1223,7 +1223,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             onClick={() => setExportDialogOpen(true)}
             sx={{ 
               bgcolor: theme.palette.success.main,
-              '&:hover': { bgcolor: theme.palette.success.dark }
+              '&:hover': { bgcolor: theme.palette.primary.dark }
             }}
           >
             Export Excel
@@ -1246,7 +1246,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               textTransform: 'none',
               fontWeight: 500,
               bgcolor: theme.palette.success.main,
-              '&:hover': { bgcolor: theme.palette.success.dark },
+              '&:hover': { bgcolor: theme.palette.primary.dark },
             }}
           >
             View Archive
