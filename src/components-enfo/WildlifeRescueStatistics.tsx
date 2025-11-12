@@ -1777,7 +1777,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                                 }
                               }}
                             >
-                              Rejected
+                              Reject
                             </Button>
                           </span>
                         </Tooltip>
