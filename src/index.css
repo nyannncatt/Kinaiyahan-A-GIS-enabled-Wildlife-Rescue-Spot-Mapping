@@ -26,6 +26,51 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  /* Prevent zooming */
+  touch-action: pan-x pan-y;
+  -ms-touch-action: pan-x pan-y;
+  overflow-x: hidden;
+}
+
+/* Zoom status banner */
+#zoom-banner {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(76, 175, 80, 0.95);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 0 0 12px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: none;
+  max-width: 90%;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  #zoom-banner {
+    font-size: 0.75rem;
+    padding: 6px 12px;
+  }
+}
+
+/* Prevent zoom on double tap and pinch */
+html {
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
+}
+
+/* Prevent text size adjustment on iOS */
+* {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 #root {
