@@ -56,7 +56,17 @@ export default function SideMenu() {
           component="img"
           src="/images/kinaiyahanlogonobg.png"
           alt="Kinaiyahan Logo"
-          sx={{ width: 150, height: 150, objectFit: 'contain' }}
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          sx={{ 
+            width: 150, 
+            height: 150, 
+            objectFit: 'contain',
+            cursor: 'pointer',
+            transition: 'opacity 0.2s',
+            '&:hover': {
+              opacity: 0.8,
+            },
+          }}
         />
       </Box>
       <Box
