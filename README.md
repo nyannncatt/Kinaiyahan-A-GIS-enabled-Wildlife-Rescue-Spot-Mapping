@@ -1,69 +1,39 @@
-# React + TypeScript + Vite
+🌿Kinaiyahan A GIS enabled Wildlife Rescue Spot Mapping
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A unified enforcement and ecological intelligence system built to monitor, manage, and respond to wildlife activities—geospatial analytics, environmental compliance, and agency coordination in one platform. Kinaiyahan delivers wildlife incident intelligence, operational transparency, and actionable insights across enforcement, CENRO oversight, and public participation—seamlessly blending technology with ecological commitment.
+🗺️ Wildlife Tracking
+•	Map dashboard with release, rescue, and relocation markers
+•	Environmental-themed visual cues for active workflows (release, relocate, add marker)
+•	Session indicators showing cursor-mode animations
+•	Marker clustering, geolocation snapshots, and click-to-relocate functionality
+•	Supabase-backed trace logs capturing before-and-after coordinates for wildlife updates
+🦅 Enforcement & Case Management
+•	Multi-role access (Enforcement, CENRO, Admin) with environment-specific views
+•	Session-aware wildlife records panel showing statuses, photos, and case data
+•	Report logs with view, print, edit, and approve workflows
+•	Population-level analytics for outcomes, trends, and record summaries
+•	Controlled DENR form generation with printable templates per case
+🌐 Outreach & Reporting
+•	Public reporting portal with step-by-step submission wizard
+•	Photo EXIF extraction for location/geotagged evidence
+•	Integrated map auto-fill when EXIF missing (barangay lookup)
+•	Submission success acknowledgements
+•	Data export tools for offline archiving (Excel & record snapshots)
 
-Currently, two official plugins are available:
+🏢 Admin Control Center
+•	Management grids with pagination, sorting, and smart searches
+•	Login & audit logs tracking authentication events
+•	User lifecycle dashboards for onboarding, approvals, and record ownership
+•	Unified profile pane reflecting badges, roles, and progress metrics
+🧠 Data & Infrastructure
+•	Supabase total stack (Postgres, Auth, Storage) for secure workloads
+•	Smart caching, session persistence, and form autosaves
+•	Record traceability via normalized statuses and event pipelines
+•	Deployment-ready build processes with Vite + TypeScript
+🔁 Experience Enhancements
+•	Green ripple animations and theme Consistency honoring the brand
+•	Responsive layout framework (MUI + custom gradients)
+•	Notification surfaces for success/error feedback
+•	Guarded developer tooling (form generators, debug toggles)
+•	Dark/light color mode switchers in all control portals
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
