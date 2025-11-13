@@ -1208,8 +1208,9 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             startIcon={<FileDownloadIcon />}
             onClick={() => setExportDialogOpen(true)}
             sx={{ 
-              bgcolor: theme.palette.success.main,
-              '&:hover': { bgcolor: theme.palette.primary.dark }
+              bgcolor: '#4caf50',
+              color: '#fff',
+              '&:hover': { bgcolor: '#2e7d32' }
             }}
           >
             Export Excel
@@ -2370,10 +2371,28 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       </Dialog>
 
       {/* Export Excel Dialog */}
-      <Dialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Export Wildlife Records to Excel</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ mb: 2 }}>
+      <Dialog 
+        open={exportDialogOpen} 
+        onClose={() => setExportDialogOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #a5d6a7 100%)',
+            borderRadius: 2,
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #4caf50 100%)',
+          color: '#1b5e20',
+          fontWeight: 600,
+          borderBottom: '2px solid rgba(76, 175, 80, 0.4)',
+        }}>
+          Export Wildlife Records to Excel
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2, bgcolor: 'rgba(255, 255, 255, 0.7)' }}>
+          <Typography sx={{ mb: 2, color: '#1b5e20', fontWeight: 500 }}>
             This will export wildlife records to a CSV file that can be opened in Excel. 
             You can specify a date range to filter the records.
           </Typography>
@@ -2385,6 +2404,20 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               onChange={(e) => setPrintDateFrom(e.target.value)}
               InputLabelProps={{ shrink: true }}
               fullWidth
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: 'rgba(255, 255, 255, 0.9)',
+                  '&:hover fieldset': {
+                    borderColor: '#4caf50',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#4caf50',
+                  },
+                },
+                '& .MuiInputLabel-root.Mui-focused': {
+                  color: '#1b5e20',
+                },
+              }}
             />
             <TextField
               label="To Date"
@@ -2393,28 +2426,84 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               onChange={(e) => setPrintDateTo(e.target.value)}
               InputLabelProps={{ shrink: true }}
               fullWidth
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: 'rgba(255, 255, 255, 0.9)',
+                  '&:hover fieldset': {
+                    borderColor: '#4caf50',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#4caf50',
+                  },
+                },
+                '& .MuiInputLabel-root.Mui-focused': {
+                  color: '#1b5e20',
+                },
+              }}
             />
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setExportDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleExcelPreview} variant="contained" color="info">Preview</Button>
+        <DialogActions sx={{ 
+          p: 2, 
+          borderTop: '1px solid rgba(76, 175, 80, 0.2)',
+          bgcolor: 'rgba(255, 255, 255, 0.5)',
+        }}>
+          <Button 
+            onClick={() => setExportDialogOpen(false)}
+            sx={{ 
+              color: '#1b5e20',
+              fontWeight: 600,
+              '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.2)' }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleExcelPreview} 
+            variant="contained"
+            sx={{ 
+              bgcolor: '#4caf50',
+              color: '#fff',
+              fontWeight: 600,
+              '&:hover': { bgcolor: '#2e7d32' }
+            }}
+          >
+            Preview
+          </Button>
         </DialogActions>
       </Dialog>
 
       {/* Preview Dialog */}
-      <Dialog open={previewDialogOpen} onClose={() => setPreviewDialogOpen(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>Preview Excel Export Data</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ mb: 2 }}>
+      <Dialog 
+        open={previewDialogOpen} 
+        onClose={() => setPreviewDialogOpen(false)} 
+        maxWidth="lg" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #a5d6a7 100%)',
+            borderRadius: 2,
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #4caf50 100%)',
+          color: '#1b5e20',
+          fontWeight: 600,
+          borderBottom: '2px solid rgba(76, 175, 80, 0.4)',
+        }}>
+          Preview Excel Export Data
+        </DialogTitle>
+        <DialogContent sx={{ bgcolor: 'rgba(255, 255, 255, 0.7)' }}>
+          <Typography sx={{ mb: 2, color: '#1b5e20', fontWeight: 500 }}>
             Preview of {previewData.length} records that will be exported to Excel:
           </Typography>
-          <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+          <TableContainer component={Paper} sx={{ maxHeight: 400, bgcolor: 'rgba(255, 255, 255, 0.95)' }}>
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
                   {previewData.length > 0 && Object.keys(previewData[0]).map((header) => (
-                    <TableCell key={header} sx={{ fontWeight: 'bold', backgroundColor: 'primary.main', color: 'white' }}>
+                    <TableCell key={header} sx={{ fontWeight: 'bold', backgroundColor: '#4caf50', color: 'white' }}>
                       {header}
                     </TableCell>
                   ))}
@@ -2422,9 +2511,19 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               </TableHead>
               <TableBody>
                 {previewData.slice(0, 10).map((row, index) => (
-                  <TableRow key={index}>
+                  <TableRow 
+                    key={index}
+                    sx={{
+                      '&:nth-of-type(even)': {
+                        bgcolor: 'rgba(232, 245, 232, 0.5)',
+                      },
+                      '&:hover': {
+                        bgcolor: 'rgba(200, 230, 201, 0.7)',
+                      },
+                    }}
+                  >
                     {Object.values(row).map((value, cellIndex) => (
-                      <TableCell key={cellIndex}>{String(value)}</TableCell>
+                      <TableCell key={cellIndex} sx={{ color: '#1b5e20' }}>{String(value)}</TableCell>
                     ))}
                   </TableRow>
                 ))}
@@ -2432,14 +2531,38 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             </Table>
           </TableContainer>
           {previewData.length > 10 && (
-            <Typography sx={{ mt: 1, color: 'text.secondary' }}>
+            <Typography sx={{ mt: 1, color: '#1b5e20', fontWeight: 500 }}>
               Showing first 10 records of {previewData.length} total records.
             </Typography>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPreviewDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleExcelExport} variant="contained" color="success">Download</Button>
+        <DialogActions sx={{ 
+          p: 2, 
+          borderTop: '1px solid rgba(76, 175, 80, 0.2)',
+          bgcolor: 'rgba(255, 255, 255, 0.5)',
+        }}>
+          <Button 
+            onClick={() => setPreviewDialogOpen(false)}
+            sx={{ 
+              color: '#1b5e20',
+              fontWeight: 600,
+              '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.2)' }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleExcelExport} 
+            variant="contained"
+            sx={{ 
+              bgcolor: '#4caf50',
+              color: '#fff',
+              fontWeight: 600,
+              '&:hover': { bgcolor: '#2e7d32' }
+            }}
+          >
+            Download
+          </Button>
         </DialogActions>
       </Dialog>
       
