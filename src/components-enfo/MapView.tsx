@@ -191,7 +191,7 @@ function BoundaryGuide() {
       data={geojsonData as any}
       pane="boundary-guide"
       style={{
-        color: "#ff0000",
+        color: "#4caf50",
         weight: 4,
         dashArray: "6 6",
         fill: false,
