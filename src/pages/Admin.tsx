@@ -240,7 +240,16 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
                   variant="outlined"
                   size="small"
                   disableRipple
-                  sx={{ textTransform: 'none', pointerEvents: 'none', mb: 2, mt: 2 }}
+                  sx={{
+                    textTransform: 'none',
+                    pointerEvents: 'none',
+                    mb: 2,
+                    mt: 2,
+                    fontWeight: 600,
+                    borderColor: '#4caf50 !important',
+                    color: '#1b5e20 !important',
+                    backgroundColor: 'transparent',
+                  }}
                 >
                   My Profile
                 </Button>
