@@ -151,7 +151,7 @@ export default function MapSection({ pendingCount, onScrollToRecordList, onScrol
         sx={{ 
           height: 700, 
           width: '100%',
-          border: '2px solid #1976d2',
+          border: '2px solid #4caf50',
           backgroundColor: 'background.paper'
         }}
       >
