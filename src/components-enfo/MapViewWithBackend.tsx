@@ -3671,8 +3671,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
             chunkedLoading
             iconCreateFunction={(cluster: any) => {
               const count = cluster.getChildCount();
-              const html = `<div style="
-                background:#ff9800; /* orange */
+              const html = `<div class="cluster-icon-animated" style="
+                background:#4caf50; /* green */
                 color:#fff;
                 border-radius:50%;
                 width:32px;height:32px;
@@ -3680,7 +3680,11 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                 border:2px solid #fff;
                 box-shadow:0 0 0 2px rgba(0,0,0,0.3);
                 font-weight:600;
-              ">${count}</div>`;
+                position:relative;
+              ">
+                <div class="cluster-glow-ring"></div>
+                <span style="position:relative;z-index:1;">${count}</span>
+              </div>`;
               return L.divIcon({ html, className: "cluster-icon", iconSize: [32, 32] });
             }}
           >
