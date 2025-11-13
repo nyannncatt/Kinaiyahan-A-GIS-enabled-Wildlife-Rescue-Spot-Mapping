@@ -44,13 +44,13 @@ export default function MapSection({ pendingCount, onScrollToRecordList, onScrol
             aria-label="Streets"
             aria-pressed={skin === 'streets'}
             onClick={() => setSkin('streets')}
-            sx={(theme) => ({
-              color: skin === 'streets' ? theme.palette.primary.contrastText : theme.palette.text.secondary,
-              backgroundColor: skin === 'streets' ? theme.palette.primary.main : 'transparent',
+            sx={{
+              color: skin === 'streets' ? '#fff' : '#666',
+              backgroundColor: skin === 'streets' ? '#4caf50' : 'transparent',
               '&:hover': {
-                backgroundColor: skin === 'streets' ? theme.palette.primary.dark : theme.palette.action.hover,
+                backgroundColor: skin === 'streets' ? '#2e7d32' : 'rgba(76, 175, 80, 0.1)',
               },
-            })}
+            }}
           >
             <MapOutlinedIcon fontSize="small" />
           </IconButton>
@@ -62,13 +62,13 @@ export default function MapSection({ pendingCount, onScrollToRecordList, onScrol
             aria-label="Dark"
             aria-pressed={skin === 'dark'}
             onClick={() => setSkin('dark')}
-            sx={(theme) => ({
-              color: skin === 'dark' ? theme.palette.primary.contrastText : theme.palette.text.secondary,
-              backgroundColor: skin === 'dark' ? theme.palette.primary.main : 'transparent',
+            sx={{
+              color: skin === 'dark' ? '#fff' : '#666',
+              backgroundColor: skin === 'dark' ? '#4caf50' : 'transparent',
               '&:hover': {
-                backgroundColor: skin === 'dark' ? theme.palette.primary.dark : theme.palette.action.hover,
+                backgroundColor: skin === 'dark' ? '#2e7d32' : 'rgba(76, 175, 80, 0.1)',
               },
-            })}
+            }}
           >
             <DarkModeOutlinedIcon fontSize="small" />
           </IconButton>
@@ -80,13 +80,13 @@ export default function MapSection({ pendingCount, onScrollToRecordList, onScrol
             aria-label="Satellite"
             aria-pressed={skin === 'satellite'}
             onClick={() => setSkin('satellite')}
-            sx={(theme) => ({
-              color: skin === 'satellite' ? theme.palette.primary.contrastText : theme.palette.text.secondary,
-              backgroundColor: skin === 'satellite' ? theme.palette.primary.main : 'transparent',
+            sx={{
+              color: skin === 'satellite' ? '#fff' : '#666',
+              backgroundColor: skin === 'satellite' ? '#4caf50' : 'transparent',
               '&:hover': {
-                backgroundColor: skin === 'satellite' ? theme.palette.primary.dark : theme.palette.action.hover,
+                backgroundColor: skin === 'satellite' ? '#2e7d32' : 'rgba(76, 175, 80, 0.1)',
               },
-            })}
+            }}
           >
             <SatelliteAltOutlinedIcon fontSize="small" />
           </IconButton>
@@ -102,12 +102,12 @@ export default function MapSection({ pendingCount, onScrollToRecordList, onScrol
             ml: 2,
             textTransform: 'none',
             fontWeight: 500,
-            borderColor: 'primary.main',
-            color: 'primary.main',
+            borderColor: '#4caf50',
+            color: '#1b5e20',
             '&:hover': {
-              backgroundColor: 'primary.main',
+              backgroundColor: '#4caf50',
               color: 'white',
-              borderColor: 'primary.main',
+              borderColor: '#4caf50',
             }
           }}
         >
