@@ -1186,8 +1186,9 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             sx={{
               textTransform: 'none',
               fontWeight: 500,
-              bgcolor: theme.palette.primary.main,
-              '&:hover': { bgcolor: theme.palette.primary.dark },
+              bgcolor: '#4caf50',
+              color: '#fff',
+              '&:hover': { bgcolor: '#2e7d32' },
             }}
           >
             Back to Map
@@ -1197,8 +1198,9 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             startIcon={<PrintIcon />}
             onClick={handlePrint}
             sx={{
-              bgcolor: theme.palette.primary.main,
-              '&:hover': { bgcolor: theme.palette.primary.dark }
+              bgcolor: '#4caf50',
+              color: '#fff',
+              '&:hover': { bgcolor: '#2e7d32' }
             }}
           >
             Print
@@ -1222,7 +1224,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               textTransform: 'none',
               fontWeight: 500,
               bgcolor: theme.palette.success.main,
-              '&:hover': { bgcolor: theme.palette.primary.dark },
+              '&:hover': { bgcolor: '#4caf50' },
             }}
           >
             View Archive
