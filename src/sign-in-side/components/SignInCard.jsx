@@ -423,6 +423,29 @@ export default function SignInCard() {
 
           <FormControlLabel control={<Checkbox value="remember" color="primary" />} label="Remember me" />
 
+          {/* <Alert 
+            severity="info" 
+            sx={{ 
+              mt: 1, 
+              mb: 1, 
+              fontSize: '0.75rem',
+              background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #a5d6a7 100%)',
+              color: '#1b5e20',
+              border: '1px solid rgba(76, 175, 80, 0.3)',
+              '& .MuiAlert-icon': {
+                color: '#2e7d32',
+              },
+            }}
+          >
+            <Typography variant="body2" sx={{ fontSize: '0.75rem', color: '#1b5e20', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
+              <strong>Note:</strong> For best experience, use 
+              <Box component="span" sx={{ fontWeight: 800, color: '#2e7d32' }}>80%</Box>
+              zoom on laptops and 
+              <Box component="span" sx={{ fontWeight: 800, color: '#2e7d32' }}>100%</Box>
+              zoom on PC devices.
+            </Typography>
+          </Alert> */}
+
           <Button type="submit" fullWidth variant="contained">Sign in</Button>
 
           {/* Create account CTA */}
