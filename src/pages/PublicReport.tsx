@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Box, 
@@ -235,8 +235,6 @@ export default function PublicReport() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
-
-  const todayIso = useMemo(() => new Date().toISOString(), []);
 
   // Auto-hide location permission banner after 2 seconds
   useEffect(() => {
@@ -1053,6 +1051,8 @@ export default function PublicReport() {
         }
       }
       
+      const timestampCaptured = new Date().toISOString();
+
       const created = await createWildlifeRecordPublic({
         species_name: speciesName.trim(),
         latitude: lat,
@@ -1063,7 +1063,7 @@ export default function PublicReport() {
         contact_number: contactNumber || undefined,
         photo_url: photoUrl,
         has_exif_gps: hasExifGps || false,
-        timestamp_captured: todayIso,
+        timestamp_captured: timestampCaptured,
       });
       
       console.log('Created record:', created);

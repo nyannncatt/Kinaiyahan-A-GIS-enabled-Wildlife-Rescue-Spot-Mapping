@@ -196,19 +196,22 @@ export type PublicWildlifeReport = Omit<CreateWildlifeRecord, 'status'> & { stat
 
 export async function createWildlifeRecordPublic(record: PublicWildlifeReport): Promise<WildlifeRecord> {
   // Set status to 'reported' for public reports (pending enforcement review)
-  const ensureSpeciesPfId = (ts?: string) => {
-    const d = ts ? new Date(ts) : new Date();
+  const generateSpeciesPfId = () => {
+    const d = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
+    const yyyy = d.getFullYear();
     const mm = pad(d.getMonth() + 1);
     const dd = pad(d.getDate());
-    const yyyy = d.getFullYear();
     const hh = pad(d.getHours());
     const mi = pad(d.getMinutes());
-    return `MF${mm}${dd}${yyyy}${hh}${mi}`;
+    const ss = pad(d.getSeconds());
+    const rand = Math.floor(Math.random() * 9000) + 1000; // 4-digit random number
+    return `MF${yyyy}${mm}${dd}${hh}${mi}${ss}${rand}`;
   };
+
   const recordWithStatus = {
     ...record,
-    speciespf_id: (record as any).speciespf_id || ensureSpeciesPfId(record.timestamp_captured),
+    speciespf_id: (record as any).speciespf_id || generateSpeciesPfId(),
     status: 'reported' as const,
     approval_status: 'pending' as const, // Public reports need approval
     user_id: null
