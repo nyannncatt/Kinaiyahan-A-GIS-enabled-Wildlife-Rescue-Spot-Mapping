@@ -1245,6 +1245,15 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               startIcon={filtersExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
               onClick={() => setFiltersExpanded(!filtersExpanded)}
               size="small"
+              sx={{
+                borderColor: '#4caf50',
+                color: '#1b5e20',
+                '&:hover': {
+                  backgroundColor: '#4caf50',
+                  color: 'white',
+                  borderColor: '#4caf50',
+                }
+              }}
             >
               {filtersExpanded ? 'Hide Filters' : 'Show Filters'}
             </Button>
@@ -1294,12 +1303,31 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       setSpeciesFilter(e.target.value);
                       setPage(0);
                     }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: '#1b5e20',
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#1b5e20',
+                      },
+                    }}
                   />
                 </Box>
                 
                 <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
                   <FormControl fullWidth>
-                    <InputLabel>Status</InputLabel>
+                    <InputLabel sx={{ color: '#1b5e20', '&.Mui-focused': { color: '#1b5e20' } }}>Status</InputLabel>
                     <Select
                       value={statusFilter}
                       onChange={(e) => {
@@ -1307,7 +1335,18 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                         setPage(0);
                       }}
                       label="Status"
-                      sx={{ minWidth: 200 }}
+                      sx={{ 
+                        minWidth: 200,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#4caf50',
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#4caf50',
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#4caf50',
+                        },
+                      }}
                     >
                       <MenuItem value="">All Statuses</MenuItem>
                       <MenuItem value="reported">Reported</MenuItem>
@@ -1320,7 +1359,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                 
                 <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
                   <FormControl fullWidth>
-                    <InputLabel>Approval Status</InputLabel>
+                    <InputLabel sx={{ color: '#1b5e20', '&.Mui-focused': { color: '#1b5e20' } }}>Approval Status</InputLabel>
                     <Select
                       value={approvalFilter}
                       onChange={(e) => {
@@ -1328,7 +1367,18 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                         setPage(0);
                       }}
                       label="Approval Status"
-                      sx={{ minWidth: 200 }}
+                      sx={{ 
+                        minWidth: 200,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#4caf50',
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#4caf50',
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#4caf50',
+                        },
+                      }}
                     >
                       <MenuItem value="">All Approval Statuses</MenuItem>
                       <MenuItem value="pending">Pending</MenuItem>
@@ -1348,6 +1398,25 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       setLocationFilter(e.target.value);
                       setPage(0);
                     }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: '#1b5e20',
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#1b5e20',
+                      },
+                    }}
                   />
                 </Box>
               </Box>
@@ -1364,6 +1433,25 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       setPage(0);
                     }}
                     InputLabelProps={{ shrink: true }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: '#1b5e20',
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#1b5e20',
+                      },
+                    }}
                   />
                 </Box>
                 
@@ -1378,6 +1466,25 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       setPage(0);
                     }}
                     InputLabelProps={{ shrink: true }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: '#1b5e20',
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#1b5e20',
+                      },
+                    }}
                   />
                 </Box>
               </Box>
