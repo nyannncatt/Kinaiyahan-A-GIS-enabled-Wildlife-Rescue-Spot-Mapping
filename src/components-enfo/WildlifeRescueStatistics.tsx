@@ -1785,7 +1785,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     <Tooltip title="Print" enterDelay={500}>
                       <IconButton
                         size="small"
-                        onClick={() => handlePrintRecord(record)}
+                        onClick={(e) => { e.stopPropagation(); handlePrintRecord(record); }}
                         sx={{ 
                           color: 'text.secondary',
                           '&:hover': { 
