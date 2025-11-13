@@ -2407,12 +2407,19 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               sx={{
                 '& .MuiOutlinedInput-root': {
                   bgcolor: 'rgba(255, 255, 255, 0.9)',
+                  color: '#1b5e20',
                   '&:hover fieldset': {
                     borderColor: '#4caf50',
                   },
                   '&.Mui-focused fieldset': {
                     borderColor: '#4caf50',
                   },
+                  '& input': {
+                    color: '#1b5e20',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: '#1b5e20',
                 },
                 '& .MuiInputLabel-root.Mui-focused': {
                   color: '#1b5e20',
@@ -2429,12 +2436,19 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               sx={{
                 '& .MuiOutlinedInput-root': {
                   bgcolor: 'rgba(255, 255, 255, 0.9)',
+                  color: '#1b5e20',
                   '&:hover fieldset': {
                     borderColor: '#4caf50',
                   },
                   '&.Mui-focused fieldset': {
                     borderColor: '#4caf50',
                   },
+                  '& input': {
+                    color: '#1b5e20',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: '#1b5e20',
                 },
                 '& .MuiInputLabel-root.Mui-focused': {
                   color: '#1b5e20',
@@ -2450,10 +2464,15 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
         }}>
           <Button 
             onClick={() => setExportDialogOpen(false)}
+            variant="outlined"
             sx={{ 
               color: '#1b5e20',
+              borderColor: '#4caf50',
               fontWeight: 600,
-              '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.2)' }
+              '&:hover': { 
+                bgcolor: 'rgba(76, 175, 80, 0.2)',
+                borderColor: '#2e7d32',
+              }
             }}
           >
             Cancel
