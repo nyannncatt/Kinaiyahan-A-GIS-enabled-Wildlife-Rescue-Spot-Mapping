@@ -1811,7 +1811,7 @@ export default function PublicReport() {
                   }}
                 >
                   <Typography variant="body2">
-                    Contact information is optional but helps enforcement officers follow up if needed.
+                    Contact information is required, it helps enforcement officers follow up if needed.
                   </Typography>
                 </Alert>
               </Box>
