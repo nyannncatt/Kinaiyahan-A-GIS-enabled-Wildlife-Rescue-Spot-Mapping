@@ -11,9 +11,10 @@ import { getWildlifeRecords } from '../services/wildlifeRecords';
 interface MainGridProps {
   onModalOpenChange?: (isOpen: boolean) => void;
   environmentalBg?: boolean;
+  onDispersalModeChange?: (isActive: boolean) => void;
 }
 
-export default function MainGrid({ onModalOpenChange, environmentalBg }: MainGridProps) {
+export default function MainGrid({ onModalOpenChange, environmentalBg, onDispersalModeChange }: MainGridProps) {
   
   // State for wildlife records for analytics
   const [wildlifeRecords, setWildlifeRecords] = useState<any[]>([]);
@@ -122,6 +123,7 @@ export default function MainGrid({ onModalOpenChange, environmentalBg }: MainGri
           onScrollToPendingReports={scrollToPendingReports}
           onModalOpenChange={onModalOpenChange}
           environmentalBg={environmentalBg}
+          onDispersalModeChange={onDispersalModeChange}
         />
       
         {/* Wildlife Rescue Statistics Component */}
