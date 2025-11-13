@@ -1740,11 +1740,11 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                         size="small"
                         onClick={(e) => { e.stopPropagation(); handleLocationClick(record); }}
                         sx={{ 
-                          color: theme.palette.primary.main,
+                          color: '#4caf50',
                           '&:hover': { 
                             bgcolor: theme.palette.mode === 'dark' 
-                              ? 'rgba(25, 118, 210, 0.1)' 
-                              : 'rgba(25, 118, 210, 0.04)'
+                              ? 'rgba(76, 175, 80, 0.12)' 
+                              : 'rgba(76, 175, 80, 0.08)'
                           }
                         }}
                       >
