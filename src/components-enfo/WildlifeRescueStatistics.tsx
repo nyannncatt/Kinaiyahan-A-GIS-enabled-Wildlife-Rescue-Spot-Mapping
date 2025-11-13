@@ -573,7 +573,8 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const openPrintAndReject = async () => {
     try {
       const idParam = recordToReject?.id ? `?recordId=${recordToReject.id}` : '';
-      window.open(`/forms/denr-form.html${idParam}`, '_blank');
+      const denrUrl = new URL('./denr-form.html', import.meta.url).toString();
+      window.open(`${denrUrl}${idParam}`, '_blank');
     } catch {}
     await proceedReject();
   };
@@ -589,7 +590,8 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
         return; // do not open if nothing saved yet
       }
     } catch {}
-    window.open(`/forms/denr-form.html?recordId=${rec.id}`,'_blank');
+    const denrUrl = new URL('./denr-form.html', import.meta.url).toString();
+    window.open(`${denrUrl}?recordId=${rec.id}`,'_blank');
   };
 
   // Open read-only details dialog for a record (from list action)
@@ -770,7 +772,8 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     } catch {}
 
     // Open the DENR form template with recordId in a new tab
-    const templatePath = `/forms/denr-form.html?recordId=${record.id}`;
+    const denrUrl = new URL('./denr-form.html', import.meta.url).toString();
+    const templatePath = `${denrUrl}?recordId=${record.id}`;
     const printWindow = window.open(templatePath, '_blank');
     
     if (!printWindow) {
