@@ -373,7 +373,7 @@ export default function UserManagement() {
         const to = from + pageSize - 1;
         const { data, error, count } = await supabase
           .from('wildlife_records')
-          .select('id,species_name,barangay,municipality,reporter_name,contact_number,created_at', { count: 'exact' })
+          .select('speciespf_id,species_name,barangay,municipality,reporter_name,contact_number,created_at', { count: 'exact' })
           .order('created_at', { ascending: false, nullsFirst: false })
           .range(from, to);
 
@@ -381,7 +381,7 @@ export default function UserManagement() {
         if (!mounted) return;
 
         const mapped: ReportEntry[] = (data ?? []).map((r: any) => ({
-          id: r.id ?? '',
+          id: r.speciespf_id ?? '',
           species: r.species_name ?? '',
           barangay: r.barangay ?? '',
           municipality: r.municipality ?? '',
@@ -1235,7 +1235,7 @@ export default function UserManagement() {
           <TextField
             size="small"
             sx={{ flex: '0 1 45%', minWidth: 260 }}
-            placeholder="Search reports (species, barangay, municipality, reporter, contact, id)…"
+            placeholder="Search reports (species, barangay, municipality, reporter, contact, speciespf_id)…"
             value={reportsSearchQuery}
             onChange={(e) => setReportsSearchQuery(e.target.value)}
             InputProps={{
