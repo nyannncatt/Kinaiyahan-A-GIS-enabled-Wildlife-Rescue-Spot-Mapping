@@ -761,14 +761,17 @@ export default function PublicReport() {
 
   const handleReset = () => {
     setBarangay('');
-    setMunicipality('');
+    setMunicipality('Manolo Fortich');
     setSpeciesName('');
     setReporterName('');
     setContactNumber('');
+    setPhoneNumber('');
+    setCountryCode('+63');
     setPhotoFile(null);
     setPhotoPreview(null);
     setExtractedCoords(null);
     setCurrentLocation(null);
+    setHasExifGps(null);
     setShowCamera(false);
     if (cameraStream) {
       cameraStream.getTracks().forEach(track => track.stop());
@@ -778,6 +781,8 @@ export default function PublicReport() {
     setActiveStep(0);
     setError(null);
     setSuccess(null);
+    setPhoneWarning(null);
+    setNameWarning(null);
   };
 
   const handleExit = () => {
@@ -1064,6 +1069,8 @@ export default function PublicReport() {
       console.log('Created record:', created);
       console.log('Record coordinates:', { lat: created.latitude, lng: created.longitude });
 
+      // Reset form after successful submission
+      handleReset();
       setShowSuccessModal(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit report');
@@ -2494,7 +2501,7 @@ export default function PublicReport() {
               <Button
                 onClick={() => {
                   setShowSuccessModal(false);
-                  handleReset();
+                  // Form is already reset after successful submission
                 }}
                 variant="contained"
                 sx={{ 
