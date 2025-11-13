@@ -613,6 +613,38 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
     }
   }, [relocatingMarkerId, onRelocationModeChange]);
 
+  // Warn user before refresh/close when in relocation mode
+  useEffect(() => {
+    if (relocatingMarkerId) {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = 'You are relocating a pin. If you refresh or close this page, your changes will not be saved. Are you sure you want to leave?';
+        return e.returnValue;
+      };
+
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
+  }, [relocatingMarkerId]);
+
+  // Warn user before refresh/close when in release/dispersal mode
+  useEffect(() => {
+    if (dispersingMarkerId) {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = 'You are releasing a wildlife record. If you refresh or close this page, your changes will not be saved. Are you sure you want to leave?';
+        return e.returnValue;
+      };
+
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
+  }, [dispersingMarkerId]);
+
   // Notify parent when modal opens/closes
   useEffect(() => {
     if (onModalOpenChange) {
