@@ -179,13 +179,13 @@ function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
               mt: { xs: 8, md: 0 },
             }}
           >
-            <Box sx={{ display: 'flex', width: '100%', maxWidth: { sm: '100%', md: '1700px' }, alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', width: '100%', maxWidth: { sm: '100%', md: '1700px' }, alignItems: 'center', justifyContent: 'flex-end', gap: 1.5 }}>
               <Header />
               <Button
                 variant="outlined"
                 size="small"
                 onClick={() => setEnvironmentalBg((v) => !v)}
-                sx={{ textTransform: 'none', mt: 1.5, mr: 2 }}
+                sx={{ textTransform: 'none', mt: 1.5, mr: 2, borderColor: '#4caf50', color: '#1b5e20' }}
               >
                 {environmentalBg ? 'Default' : 'Environmental'}
               </Button>

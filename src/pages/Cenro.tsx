@@ -126,21 +126,21 @@ export default function Cenro() {
               </Typography>
             </Stack>
           </Box>
-          <Box>
-          <Typography variant="h2" component="h1" gutterBottom>
-            Cenro Dashboard - Test
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            Welcome to the Cenro dashboard. Add your components here.
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', mb: 2 }}>
-            <Button variant="outlined" size="small" onClick={() => setEnvironmentalBg((v) => !v)} sx={{ textTransform: 'none' }}>
-              {environmentalBg ? 'Default' : 'Environmental'}
-            </Button>
-            <Button variant="contained" color="primary" onClick={handleLogout}>
-              Log Out
-            </Button>
-          </Box>
+          <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' }, mx: 'auto' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, mb: 2 }}>
+              <Button variant="outlined" size="small" onClick={() => setEnvironmentalBg((v) => !v)} sx={{ textTransform: 'none', borderColor: '#4caf50', color: '#1b5e20' }}>
+                {environmentalBg ? 'Default' : 'Environmental'}
+              </Button>
+              <Button variant="contained" color="primary" onClick={handleLogout}>
+                Log Out
+              </Button>
+            </Box>
+            <Typography variant="h2" component="h1" gutterBottom>
+              Cenro Dashboard - Test
+            </Typography>
+            <Typography variant="body1" gutterBottom>
+              Welcome to the Cenro dashboard. Add your components here.
+            </Typography>
           </Box>
         </Box>
       </Box>
