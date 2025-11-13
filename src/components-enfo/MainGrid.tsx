@@ -12,9 +12,10 @@ interface MainGridProps {
   onModalOpenChange?: (isOpen: boolean) => void;
   environmentalBg?: boolean;
   onDispersalModeChange?: (isActive: boolean) => void;
+  onRelocationModeChange?: (isActive: boolean) => void;
 }
 
-export default function MainGrid({ onModalOpenChange, environmentalBg, onDispersalModeChange }: MainGridProps) {
+export default function MainGrid({ onModalOpenChange, environmentalBg, onDispersalModeChange, onRelocationModeChange }: MainGridProps) {
   
   // State for wildlife records for analytics
   const [wildlifeRecords, setWildlifeRecords] = useState<any[]>([]);
@@ -124,6 +125,7 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
           onModalOpenChange={onModalOpenChange}
           environmentalBg={environmentalBg}
           onDispersalModeChange={onDispersalModeChange}
+          onRelocationModeChange={onRelocationModeChange}
         />
       
         {/* Wildlife Rescue Statistics Component */}
