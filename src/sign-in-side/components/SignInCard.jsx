@@ -44,14 +44,12 @@ function GoogleColoredIcon(props) {
   );
 }
 
-// Generate random captcha string (mix of letters and numbers)
+// Generate random 4-digit captcha number
 const generateCaptcha = () => {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  let result = '';
-  for (let i = 0; i < 5; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  // Generate a random 4-digit number (1000-9999)
+  const min = 1000;
+  const max = 9999;
+  return String(Math.floor(Math.random() * (max - min + 1)) + min);
 };
 
 export default function SignInCard() {
@@ -157,8 +155,8 @@ export default function SignInCard() {
   };
 
   const handleCaptchaVerify = async () => {
-    // Validate captcha
-    if (!captchaInput || captchaInput.toLowerCase() !== captchaValue.toLowerCase()) {
+    // Validate captcha (compare as numbers)
+    if (!captchaInput || captchaInput.trim() !== captchaValue) {
       setCaptchaError(true);
       setCaptchaSuccess(false);
       refreshCaptcha(true); // Keep error state when refreshing
@@ -561,18 +559,25 @@ export default function SignInCard() {
             <TextField
               error={captchaError}
               id="modal-captcha"
-              placeholder="Enter code above"
+              placeholder="Enter 4-digit code"
               required
               fullWidth
               variant="outlined"
               value={captchaInput}
               onChange={(e) => {
-                setCaptchaInput(e.target.value);
+                // Only allow numbers and limit to 4 digits
+                const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                setCaptchaInput(value);
                 // Clear error when user starts typing
                 if (captchaError) {
                   setCaptchaError(false);
                 }
                 setCaptchaSuccess(false);
+              }}
+              inputProps={{
+                maxLength: 4,
+                inputMode: 'numeric',
+                pattern: '[0-9]*'
               }}
               onKeyPress={(e) => {
                 if (e.key === 'Enter') {
