@@ -20,9 +20,10 @@ interface MapSectionProps {
   onScrollToPendingReports: () => void;
   onModalOpenChange?: (isOpen: boolean) => void;
   environmentalBg?: boolean;
+  onDispersalModeChange?: (isActive: boolean) => void;
 }
 
-export default function MapSection({ pendingCount, onScrollToRecordList, onScrollToPendingReports, onModalOpenChange, environmentalBg }: MapSectionProps) {
+export default function MapSection({ pendingCount, onScrollToRecordList, onScrollToPendingReports, onModalOpenChange, environmentalBg, onDispersalModeChange }: MapSectionProps) {
   // State to track selected map skin
   const [skin, setSkin] = useState<"streets" | "dark" | "satellite">("streets");
 
@@ -153,7 +154,7 @@ export default function MapSection({ pendingCount, onScrollToRecordList, onScrol
           backgroundColor: 'background.paper'
         }}
       >
-         <MapViewWithBackend skin={skin} onModalOpenChange={onModalOpenChange} environmentalBg={environmentalBg} />
+         <MapViewWithBackend skin={skin} onModalOpenChange={onModalOpenChange} environmentalBg={environmentalBg} onDispersalModeChange={onDispersalModeChange} />
       </Box>
     </>
   );

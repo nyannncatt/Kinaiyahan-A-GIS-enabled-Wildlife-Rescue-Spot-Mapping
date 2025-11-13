@@ -34,6 +34,7 @@ function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
   const [displayedText, setDisplayedText] = React.useState('');
   const [showHeader, setShowHeader] = React.useState(true);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [isDispersalMode, setIsDispersalMode] = React.useState(false);
   const fullText = 'ＫＩＮＡＩＹＡＨＡＮ';
 
   // Typing animation effect
@@ -102,7 +103,7 @@ function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
             zIndex: (theme) => (theme.zIndex?.modal ?? 1300) + 1,
             textAlign: 'center',
             pointerEvents: 'none',
-            opacity: showHeader ? 1 : 0,
+            opacity: showHeader && !isDispersalMode ? 1 : 0,
             transition: 'opacity 0.3s ease-in-out',
           }}
         >
@@ -188,7 +189,11 @@ function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
                 {environmentalBg ? 'Default' : 'Environmental'}
               </Button>
             </Box>
-            <MainGrid onModalOpenChange={setIsModalOpen} environmentalBg={environmentalBg} />
+            <MainGrid 
+              onModalOpenChange={setIsModalOpen} 
+              environmentalBg={environmentalBg}
+              onDispersalModeChange={setIsDispersalMode}
+            />
           </Stack>
         </Box>
       </Box>

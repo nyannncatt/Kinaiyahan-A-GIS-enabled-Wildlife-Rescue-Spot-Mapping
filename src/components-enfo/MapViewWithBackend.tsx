@@ -269,6 +269,7 @@ interface MapViewWithBackendProps {
   skin: 'streets' | 'dark' | 'satellite';
   onModalOpenChange?: (isOpen: boolean) => void;
   environmentalBg?: boolean;
+  onDispersalModeChange?: (isActive: boolean) => void;
 }
 
 interface PendingMarker {
@@ -323,7 +324,7 @@ const statusColors: Record<string, string> = {
   'dispersed': '#ff9800' // Orange
 };
 
-export default function MapViewWithBackend({ skin, onModalOpenChange, environmentalBg = false }: MapViewWithBackendProps) {
+export default function MapViewWithBackend({ skin, onModalOpenChange, environmentalBg = false, onDispersalModeChange }: MapViewWithBackendProps) {
   const theme = useTheme();
   const { user } = useAuth();
   const { targetRecordId, clearTarget, triggerRecordsRefresh } = useMapNavigation();
@@ -596,6 +597,13 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
       }
     }
   }, [targetRecordId, mapInstance, wildlifeRecords, clearTarget]);
+
+  // Notify parent when dispersal mode changes
+  useEffect(() => {
+    if (onDispersalModeChange) {
+      onDispersalModeChange(!!dispersingMarkerId);
+    }
+  }, [dispersingMarkerId, onDispersalModeChange]);
 
   // Notify parent when modal opens/closes
   useEffect(() => {
@@ -1465,21 +1473,78 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
         if (!enabled) return;
         const lat = Number(e.latlng.lat);
         const lng = Number(e.latlng.lng);
-        setPendingMarker({
-          pos: [lat, lng],
-          speciesName: "",
-          status: "reported",
-          timestampIso: new Date().toISOString(),
-          addressLoading: true,
-          photo: null,
-          reporterName: "",
-          contactNumber: "",
-          phoneNumber: "",
-          countryCode: "+63",
-          barangay: "",
-          municipality: "",
-        });
-        setIsAddingMarker(true);
+        
+        // Get the pixel coordinates for the animation
+        const point = map.latLngToContainerPoint(e.latlng);
+        
+        // Create and show click animation
+        const container = map.getContainer();
+        const ripple = document.createElement('div');
+        ripple.style.position = 'absolute';
+        ripple.style.left = `${point.x}px`;
+        ripple.style.top = `${point.y}px`;
+        ripple.style.width = '20px';
+        ripple.style.height = '20px';
+        ripple.style.borderRadius = '50%';
+        ripple.style.background = 'rgba(76, 175, 80, 0.6)';
+        ripple.style.transform = 'translate(-50%, -50%)';
+        ripple.style.pointerEvents = 'none';
+        ripple.style.zIndex = '10000';
+        ripple.style.animation = 'ripple 0.6s ease-out';
+        ripple.style.boxShadow = '0 0 0 0 rgba(76, 175, 80, 0.7)';
+        
+        container.appendChild(ripple);
+        
+        // Add animation keyframes if not already added
+        if (!document.getElementById('ripple-animation-style')) {
+          const style = document.createElement('style');
+          style.id = 'ripple-animation-style';
+          style.textContent = `
+            @keyframes ripple {
+              0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+              }
+              50% {
+                opacity: 0.8;
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0.4);
+              }
+              100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+                box-shadow: 0 0 0 20px rgba(76, 175, 80, 0);
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        // Remove animation element after animation completes
+        setTimeout(() => {
+          if (ripple.parentNode) {
+            ripple.parentNode.removeChild(ripple);
+          }
+        }, 600);
+        
+        // Add delay before setting pending marker
+        setTimeout(() => {
+          setPendingMarker({
+            pos: [lat, lng],
+            speciesName: "",
+            status: "reported",
+            timestampIso: new Date().toISOString(),
+            addressLoading: true,
+            photo: null,
+            reporterName: "",
+            contactNumber: "",
+            phoneNumber: "",
+            countryCode: "+63",
+            barangay: "",
+            municipality: "",
+          });
+          setIsAddingMarker(true);
+        }, 300); // 300ms delay
       }
     });
 
@@ -1506,7 +1571,64 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
         if (!enabled || !markerId) return;
         const lat = Number(e.latlng.lat);
         const lng = Number(e.latlng.lng);
-        handleRelocateMarker(markerId, lat, lng);
+        
+        // Get the pixel coordinates for the animation
+        const point = map.latLngToContainerPoint(e.latlng);
+        
+        // Create and show click animation
+        const container = map.getContainer();
+        const ripple = document.createElement('div');
+        ripple.style.position = 'absolute';
+        ripple.style.left = `${point.x}px`;
+        ripple.style.top = `${point.y}px`;
+        ripple.style.width = '20px';
+        ripple.style.height = '20px';
+        ripple.style.borderRadius = '50%';
+        ripple.style.background = 'rgba(76, 175, 80, 0.6)';
+        ripple.style.transform = 'translate(-50%, -50%)';
+        ripple.style.pointerEvents = 'none';
+        ripple.style.zIndex = '10000';
+        ripple.style.animation = 'ripple 0.6s ease-out';
+        ripple.style.boxShadow = '0 0 0 0 rgba(76, 175, 80, 0.7)';
+        
+        container.appendChild(ripple);
+        
+        // Add animation keyframes if not already added (reuse the same style from AddMarkerOnClick)
+        if (!document.getElementById('ripple-animation-style')) {
+          const style = document.createElement('style');
+          style.id = 'ripple-animation-style';
+          style.textContent = `
+            @keyframes ripple {
+              0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+              }
+              50% {
+                opacity: 0.8;
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0.4);
+              }
+              100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+                box-shadow: 0 0 0 20px rgba(76, 175, 80, 0);
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        // Remove animation element after animation completes
+        setTimeout(() => {
+          if (ripple.parentNode) {
+            ripple.parentNode.removeChild(ripple);
+          }
+        }, 600);
+        
+        // Add delay before relocating marker
+        setTimeout(() => {
+          handleRelocateMarker(markerId, lat, lng);
+        }, 300); // 300ms delay
       },
       mousemove(e) {
         if (!enabled) return;
@@ -1543,7 +1665,64 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
         if (!enabled || !markerId) return;
         const lat = Number(e.latlng.lat);
         const lng = Number(e.latlng.lng);
-        handleDispersalMarker(markerId, lat, lng);
+        
+        // Get the pixel coordinates for the animation
+        const point = map.latLngToContainerPoint(e.latlng);
+        
+        // Create and show click animation
+        const container = map.getContainer();
+        const ripple = document.createElement('div');
+        ripple.style.position = 'absolute';
+        ripple.style.left = `${point.x}px`;
+        ripple.style.top = `${point.y}px`;
+        ripple.style.width = '20px';
+        ripple.style.height = '20px';
+        ripple.style.borderRadius = '50%';
+        ripple.style.background = 'rgba(76, 175, 80, 0.6)';
+        ripple.style.transform = 'translate(-50%, -50%)';
+        ripple.style.pointerEvents = 'none';
+        ripple.style.zIndex = '10000';
+        ripple.style.animation = 'ripple 0.6s ease-out';
+        ripple.style.boxShadow = '0 0 0 0 rgba(76, 175, 80, 0.7)';
+        
+        container.appendChild(ripple);
+        
+        // Add animation keyframes if not already added (reuse the same style from AddMarkerOnClick)
+        if (!document.getElementById('ripple-animation-style')) {
+          const style = document.createElement('style');
+          style.id = 'ripple-animation-style';
+          style.textContent = `
+            @keyframes ripple {
+              0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+              }
+              50% {
+                opacity: 0.8;
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0.4);
+              }
+              100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+                box-shadow: 0 0 0 20px rgba(76, 175, 80, 0);
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        // Remove animation element after animation completes
+        setTimeout(() => {
+          if (ripple.parentNode) {
+            ripple.parentNode.removeChild(ripple);
+          }
+        }, 600);
+        
+        // Add delay before releasing marker
+        setTimeout(() => {
+          handleDispersalMarker(markerId, lat, lng);
+        }, 300); // 300ms delay
       },
       mousemove(e) {
         if (!enabled) return;
@@ -1561,8 +1740,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
     // Change cursor when in dispersal mode
     useEffect(() => {
       if (enabled) {
-        // Use a custom cursor with location pin icon
-        map.getContainer().style.cursor = 'url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyUzYuNDggMjIgMTIgMjJTMjIgMTcuNTIgMjIgMTJTMTcuNTIgMiAxMiAyWk0xMiAxM0MxMC4zNCAxMyA5IDExLjY2IDkgMTBTMTAuMzQgNyAxMiA3UzE1IDguMzQgMTUgMTBTMTMuNjYgMTMgMTIgMTNaIiBmaWxsPSIjRkY2MDAwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjMiIGZpbGw9IiNGRkZGRkYiLz4KPC9zdmc+") 12 12, pointer';
+        // Use a custom cursor with location pin icon (green)
+        map.getContainer().style.cursor = 'url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyUzYuNDggMjIgMTIgMjJTMjIgMTcuNTIgMjIgMTJTMTcuNTIgMiAxMiAyWk0xMiAxM0MxMC4zNCAxMyA5IDExLjY2IDkgMTBTMTAuMzQgNyAxMiA3UzE1IDguMzQgMTUgMTBTMTMuNjYgMTMgMTIgMTNaIiBmaWxsPSIjNENBRjUwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjMiIGZpbGw9IiNGRkZGRkYiLz4KPC9zdmc+") 12 12, pointer';
         return () => {
           map.getContainer().style.cursor = '';
         };
@@ -3556,35 +3735,50 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 1000,
-            bgcolor: 'warning.main',
-            color: 'warning.contrastText',
-            px: 2,
-            py: 1,
-            borderRadius: 1,
-            boxShadow: 2,
+            background: environmentalBg
+              ? 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #4caf50 100%)'
+              : 'linear-gradient(135deg, #fff9c4 0%, #fff59d 50%, #ffc107 100%)',
+            color: environmentalBg ? '#1b5e20' : '#f57f17',
+            px: 3,
+            py: 1.5,
+            borderRadius: 2,
+            boxShadow: environmentalBg 
+              ? '0 4px 12px rgba(76, 175, 80, 0.3), 0 0 0 1px rgba(76, 175, 80, 0.2)'
+              : '0 4px 12px rgba(255, 193, 7, 0.3), 0 0 0 1px rgba(255, 193, 7, 0.2)',
             display: 'flex',
             alignItems: 'center',
-            gap: 1
+            gap: 2,
+            border: environmentalBg 
+              ? '2px solid rgba(76, 175, 80, 0.4)'
+              : '2px solid rgba(255, 193, 7, 0.4)',
           }}
         >
-          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              component="img"
+              src="/images/kinaiyahanlogonobg.png"
+              alt="Kinaiyahan"
+              sx={{ width: 20, height: 20, objectFit: 'contain' }}
+            />
             Click on the map to set dispersal location (cursor changed to location icon)
           </Typography>
           <Button
             size="small"
             variant="outlined"
-            color="inherit"
             onClick={() => {
               setDispersingMarkerId(null);
               setOriginalLocation(null);
             }}
             sx={{ 
-              color: 'inherit',
-              borderColor: 'currentColor',
+              color: environmentalBg ? '#1b5e20' : '#f57f17',
+              borderColor: environmentalBg ? '#4caf50' : '#ffc107',
+              fontWeight: 600,
               '&:hover': {
-                borderColor: 'currentColor',
-                bgcolor: 'rgba(255,255,255,0.1)'
-              }
+                borderColor: environmentalBg ? '#2e7d32' : '#ffa000',
+                bgcolor: environmentalBg ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 193, 7, 0.1)',
+                transform: 'translateY(-1px)',
+              },
+              transition: 'all 0.2s ease-in-out',
             }}
           >
             Cancel

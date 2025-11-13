@@ -392,16 +392,73 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
         if (!enabled) return;
         const lat = Number(e.latlng.lat);
         const lng = Number(e.latlng.lng);
-        setPendingMarker({
-          pos: [lat, lng],
-          speciesName: "",
-          status: "",
-          timestampIso: new Date().toISOString(),
-          addressLoading: true,
-          photo: null,
-          reporterName: "",
-          contactNumber: "",
-        });
+        
+        // Get the pixel coordinates for the animation
+        const point = map.latLngToContainerPoint(e.latlng);
+        
+        // Create and show click animation
+        const container = map.getContainer();
+        const ripple = document.createElement('div');
+        ripple.style.position = 'absolute';
+        ripple.style.left = `${point.x}px`;
+        ripple.style.top = `${point.y}px`;
+        ripple.style.width = '20px';
+        ripple.style.height = '20px';
+        ripple.style.borderRadius = '50%';
+        ripple.style.background = 'rgba(76, 175, 80, 0.6)';
+        ripple.style.transform = 'translate(-50%, -50%)';
+        ripple.style.pointerEvents = 'none';
+        ripple.style.zIndex = '10000';
+        ripple.style.animation = 'ripple 0.6s ease-out';
+        ripple.style.boxShadow = '0 0 0 0 rgba(76, 175, 80, 0.7)';
+        
+        container.appendChild(ripple);
+        
+        // Add animation keyframes if not already added
+        if (!document.getElementById('ripple-animation-style')) {
+          const style = document.createElement('style');
+          style.id = 'ripple-animation-style';
+          style.textContent = `
+            @keyframes ripple {
+              0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+              }
+              50% {
+                opacity: 0.8;
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0.4);
+              }
+              100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+                box-shadow: 0 0 0 20px rgba(76, 175, 80, 0);
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        // Remove animation element after animation completes
+        setTimeout(() => {
+          if (ripple.parentNode) {
+            ripple.parentNode.removeChild(ripple);
+          }
+        }, 600);
+        
+        // Add delay before setting pending marker
+        setTimeout(() => {
+          setPendingMarker({
+            pos: [lat, lng],
+            speciesName: "",
+            status: "",
+            timestampIso: new Date().toISOString(),
+            addressLoading: true,
+            photo: null,
+            reporterName: "",
+            contactNumber: "",
+          });
+        }, 300); // 300ms delay
       },
     });
 
