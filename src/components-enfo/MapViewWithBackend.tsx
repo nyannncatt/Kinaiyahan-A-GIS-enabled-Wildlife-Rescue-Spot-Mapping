@@ -3735,22 +3735,16 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 1000,
-            background: environmentalBg
-              ? 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #4caf50 100%)'
-              : 'linear-gradient(135deg, #fff9c4 0%, #fff59d 50%, #ffc107 100%)',
-            color: environmentalBg ? '#1b5e20' : '#f57f17',
+            background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #4caf50 100%)',
+            color: '#1b5e20',
             px: 3,
             py: 1.5,
             borderRadius: 2,
-            boxShadow: environmentalBg 
-              ? '0 4px 12px rgba(76, 175, 80, 0.3), 0 0 0 1px rgba(76, 175, 80, 0.2)'
-              : '0 4px 12px rgba(255, 193, 7, 0.3), 0 0 0 1px rgba(255, 193, 7, 0.2)',
+            boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3), 0 0 0 1px rgba(76, 175, 80, 0.2)',
             display: 'flex',
             alignItems: 'center',
             gap: 2,
-            border: environmentalBg 
-              ? '2px solid rgba(76, 175, 80, 0.4)'
-              : '2px solid rgba(255, 193, 7, 0.4)',
+            border: '2px solid rgba(76, 175, 80, 0.4)',
           }}
         >
           <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -3770,12 +3764,12 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
               setOriginalLocation(null);
             }}
             sx={{ 
-              color: environmentalBg ? '#1b5e20' : '#f57f17',
-              borderColor: environmentalBg ? '#4caf50' : '#ffc107',
+              color: '#1b5e20',
+              borderColor: '#4caf50',
               fontWeight: 600,
               '&:hover': {
-                borderColor: environmentalBg ? '#2e7d32' : '#ffa000',
-                bgcolor: environmentalBg ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 193, 7, 0.1)',
+                borderColor: '#2e7d32',
+                bgcolor: 'rgba(76, 175, 80, 0.1)',
                 transform: 'translateY(-1px)',
               },
               transition: 'all 0.2s ease-in-out',
