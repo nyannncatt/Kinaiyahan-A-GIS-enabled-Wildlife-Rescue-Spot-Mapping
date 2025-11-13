@@ -35,6 +35,7 @@ function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
   const [showHeader, setShowHeader] = React.useState(true);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [isDispersalMode, setIsDispersalMode] = React.useState(false);
+  const [isRelocationMode, setIsRelocationMode] = React.useState(false);
   const fullText = 'ＫＩＮＡＩＹＡＨＡＮ';
 
   // Typing animation effect
@@ -103,7 +104,7 @@ function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
             zIndex: (theme) => (theme.zIndex?.modal ?? 1300) + 1,
             textAlign: 'center',
             pointerEvents: 'none',
-            opacity: showHeader && !isDispersalMode ? 1 : 0,
+            opacity: showHeader && !isDispersalMode && !isRelocationMode ? 1 : 0,
             transition: 'opacity 0.3s ease-in-out',
           }}
         >
@@ -193,6 +194,7 @@ function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
               onModalOpenChange={setIsModalOpen} 
               environmentalBg={environmentalBg}
               onDispersalModeChange={setIsDispersalMode}
+              onRelocationModeChange={setIsRelocationMode}
             />
           </Stack>
         </Box>

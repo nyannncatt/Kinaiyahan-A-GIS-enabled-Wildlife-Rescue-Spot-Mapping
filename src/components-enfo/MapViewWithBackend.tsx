@@ -270,6 +270,7 @@ interface MapViewWithBackendProps {
   onModalOpenChange?: (isOpen: boolean) => void;
   environmentalBg?: boolean;
   onDispersalModeChange?: (isActive: boolean) => void;
+  onRelocationModeChange?: (isActive: boolean) => void;
 }
 
 interface PendingMarker {
@@ -324,7 +325,7 @@ const statusColors: Record<string, string> = {
   'dispersed': '#ff9800' // Orange
 };
 
-export default function MapViewWithBackend({ skin, onModalOpenChange, environmentalBg = false, onDispersalModeChange }: MapViewWithBackendProps) {
+export default function MapViewWithBackend({ skin, onModalOpenChange, environmentalBg = false, onDispersalModeChange, onRelocationModeChange }: MapViewWithBackendProps) {
   const theme = useTheme();
   const { user } = useAuth();
   const { targetRecordId, clearTarget, triggerRecordsRefresh } = useMapNavigation();
@@ -604,6 +605,13 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
       onDispersalModeChange(!!dispersingMarkerId);
     }
   }, [dispersingMarkerId, onDispersalModeChange]);
+
+  // Notify parent when relocation mode changes
+  useEffect(() => {
+    if (onRelocationModeChange) {
+      onRelocationModeChange(!!relocatingMarkerId);
+    }
+  }, [relocatingMarkerId, onRelocationModeChange]);
 
   // Notify parent when modal opens/closes
   useEffect(() => {
@@ -1344,7 +1352,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
       setSuccessModal({
         open: true,
         title: 'Success!',
-        message: `Dispersal has been undone. Wildlife record restored to original status (${formatStatusLabel(trace.originalStatus)}).`,
+        message: `Release has been undone. Wildlife record restored to original status (${formatStatusLabel(trace.originalStatus)}).`,
       });
       
       // Refresh map data
@@ -1427,7 +1435,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
       setSuccessModal({
         open: true,
         title: 'Success!',
-        message: `Wildlife record has been dispersed to new location. Original location preserved with trace line.${locationData?.barangay ? ` New location: ${locationData.barangay}, ${locationData.municipality}` : ''}`,
+        message: `Wildlife record has been released to new location. Original location preserved with trace line.${locationData?.barangay ? ` New location: ${locationData.barangay}, ${locationData.municipality}` : ''}`,
       });
       
       // Refresh map data after successful creation
@@ -2799,7 +2807,6 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                     <Button
                       variant="outlined"
                       size="small"
-                      color="secondary"
                       onClick={() => {
                         if (role === 'enforcement') {
                           setRelocationOriginalLocation({ lat: viewingMarker.latitude, lng: viewingMarker.longitude });
@@ -3276,7 +3283,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
         })()}
 
         {/* When editing, render that marker outside the cluster to avoid recluster animations hiding its popup */}
-        {editingMarker && (
+        {!dispersingMarkerId && !relocatingMarkerId && editingMarker && (
           <Marker
             key={`editing-${editingMarker.id}`}
             position={[editingMarker.latitude, editingMarker.longitude]}
@@ -3286,7 +3293,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
         )}
 
         {/* When relocating, render that marker outside the cluster */}
-        {relocatingMarkerId && (() => {
+        {!dispersingMarkerId && relocatingMarkerId && (() => {
           const relocatingMarker = finalFilteredMarkers.find(m => m.id === relocatingMarkerId);
           return relocatingMarker ? (
             <Marker
@@ -3318,7 +3325,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
         })()}
 
         {/* Dispersal marker and trace line */}
-        {dispersingMarkerId && (() => {
+        {!relocatingMarkerId && dispersingMarkerId && (() => {
           const dispersingMarker = finalFilteredMarkers.find(m => m.id === dispersingMarkerId);
           return dispersingMarker ? (
             <>
@@ -3627,7 +3634,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
         })()}
 
         {/* Saved user markers */}
-        {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId && m.id !== relocatingMarkerId && m.id !== dispersingMarkerId).length > 0 && (
+        {!dispersingMarkerId && !relocatingMarkerId && finalFilteredMarkers.filter((m) => m.id !== editingMarkerId && m.id !== relocatingMarkerId && m.id !== dispersingMarkerId).length > 0 && (
           <MarkerClusterGroup
             chunkedLoading
             iconCreateFunction={(cluster: any) => {
@@ -3693,32 +3700,41 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 1000,
-            bgcolor: 'warning.main',
-            color: 'warning.contrastText',
-            px: 2,
-            py: 1,
-            borderRadius: 1,
-            boxShadow: 2,
+            background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #4caf50 100%)',
+            color: '#1b5e20',
+            px: 3,
+            py: 1.5,
+            borderRadius: 2,
+            boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3), 0 0 0 1px rgba(76, 175, 80, 0.2)',
             display: 'flex',
             alignItems: 'center',
-            gap: 1
+            gap: 2,
+            border: '2px solid rgba(76, 175, 80, 0.4)',
           }}
         >
-          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              component="img"
+              src="/images/kinaiyahanlogonobg.png"
+              alt="Kinaiyahan"
+              sx={{ width: 20, height: 20, objectFit: 'contain' }}
+            />
             Click on the map to relocate the pin (cursor changed to location icon)
           </Typography>
           <Button
             size="small"
             variant="outlined"
-            color="inherit"
             onClick={() => setRelocatingMarkerId(null)}
             sx={{ 
-              color: 'inherit',
-              borderColor: 'currentColor',
+              color: '#1b5e20',
+              borderColor: '#4caf50',
+              fontWeight: 600,
               '&:hover': {
-                borderColor: 'currentColor',
-                bgcolor: 'rgba(255,255,255,0.1)'
-              }
+                borderColor: '#2e7d32',
+                bgcolor: 'rgba(76, 175, 80, 0.1)',
+                transform: 'translateY(-1px)',
+              },
+              transition: 'all 0.2s ease-in-out',
             }}
           >
             Cancel
@@ -3754,7 +3770,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
               alt="Kinaiyahan"
               sx={{ width: 20, height: 20, objectFit: 'contain' }}
             />
-            Click on the map to set dispersal location (cursor changed to location icon)
+            Click on the map to set release location (cursor changed to location icon)
           </Typography>
           <Button
             size="small"
