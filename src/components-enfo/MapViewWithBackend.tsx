@@ -443,13 +443,6 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
   const ALL_STATUSES = ["reported", "rescued", "turned over", "released", "dispersed"] as const;
   const [enabledStatuses, setEnabledStatuses] = useState<string[]>([...ALL_STATUSES]);
 
-  // Debug logging for initial state
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Component mounted - enabledStatuses:', enabledStatuses);
-      console.log('Component mounted - wildlifeRecords length:', wildlifeRecords.length);
-    }
-  }, [enabledStatuses, wildlifeRecords.length]);
 
   // Species autocomplete
   const [speciesOptions, setSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
@@ -483,9 +476,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
     try {
       setLoading(true);
         setError(null);
-      console.log('Loading wildlife records...');
       const records = await withTimeout(getWildlifeRecords(), 10000);
-      console.log('Loaded wildlife records:', records);
       setWildlifeRecords(records);
           setHasLoadedRecords(true);
     } catch (err) {
@@ -508,11 +499,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
       });
       
       setError(null); // Clear any previous errors
-      console.log('Refreshing wildlife records...');
       const records = await withTimeout(getWildlifeRecords(), 10000);
-      console.log('Refreshed wildlife records:', records);
-      console.log('Records count:', records.length);
-      console.log('Current enabled statuses:', enabledStatuses);
       setWildlifeRecords(records);
       setHasLoadedRecords(true);
       
@@ -541,9 +528,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
     if (!user) return;
     
     try {
-      console.log('Loading user role...');
       const userRole = await getUserRole();
-      console.log('Loaded user role:', userRole);
       setRole(userRole);
     } catch (err) {
       console.error('Error loading user role:', err);
@@ -1806,12 +1791,6 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
     const isIncluded = showAllBecauseReported || enabledStatuses.includes(normalizedStatus);
     // Show approved records OR records created by authenticated users (no approval needed)
     const isApproved = m.approval_status === 'approved' || m.user_id !== null;
-    // Debug logging (remove in production)
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`Marker ${m.id}: status="${m.status}" -> normalized="${normalizedStatus}" -> included=${isIncluded}, approved=${isApproved}`);
-      console.log('Enabled statuses:', enabledStatuses);
-      console.log('Total wildlife records:', wildlifeRecords.length);
-    }
     return isIncluded && isApproved;
   });
 
@@ -2177,35 +2156,37 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
       {/* Map control buttons */}
       <Box sx={{ position: "absolute", top: 60, left: 10, zIndex: 1000, display: "flex", flexDirection: "column", gap: 1 }}>
           <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
-          <Button
-            variant={isAddingMarker ? "contained" : "outlined"}
-            color={isAddingMarker ? "primary" : "inherit"}
-              size="small"
-              onClick={() => { if (role === 'enforcement') setIsAddingMarker((v) => !v); }}
-              disabled={role !== 'enforcement'}
-            sx={{ 
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 'auto',
-              px: 2,
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'flex-start',
-              gap: 1,
-              border: '1px solid black',
-              transition: 'all 0.2s ease-in-out',
-              '&:hover': {
-                backgroundColor: isAddingMarker ? 'primary.dark' : 'action.hover',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                borderColor: isAddingMarker ? 'primary.dark' : 'primary.main',
-                color: 'primary.main'
-              }
-            }}
-          >
-            <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
-            {isAddingMarker ? "Adding Marker" : "Add Marker"}
-          </Button>
+            <span>
+              <Button
+                variant={isAddingMarker ? "contained" : "outlined"}
+                color={isAddingMarker ? "primary" : "inherit"}
+                size="small"
+                onClick={() => { if (role === 'enforcement') setIsAddingMarker((v) => !v); }}
+                disabled={role !== 'enforcement'}
+                sx={{ 
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  minWidth: 'auto',
+                  px: 2,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'flex-start',
+                  gap: 1,
+                  border: '1px solid black',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    backgroundColor: isAddingMarker ? 'primary.dark' : 'action.hover',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                    borderColor: isAddingMarker ? 'primary.dark' : 'primary.main',
+                    color: 'primary.main'
+                  }
+                }}
+              >
+                <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
+                {isAddingMarker ? "Adding Marker" : "Add Marker"}
+              </Button>
+            </span>
           </Tooltip>
           
           <Tooltip title="Refresh map data" enterDelay={500}>
@@ -3689,8 +3670,6 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
             }}
           >
             {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId).map((m) => {
-              console.log(`Marker ${m.id} coordinates:`, { lat: m.latitude, lng: m.longitude });
-              console.log(`Marker ${m.id} position array:`, [m.latitude, m.longitude]);
               return (
               <Marker
                 key={m.id}
