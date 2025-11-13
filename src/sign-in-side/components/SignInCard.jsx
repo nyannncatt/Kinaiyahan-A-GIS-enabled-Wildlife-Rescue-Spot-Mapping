@@ -498,7 +498,7 @@ export default function SignInCard() {
               ＫＩＮＡＩＹＡＨＡＮ
             </Typography>
           </Stack>
-          <Typography variant="subtitle1" sx={{ mt: 2, color: 'text.primary', fontWeight: 600 }}>
+          <Typography variant="subtitle1" component="p" sx={{ mt: 2, color: 'text.primary', fontWeight: 600 }}>
             Verify Captcha to Sign In
           </Typography>
         </DialogTitle>
