@@ -70,30 +70,42 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
 
   // Hide header on scroll
   React.useEffect(() => {
+    let ticking = false;
+
     const handleScroll = () => {
-      // Check scroll position from main container or window
-      // Account for high-DPI scaling if active
-      let scrollY = 0;
-      if (mainContainerRef.current) {
-        scrollY = mainContainerRef.current.scrollTop || 0;
-      } else {
-        scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          // Check scroll position from multiple possible scroll containers
+          // 1. Main container (which has overflow: auto)
+          const container = mainContainerRef.current;
+          // 2. Root element (which has overflow-y: auto and might be the actual scroll container)
+          const root = document.getElementById('root');
+          // 3. Window/document
+          
+          let scrollY = 0;
+          
+          // Priority: main container > root > window
+          if (container && container.scrollTop > 0) {
+            scrollY = container.scrollTop;
+          } else if (root && root.scrollTop > 0) {
+            scrollY = root.scrollTop;
+          } else {
+            scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+          }
+          
+          // If no scroll detected from containers, check all of them
+          if (scrollY === 0) {
+            if (container) scrollY = container.scrollTop || 0;
+            if (scrollY === 0 && root) scrollY = root.scrollTop || 0;
+            if (scrollY === 0) scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+          }
+          
+          // Hide if scrolled down more than 50px, show if near top
+          setShowHeader(scrollY < 50);
+          ticking = false;
+        });
+        ticking = true;
       }
-      
-      // Check if high-DPI scaling is active (root has transform scale)
-      const root = document.getElementById('root');
-      if (root && root.style.transform && root.style.transform.includes('scale')) {
-        // Extract scale value (e.g., "scale(0.8)" -> 0.8)
-        const scaleMatch = root.style.transform.match(/scale\(([\d.]+)\)/);
-        if (scaleMatch) {
-          const scale = parseFloat(scaleMatch[1]);
-          // Adjust scroll position for scaling
-          scrollY = scrollY / scale;
-        }
-      }
-      
-      // Hide if scrolled down more than 50px, show if near top
-      setShowHeader(scrollY < 50);
     };
 
     // Wait for ref to be set, then set up listeners
@@ -101,13 +113,18 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
       // Initial check
       handleScroll();
 
-      // Listen to scroll on window
-      window.addEventListener('scroll', handleScroll, { passive: true });
+      // Listen to scroll on all possible scroll containers
+      const container = mainContainerRef.current;
+      const root = document.getElementById('root');
       
-      // Also listen to scroll on the main container if it exists
-      if (mainContainerRef.current) {
-        mainContainerRef.current.addEventListener('scroll', handleScroll, { passive: true });
+      if (container) {
+        container.addEventListener('scroll', handleScroll, { passive: true });
       }
+      if (root) {
+        root.addEventListener('scroll', handleScroll, { passive: true });
+      }
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      document.addEventListener('scroll', handleScroll, { passive: true });
     };
 
     // Use setTimeout to ensure ref is set
@@ -115,10 +132,17 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
     
     return () => {
       clearTimeout(timeoutId);
-      window.removeEventListener('scroll', handleScroll);
-      if (mainContainerRef.current) {
-        mainContainerRef.current.removeEventListener('scroll', handleScroll);
+      const container = mainContainerRef.current;
+      const root = document.getElementById('root');
+      
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
       }
+      if (root) {
+        root.removeEventListener('scroll', handleScroll);
+      }
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
