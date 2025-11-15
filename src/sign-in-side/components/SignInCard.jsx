@@ -216,15 +216,15 @@ export default function SignInCard() {
           const { error: logErr } = await supabase.rpc('log_login');
           if (logErr) throw logErr;
           ok = true;
-          console.info('login_logs: recorded via rpc for', user.id);
+          // Login log recorded successfully
         } catch (rpcErr) {
-          console.warn('login_logs rpc failed, trying direct insert', rpcErr);
+          // RPC failed, trying direct insert
           const { error: insErr } = await supabase
             .from('login_logs')
             .insert({ user_id: user.id }, { returning: 'minimal' });
           if (insErr) throw insErr;
           ok = true;
-          console.info('login_logs: recorded via direct insert for', user.id);
+          // Login log recorded via direct insert
         }
         if (ok) {
           await new Promise((r) => setTimeout(r, 150));
