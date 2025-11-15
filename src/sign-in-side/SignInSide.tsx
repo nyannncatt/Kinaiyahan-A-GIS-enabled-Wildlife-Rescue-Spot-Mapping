@@ -14,6 +14,32 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
   const [showHeader, setShowHeader] = useState(true);
   const [isPortraitMode, setIsPortraitMode] = useState(false);
 
+  // Unlock audio for notifications on login page (any user interaction)
+  useEffect(() => {
+    const unlockAudioOnInteraction = async () => {
+      try {
+        const { unlockAudio, isAudioUnlocked } = await import('../utils/audioUnlock');
+        if (!isAudioUnlocked()) {
+          unlockAudio();
+        }
+      } catch (error) {
+        // Ignore errors - audio unlock is optional
+      }
+    };
+
+    // Unlock on any user interaction (click, type, etc.)
+    const events = ['click', 'touchstart', 'keydown', 'mousedown', 'input'];
+    events.forEach(event => {
+      document.addEventListener(event, unlockAudioOnInteraction, { once: true, passive: true });
+    });
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, unlockAudioOnInteraction);
+      });
+    };
+  }, []);
+
   // Detect mobile/portrait/zoomed view to hide header and make animals smaller
   useEffect(() => {
     const checkViewport = () => {
