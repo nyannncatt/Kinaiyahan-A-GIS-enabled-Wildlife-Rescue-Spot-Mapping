@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import { motion } from 'framer-motion';
 import WildlifeRescueStatistics from './WildlifeRescueStatistics';
@@ -41,6 +41,119 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
   // State for pending reports
   const [pendingCount, setPendingCount] = useState(0);
   const [showPendingOnly, setShowPendingOnly] = useState(false);
+  const previousPendingCountRef = useRef(0);
+  const isInitialLoadRef = useRef(true);
+  
+  // Audio context and initialization
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioUnlockedRef = useRef(false);
+
+  // Check if audio was already unlocked (from login page)
+  useEffect(() => {
+    const checkAudioUnlock = async () => {
+      try {
+        const { getAudioContext, isAudioUnlocked } = await import('../utils/audioUnlock');
+        
+        if (isAudioUnlocked()) {
+          // Audio was already unlocked on login page
+          const ctx = getAudioContext();
+          if (ctx) {
+            audioContextRef.current = ctx;
+            audioUnlockedRef.current = true;
+            console.log('Audio already unlocked from login - ready for notifications');
+          }
+        } else {
+          // Fallback: unlock on first interaction in dashboard
+          const unlockAudio = async () => {
+            if (audioUnlockedRef.current) return;
+            
+            try {
+              const { unlockAudio: unlock } = await import('../utils/audioUnlock');
+              unlock();
+              const ctx = getAudioContext();
+              if (ctx) {
+                audioContextRef.current = ctx;
+                audioUnlockedRef.current = true;
+              }
+            } catch (error) {
+              console.error('Error unlocking audio:', error);
+            }
+          };
+
+          // Unlock on any user interaction (fallback)
+          const events = ['click', 'touchstart', 'keydown', 'mousedown'];
+          events.forEach(event => {
+            document.addEventListener(event, unlockAudio, { once: true, passive: true });
+          });
+
+          return () => {
+            events.forEach(event => {
+              document.removeEventListener(event, unlockAudio);
+            });
+          };
+        }
+      } catch (error) {
+        console.error('Error checking audio unlock:', error);
+      }
+    };
+
+    checkAudioUnlock();
+  }, []);
+
+  // Function to play siren/alarm sound
+  const playSirenSound = async () => {
+    try {
+      const { getAudioContext, isAudioUnlocked } = await import('../utils/audioUnlock');
+      
+      if (!isAudioUnlocked() && !audioUnlockedRef.current) {
+        console.warn('Audio not unlocked yet - sound will play after first user interaction');
+        return;
+      }
+
+      let audioContext = audioContextRef.current || getAudioContext();
+      if (!audioContext) {
+        // Fallback: create new context if needed
+        audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContextRef.current = audioContext;
+      }
+      
+      // Resume context if suspended (browser may suspend it)
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+      
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Siren effect: oscillating frequency
+      const startTime = audioContext.currentTime;
+      const duration = 2; // 2 seconds for more noticeable sound
+      
+      oscillator.type = 'sine';
+      
+      // Create siren effect by oscillating frequency (more cycles)
+      for (let i = 0; i < 8; i++) {
+        const time = startTime + (i * duration / 8);
+        oscillator.frequency.setValueAtTime(800, time);
+        oscillator.frequency.setValueAtTime(1200, time + 0.1);
+        oscillator.frequency.setValueAtTime(800, time + 0.2);
+      }
+      
+      // Volume envelope
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(0.4, startTime + 0.1);
+      gainNode.gain.linearRampToValueAtTime(0.4, startTime + duration - 0.1);
+      gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
+      
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration);
+    } catch (error) {
+      console.error('Error playing siren sound:', error);
+    }
+  };
 
   // Load pending reports count with real-time updates
   useEffect(() => {
@@ -50,35 +163,56 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
         const pendingRecords = records.filter(record => 
           record.approval_status === 'pending' && record.user_id === null
         );
-        setPendingCount(pendingRecords.length);
+        const newCount = pendingRecords.length;
+        const previousCount = previousPendingCountRef.current;
+        
+        // Check if count increased (new report added) - but not on initial load
+        if (!isInitialLoadRef.current && previousCount > 0 && newCount > previousCount) {
+          // New pending report detected - play siren sound
+          playSirenSound();
+        }
+        
+        setPendingCount(newCount);
+        previousPendingCountRef.current = newCount;
+        isInitialLoadRef.current = false;
       } catch (error) {
         console.error('Error loading pending count:', error);
       }
     };
 
-    // Load initial count
+    // Load initial count (don't play sound on initial load)
     loadPendingCount();
 
     // Set up real-time subscription for wildlife_records table
+    // Listen to all INSERT events (no filter - filter in code for better reliability)
     const channel = supabase
       .channel('wildlife-records-changes')
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          event: 'INSERT', // Only listen to INSERT events (new records)
           schema: 'public',
-          table: 'wildlife_records',
-          filter: 'approval_status=eq.pending'
+          table: 'wildlife_records'
         },
         (payload) => {
-          // Reload count when any change occurs to pending records
-          loadPendingCount();
+          console.log('Real-time event received:', payload);
+          // Check if it's a pending report with no user_id (public report)
+          const newRecord = payload.new as any;
+          if (newRecord && newRecord.approval_status === 'pending' && newRecord.user_id === null) {
+            console.log('New pending report detected! Playing siren...');
+            // New pending report detected - play siren sound immediately
+            playSirenSound();
+            // Reload count
+            loadPendingCount();
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status);
+      });
 
-    // Fallback: Refresh every 10 seconds as backup (in case real-time fails)
-    const interval = setInterval(loadPendingCount, 10000);
+    // Fallback: Refresh every 3 seconds as backup (in case real-time fails)
+    const interval = setInterval(loadPendingCount, 3000);
 
     return () => {
       // Cleanup: unsubscribe from real-time and clear interval

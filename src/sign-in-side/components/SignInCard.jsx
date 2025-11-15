@@ -143,6 +143,14 @@ export default function SignInCard() {
     e.preventDefault();
     setLoginError("");
     
+    // Unlock audio for notifications (user interaction detected)
+    try {
+      const { unlockAudio } = await import('../../utils/audioUnlock');
+      unlockAudio();
+    } catch (error) {
+      console.warn('Could not unlock audio:', error);
+    }
+    
     // Validate email and password only
     if (!validateInputs()) {
       return;
@@ -155,6 +163,14 @@ export default function SignInCard() {
   };
 
   const handleCaptchaVerify = async () => {
+    // Unlock audio for notifications (user interaction detected)
+    try {
+      const { unlockAudio } = await import('../../utils/audioUnlock');
+      unlockAudio();
+    } catch (error) {
+      console.warn('Could not unlock audio:', error);
+    }
+    
     // Validate captcha (compare as numbers)
     if (!captchaInput || captchaInput.trim() !== captchaValue) {
       setCaptchaError(true);

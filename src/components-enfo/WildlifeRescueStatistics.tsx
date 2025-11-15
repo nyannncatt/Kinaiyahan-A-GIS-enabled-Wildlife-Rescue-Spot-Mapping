@@ -554,29 +554,50 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     setRejectDialogOpen(true);
   };
 
-  const proceedReject = async () => {
-    if (!recordToReject) { setRejectDialogOpen(false); return; }
+  const proceedReject = async (skipReload = false) => {
+    if (!recordToReject) { 
+      if (!skipReload) setRejectDialogOpen(false); 
+      return; 
+    }
     try {
       const updatedRecord = await rejectWildlifeRecord(recordToReject.id);
       setWildlifeRecords(prev => prev.map(record => record.id === recordToReject.id ? updatedRecord : record));
-      showSuccess('Wildlife record has been rejected successfully! Refreshing data...');
-      setRejectDialogOpen(false);
-      setRecordToReject(null);
-      setTimeout(() => { window.location.reload(); }, 1500);
+      showSuccess('Wildlife record has been rejected successfully!');
+      if (!skipReload) {
+        setRejectDialogOpen(false);
+        setRecordToReject(null);
+        setTimeout(() => { window.location.reload(); }, 1500);
+      } else {
+        setRecordToReject(null);
+      }
     } catch (error) {
       console.error('Error rejecting wildlife record:', error);
       setErrorSnackbar({ open: true, message: 'Failed to reject wildlife record' });
-      setRejectDialogOpen(false);
+      if (!skipReload) setRejectDialogOpen(false);
     }
   };
 
   const openPrintAndReject = async () => {
+    if (!recordToReject) return;
+    
     try {
-      const idParam = recordToReject?.id ? `?recordId=${recordToReject.id}` : '';
-      const denrUrl = new URL('./denr-form.html', import.meta.url).toString();
-      window.open(`${denrUrl}${idParam}`, '_blank');
-    } catch {}
-    await proceedReject();
+      // Open print form in new tab - site stays on current page
+      const idParam = recordToReject.id ? `?recordId=${recordToReject.id}` : '';
+      const denrUrl = `/forms/denr-form.html${idParam}`;
+      window.open(denrUrl, '_blank');
+      
+      // Close the dialog first
+      setRejectDialogOpen(false);
+      
+      // Then reject the record (with small delay to ensure dialog closes smoothly)
+      // Skip reload so site stays on current page
+      setTimeout(async () => {
+        await proceedReject(true);
+      }, 100);
+    } catch (error) {
+      console.error('Error opening print form:', error);
+      setErrorSnackbar({ open: true, message: 'Failed to open print form' });
+    }
   };
 
   // View Form for any record: show message if no saved form exists, then open form
@@ -2313,7 +2334,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   </Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                     <Box>
-                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                         Species Name
                       </Typography>
                       <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
@@ -2321,7 +2342,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       </Typography>
                     </Box>
                     <Box>
-                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                         Status
                       </Typography>
                       <Chip
@@ -2348,7 +2369,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                     {recordToReject.barangay && (
                       <Box>
-                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                           Barangay
                         </Typography>
                         <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
@@ -2358,7 +2379,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     )}
                     {recordToReject.municipality && (
                       <Box>
-                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                           Municipality
                         </Typography>
                         <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
@@ -2367,7 +2388,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       </Box>
                     )}
                     <Box>
-                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                         Coordinates
                       </Typography>
                       <Typography variant="body2" sx={{ fontFamily: 'monospace', color: '#2e7d32 !important' }}>
@@ -2403,7 +2424,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                       {recordToReject.reporter_name && (
                         <Box>
-                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                             Reporter Name
                           </Typography>
                           <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
@@ -2413,7 +2434,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       )}
                       {recordToReject.contact_number && (
                         <Box>
-                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                             Contact Number
                           </Typography>
                           <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
@@ -2431,7 +2452,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     Report Details
                   </Typography>
                   <Box>
-                    <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                    <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                       Date Captured
                     </Typography>
                     <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
