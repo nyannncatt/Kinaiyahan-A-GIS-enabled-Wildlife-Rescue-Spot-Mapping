@@ -7,56 +7,16 @@ import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
 import "leaflet/dist/leaflet.css";
 
-// High-DPI display compensation: Scale down on high-DPI displays to match PC appearance
-// ONLY apply on desktop/laptop screens, NOT on mobile devices
-(function applyHighDPIScaling() {
-  // Detect if this is a mobile device
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 900;
-  
-  // Only apply scaling on desktop/laptop, not mobile
-  if (isMobile) {
-    return; // Skip scaling on mobile devices
-  }
-  
-  const devicePixelRatio = window.devicePixelRatio || 1;
-  // Detect if this is likely a high-DPI laptop display (devicePixelRatio > 1.25)
-  // Scale down by 0.8 (80%) so 100% browser zoom on laptop = 100% on PC
-  if (devicePixelRatio > 1.25) {
-    const applyScale = () => {
-      const root = document.getElementById('root');
-      if (root) {
-        root.style.transform = 'scale(0.8)';
-        root.style.transformOrigin = 'top left';
-        // Adjust container dimensions to compensate for scaling
-        const scale = 0.8;
-        const updateDimensions = () => {
-          // Check again if mobile (in case of resize)
-          const isMobileNow = window.innerWidth <= 900;
-          if (isMobileNow) {
-            // Remove scaling on mobile
-            root.style.transform = '';
-            root.style.width = '';
-            root.style.height = '';
-            return;
-          }
-          const width = window.innerWidth / scale;
-          const height = window.innerHeight / scale;
-          root.style.width = `${width}px`;
-          root.style.height = `${height}px`;
-        };
-        updateDimensions();
-        window.addEventListener('resize', updateDimensions);
-      }
-    };
-    
-    // Wait for DOM to be ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', applyScale);
-    } else {
-      applyScale();
-    }
-  }
-})();
+// High-DPI display compensation: DISABLED
+// The transform scale approach was breaking click events, scroll detection, and auto-scroll functionality
+// Users on high-DPI displays should adjust their browser zoom manually if needed
+// (function applyHighDPIScaling() {
+//   // DISABLED - was causing issues with:
+//   // 1. Side menu tab clicks not working
+//   // 2. Auto-scroll navigation broken
+//   // 3. Scroll position tracking incorrect
+//   // 4. getBoundingClientRect() calculations off
+// })();
 
 // Prevent zooming and ensure 100% zoom level (with messaging for other values)
 (function preventZoom() {

@@ -164,7 +164,21 @@ export default function AdminMenuContent() {
       } else {
         // If mapContainer not found, check if we're at the top of the page
         // User Management is at the top, so if scroll position is near top, it's User Management
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        // Check scroll position from the correct container
+        const mainContainer = document.querySelector('main[style*="overflow"]') || 
+                              document.querySelector('[component="main"]') ||
+                              document.querySelector('main');
+        const root = document.getElementById('root');
+        let scrollTop = 0;
+        
+        if (mainContainer && (mainContainer.scrollHeight > mainContainer.clientHeight)) {
+          scrollTop = (mainContainer as HTMLElement).scrollTop;
+        } else if (root && (root.scrollHeight > root.clientHeight)) {
+          scrollTop = root.scrollTop;
+        } else {
+          scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        }
+        
         if (scrollTop < 500) {
           const topRect = {
             top: 0,
@@ -235,7 +249,21 @@ export default function AdminMenuContent() {
       }
     };
 
+    // Listen to scroll on all possible scroll containers (main container, root, window)
+    const mainContainer = document.querySelector('main[style*="overflow"]') || 
+                          document.querySelector('[component="main"]') ||
+                          document.querySelector('main');
+    const root = document.getElementById('root');
+    
+    // Add scroll listeners to all possible containers
+    if (mainContainer) {
+      mainContainer.addEventListener('scroll', throttledHandleScroll, { passive: true });
+    }
+    if (root) {
+      root.addEventListener('scroll', throttledHandleScroll, { passive: true });
+    }
     window.addEventListener('scroll', throttledHandleScroll, { passive: true });
+    document.addEventListener('scroll', throttledHandleScroll, { passive: true });
     
     // Initial check with a small delay to ensure DOM is ready
     const initialTimeout = setTimeout(() => {
@@ -246,12 +274,48 @@ export default function AdminMenuContent() {
     const interval = setInterval(handleScroll, 500);
     
     return () => {
+      if (mainContainer) {
+        mainContainer.removeEventListener('scroll', throttledHandleScroll);
+      }
+      if (root) {
+        root.removeEventListener('scroll', throttledHandleScroll);
+      }
       window.removeEventListener('scroll', throttledHandleScroll);
+      document.removeEventListener('scroll', throttledHandleScroll);
       clearInterval(interval);
       clearTimeout(initialTimeout);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     };
   }, []);
+
+  // Helper function to get the actual scroll container
+  const getScrollContainer = () => {
+    // Try to find the main container first
+    const mainContainer = document.querySelector('main[style*="overflow"]') || 
+                          document.querySelector('[component="main"]') ||
+                          document.querySelector('main');
+    const root = document.getElementById('root');
+    
+    // Check which one is actually scrollable
+    if (mainContainer && (mainContainer.scrollHeight > mainContainer.clientHeight)) {
+      return mainContainer;
+    }
+    if (root && (root.scrollHeight > root.clientHeight)) {
+      return root;
+    }
+    // Fallback to window
+    return window;
+  };
+
+  // Helper function to scroll the correct container
+  const scrollContainer = (options: { top: number; behavior?: ScrollBehavior }) => {
+    const container = getScrollContainer();
+    if (container === window) {
+      window.scrollTo(options);
+    } else {
+      (container as HTMLElement).scrollTo(options);
+    }
+  };
 
   const scrollToSection = (dataAttribute: string | null, tabId: string) => {
     // Clear any existing timeout
@@ -267,7 +331,7 @@ export default function AdminMenuContent() {
     
     // Handle User Management tab - scroll to top (like the old implementation)
     if (tabId === 'mapping' || !dataAttribute) {
-      window.scrollTo({ 
+      scrollContainer({ 
         top: 0, 
         behavior: 'smooth' 
       });
@@ -285,14 +349,13 @@ export default function AdminMenuContent() {
       // Wait for next frame to ensure element is fully rendered
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
+          // Use scrollIntoView which works with any scroll container
           // Special handling for profile section to prevent label from being cut off
           if (tabId === 'profile') {
-            // Calculate position with offset to show the "My Profile" label
-            const elementTop = element.getBoundingClientRect().top + window.pageYOffset;
-            const offset = 5; // Offset to account for navbar and show the label
-            window.scrollTo({
-              top: elementTop - offset,
-              behavior: 'smooth'
+            element.scrollIntoView({ 
+              behavior: 'smooth',
+              block: 'start',
+              inline: 'nearest'
             });
           } else {
             element.scrollIntoView({ 
