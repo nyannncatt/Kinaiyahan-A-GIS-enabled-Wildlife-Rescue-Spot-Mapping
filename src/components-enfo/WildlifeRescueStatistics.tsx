@@ -3101,11 +3101,11 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                    <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>Species Information</Typography>
                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                      <Box>
-                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Species Name</Typography>
+                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Species Name</Typography>
                        <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.species_name}</Typography>
                      </Box>
                      <Box>
-                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Status</Typography>
+                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Status</Typography>
                        <Chip label={recordToView.status} size="small" sx={{ borderColor: '#2e7d32', color: '#2e7d32', '& .MuiChip-label': { color: '#2e7d32' } }} variant="outlined" />
                      </Box>
                    </Box>
@@ -3116,18 +3116,18 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                      {recordToView.barangay && (
                        <Box>
-                         <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Barangay</Typography>
+                         <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Barangay</Typography>
                          <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.barangay}</Typography>
                        </Box>
                      )}
                      {recordToView.municipality && (
                        <Box>
-                         <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Municipality</Typography>
+                         <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Municipality</Typography>
                          <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.municipality}</Typography>
                        </Box>
                      )}
                      <Box>
-                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Coordinates</Typography>
+                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Coordinates</Typography>
                        <Typography variant="body2" sx={{ fontFamily: 'monospace', color: '#2e7d32 !important' }}>{recordToView.latitude.toFixed(6)}, {recordToView.longitude.toFixed(6)}</Typography>
                      </Box>
                    </Box>
@@ -3141,13 +3141,13 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                        {recordToView.reporter_name && (
                          <Box>
-                           <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Reporter Name</Typography>
+                           <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Reporter Name</Typography>
                            <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.reporter_name}</Typography>
                          </Box>
                        )}
                        {recordToView.contact_number && (
                          <Box>
-                           <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Contact Number</Typography>
+                           <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Contact Number</Typography>
                            <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.contact_number}</Typography>
                          </Box>
                        )}
@@ -3158,7 +3158,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                  <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
                    <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>Report Details</Typography>
                    <Box>
-                     <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Date Captured</Typography>
+                     <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Date Captured</Typography>
                      <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{new Date(recordToView.timestamp_captured).toLocaleString()}</Typography>
                    </Box>
                  </Card>
