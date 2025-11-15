@@ -1,5 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Stack from '@mui/material/Stack';
+import WarningIcon from '@mui/icons-material/Warning';
 import { motion } from 'framer-motion';
 import WildlifeRescueStatistics from './WildlifeRescueStatistics';
 import ProfileSection from './ProfileSection';
@@ -43,6 +51,7 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
   const [showPendingOnly, setShowPendingOnly] = useState(false);
   const previousPendingCountRef = useRef(0);
   const isInitialLoadRef = useRef(true);
+  const [newReportModalOpen, setNewReportModalOpen] = useState(false);
   
   // Audio context and initialization
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -168,8 +177,9 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
         
         // Check if count increased (new report added) - but not on initial load
         if (!isInitialLoadRef.current && previousCount > 0 && newCount > previousCount) {
-          // New pending report detected - play siren sound
+          // New pending report detected - play siren sound and show modal
           playSirenSound();
+          setNewReportModalOpen(true);
         }
         
         setPendingCount(newCount);
@@ -200,8 +210,9 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
           const newRecord = payload.new as any;
           if (newRecord && newRecord.approval_status === 'pending' && newRecord.user_id === null) {
             console.log('New pending report detected! Playing siren...');
-            // New pending report detected - play siren sound immediately
+            // New pending report detected - play siren sound immediately and show modal
             playSirenSound();
+            setNewReportModalOpen(true);
             // Reload count
             loadPendingCount();
           }
@@ -305,6 +316,147 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
         {/* Profile Section */}
         <ProfileSection />
       </Box>
+
+      {/* New Report Notification Modal */}
+      <Dialog
+        open={newReportModalOpen}
+        onClose={() => setNewReportModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            background: environmentalBg
+              ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+              : '#ffffff',
+            backgroundRepeat: environmentalBg ? 'no-repeat' : undefined,
+            backgroundSize: environmentalBg ? '100% 100%' : undefined,
+            backgroundAttachment: environmentalBg ? 'fixed' : undefined,
+            border: '2px solid rgba(76, 175, 80, 0.4)',
+            boxShadow: '0 8px 32px rgba(76, 175, 80, 0.3)',
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 2, textAlign: 'center' }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mb: 2 }}>
+            <Box
+              component="img"
+              src="/images/kinaiyahanlogonobg.png"
+              alt="Kinaiyahan"
+              sx={{ width: 56, height: 56, objectFit: 'contain' }}
+            />
+            <Typography
+              component="p"
+              variant="h5"
+              sx={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 800,
+                letterSpacing: '0.3em',
+                color: '#2e7d32 !important',
+                userSelect: 'none',
+                lineHeight: 1,
+                margin: 0,
+              }}
+            >
+              ＫＩＮＡＩＹＡＨＡＮ
+            </Typography>
+          </Stack>
+          <Typography component="p" variant="h6" sx={{ fontWeight: 600, color: '#2e7d32 !important', margin: 0 }}>
+            New Report Arrived!
+          </Typography>
+          <Typography component="p" variant="body2" sx={{ mt: 0.5, color: '#2e7d32 !important', margin: 0 }}>
+            A new wildlife report has been submitted and is now pending review.
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1, textAlign: 'center' }}>
+          <Box
+            component={motion.div}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ 
+              scale: [0, 1.2, 1],
+              opacity: [0, 1, 1]
+            }}
+            transition={{ 
+              duration: 0.6,
+              ease: [0.22, 1, 0.36, 1]
+            }}
+            sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center',
+              mb: 3,
+              mt: 1
+            }}
+          >
+            <Box
+              component={motion.div}
+              animate={{
+                scale: [1, 1.1, 1],
+                rotate: [0, -5, 5, -5, 5, 0]
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                bgcolor: 'rgba(244, 67, 54, 0.1)',
+                border: '3px solid rgba(244, 67, 54, 0.3)',
+              }}
+            >
+              <WarningIcon 
+                sx={{ 
+                  fontSize: 48, 
+                  color: '#f44336',
+                  filter: 'drop-shadow(0 2px 4px rgba(244, 67, 54, 0.3))'
+                }} 
+              />
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 2, justifyContent: 'center', gap: 2 }}>
+          <Button 
+            onClick={() => {
+              setNewReportModalOpen(false);
+              scrollToPendingReports();
+            }} 
+            variant="outlined"
+            sx={{
+              borderColor: '#4caf50',
+              color: '#1b5e20',
+              fontWeight: 600,
+              px: 3,
+              '&:hover': {
+                borderColor: '#2e7d32',
+                bgcolor: 'rgba(76, 175, 80, 0.1)',
+              }
+            }}
+          >
+            View Pending Reports
+          </Button>
+          <Button 
+            onClick={() => setNewReportModalOpen(false)} 
+            variant="outlined"
+            sx={{
+              borderColor: '#4caf50',
+              color: '#1b5e20',
+              fontWeight: 600,
+              '&:hover': {
+                borderColor: '#2e7d32',
+                bgcolor: 'rgba(76, 175, 80, 0.1)',
+              }
+            }}
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </MapNavigationProvider>
   );
 }
