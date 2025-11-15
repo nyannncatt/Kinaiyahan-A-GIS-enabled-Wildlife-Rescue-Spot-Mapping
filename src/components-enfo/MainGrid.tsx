@@ -56,6 +56,7 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
   // Audio context and initialization
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioUnlockedRef = useRef(false);
+  const sirenAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Check if audio was already unlocked (from login page)
   useEffect(() => {
@@ -109,56 +110,67 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
     checkAudioUnlock();
   }, []);
 
-  // Function to play siren/alarm sound
+  // Function to stop siren sound
+  const stopSirenSound = () => {
+    try {
+      if (sirenAudioRef.current) {
+        sirenAudioRef.current.pause();
+        sirenAudioRef.current.currentTime = 0;
+        sirenAudioRef.current = null;
+      }
+    } catch (error) {
+      console.error('Error stopping siren sound:', error);
+    }
+  };
+
+  // Function to play siren/alarm sound (loops infinitely until stopped)
   const playSirenSound = async () => {
     try {
-      const { getAudioContext, isAudioUnlocked } = await import('../utils/audioUnlock');
+      const { isAudioUnlocked } = await import('../utils/audioUnlock');
       
       if (!isAudioUnlocked() && !audioUnlockedRef.current) {
         console.warn('Audio not unlocked yet - sound will play after first user interaction');
         return;
       }
 
-      let audioContext = audioContextRef.current || getAudioContext();
-      if (!audioContext) {
-        // Fallback: create new context if needed
-        audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        audioContextRef.current = audioContext;
+      // Stop any existing siren sound
+      stopSirenSound();
+
+      // Create new audio element
+      const audio = new Audio('/sounds/security-alarm.mp3');
+      
+      // Configure audio for looping
+      audio.loop = true;
+      audio.volume = 0.7; // Set volume (0.0 to 1.0)
+      
+      // Store reference so we can stop it later
+      sirenAudioRef.current = audio;
+      
+      // Handle errors
+      audio.onerror = (error) => {
+        console.error('Error loading audio file:', error);
+        sirenAudioRef.current = null;
+      };
+      
+      // Play the audio
+      try {
+        await audio.play();
+      } catch (playError: any) {
+        // Handle autoplay restrictions
+        if (playError.name === 'NotAllowedError' || playError.name === 'NotSupportedError') {
+          console.warn('Audio autoplay blocked. User interaction required.');
+          // Try to unlock and play again
+          const { unlockAudio } = await import('../utils/audioUnlock');
+          unlockAudio();
+          try {
+            await audio.play();
+          } catch (retryError) {
+            console.error('Error playing audio after unlock:', retryError);
+          }
+        } else {
+          console.error('Error playing audio:', playError);
+        }
       }
-      
-      // Resume context if suspended (browser may suspend it)
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
-      
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      // Siren effect: oscillating frequency
-      const startTime = audioContext.currentTime;
-      const duration = 2; // 2 seconds for more noticeable sound
-      
-      oscillator.type = 'sine';
-      
-      // Create siren effect by oscillating frequency (more cycles)
-      for (let i = 0; i < 8; i++) {
-        const time = startTime + (i * duration / 8);
-        oscillator.frequency.setValueAtTime(800, time);
-        oscillator.frequency.setValueAtTime(1200, time + 0.1);
-        oscillator.frequency.setValueAtTime(800, time + 0.2);
-      }
-      
-      // Volume envelope
-      gainNode.gain.setValueAtTime(0, startTime);
-      gainNode.gain.linearRampToValueAtTime(0.4, startTime + 0.1);
-      gainNode.gain.linearRampToValueAtTime(0.4, startTime + duration - 0.1);
-      gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
-      
-      oscillator.start(startTime);
-      oscillator.stop(startTime + duration);
     } catch (error) {
       console.error('Error playing siren sound:', error);
     }
@@ -195,39 +207,108 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
 
     // Set up real-time subscription for wildlife_records table
     // Listen to all INSERT events (no filter - filter in code for better reliability)
-    const channel = supabase
-      .channel('wildlife-records-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT', // Only listen to INSERT events (new records)
-          schema: 'public',
-          table: 'wildlife_records'
-        },
-        (payload) => {
-          console.log('Real-time event received:', payload);
-          // Check if it's a pending report with no user_id (public report)
-          const newRecord = payload.new as any;
-          if (newRecord && newRecord.approval_status === 'pending' && newRecord.user_id === null) {
-            console.log('New pending report detected! Playing siren...');
-            // New pending report detected - play siren sound immediately and show modal
-            playSirenSound();
-            setNewReportModalOpen(true);
-            // Reload count
-            loadPendingCount();
-          }
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    
+    const setupSubscription = () => {
+      // Remove any existing channel first
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch (e) {
+          // Ignore errors when removing
         }
-      )
-      .subscribe((status) => {
-        console.log('Real-time subscription status:', status);
-      });
+      }
+      
+      channel = supabase
+        .channel('wildlife-records-changes', {
+          config: {
+            // Add configuration to handle connection issues
+            presence: { key: 'wildlife-records-listener' }
+          }
+        })
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT', // Only listen to INSERT events (new records)
+            schema: 'public',
+            table: 'wildlife_records'
+          },
+          (payload) => {
+            console.log('Real-time event received:', payload);
+            // Check if it's a pending report with no user_id (public report)
+            const newRecord = payload.new as any;
+            if (newRecord && newRecord.approval_status === 'pending' && newRecord.user_id === null) {
+              console.log('New pending report detected! Playing siren...');
+              // New pending report detected - play siren sound immediately and show modal
+              playSirenSound();
+              setNewReportModalOpen(true);
+              // Reload count
+              loadPendingCount();
+            }
+          }
+        )
+        .subscribe((status, err) => {
+          if (err) {
+            // Only log errors, don't show to user (WebSocket errors are common and usually recoverable)
+            console.warn('Real-time subscription error (will retry):', err.message || err);
+            // Retry subscription after a delay
+            setTimeout(() => {
+              if (channel) {
+                setupSubscription();
+              }
+            }, 5000); // Retry after 5 seconds
+            return;
+          }
+          
+          if (status === 'SUBSCRIBED') {
+            console.log('Real-time subscription active');
+          } else if (status === 'CHANNEL_ERROR') {
+            console.warn('Real-time channel error (will retry)');
+            // Retry subscription after a delay
+            setTimeout(() => {
+              if (channel) {
+                setupSubscription();
+              }
+            }, 5000);
+          } else if (status === 'TIMED_OUT') {
+            console.warn('Real-time subscription timed out (will retry)');
+            // Retry subscription after a delay
+            setTimeout(() => {
+              if (channel) {
+                setupSubscription();
+              }
+            }, 5000);
+          } else if (status === 'CLOSED') {
+            console.warn('Real-time subscription closed (will retry)');
+            // Retry subscription after a delay
+            setTimeout(() => {
+              if (channel) {
+                setupSubscription();
+              }
+            }, 5000);
+          }
+        });
+    };
+    
+    // Initial subscription setup with a small delay to avoid connection conflicts
+    const subscriptionTimeout = setTimeout(() => {
+      setupSubscription();
+    }, 1000);
 
     // Fallback: Refresh every 3 seconds as backup (in case real-time fails)
     const interval = setInterval(loadPendingCount, 3000);
 
     return () => {
       // Cleanup: unsubscribe from real-time and clear interval
-      supabase.removeChannel(channel);
+      clearTimeout(subscriptionTimeout);
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch (e) {
+          // Ignore errors during cleanup
+        }
+        channel = null;
+      }
       clearInterval(interval);
     };
   }, []);
@@ -320,7 +401,10 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
       {/* New Report Notification Modal */}
       <Dialog
         open={newReportModalOpen}
-        onClose={() => setNewReportModalOpen(false)}
+        onClose={() => {
+          stopSirenSound(); // Stop the siren sound when modal is closed
+          setNewReportModalOpen(false);
+        }}
         maxWidth="sm"
         fullWidth
         PaperProps={{
@@ -423,6 +507,7 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
         <DialogActions sx={{ px: 3, pb: 3, pt: 2, justifyContent: 'center', gap: 2 }}>
           <Button 
             onClick={() => {
+              stopSirenSound(); // Stop the siren sound
               setNewReportModalOpen(false);
               scrollToPendingReports();
             }} 
@@ -441,7 +526,10 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
             View Pending Reports
           </Button>
           <Button 
-            onClick={() => setNewReportModalOpen(false)} 
+            onClick={() => {
+              stopSirenSound(); // Stop the siren sound
+              setNewReportModalOpen(false);
+            }} 
             variant="outlined"
             sx={{
               borderColor: '#4caf50',
