@@ -67,26 +67,85 @@ function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
     };
   }, [fullText]);
 
+  // Get ref to main scrollable container
+  const mainContainerRef = React.useRef<HTMLElement>(null);
+
   // Hide header on scroll
   React.useEffect(() => {
-    let lastScrollY = window.scrollY;
     let ticking = false;
 
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          const currentScrollY = window.scrollY;
+          // Check scroll position from multiple possible scroll containers
+          // 1. Main container (which has overflow: auto)
+          const container = mainContainerRef.current;
+          // 2. Root element (which has overflow-y: auto and might be the actual scroll container)
+          const root = document.getElementById('root');
+          // 3. Window/document
+          
+          let scrollY = 0;
+          
+          // Priority: main container > root > window
+          if (container && container.scrollTop > 0) {
+            scrollY = container.scrollTop;
+          } else if (root && root.scrollTop > 0) {
+            scrollY = root.scrollTop;
+          } else {
+            scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+          }
+          
+          // If no scroll detected from containers, check all of them
+          if (scrollY === 0) {
+            if (container) scrollY = container.scrollTop || 0;
+            if (scrollY === 0 && root) scrollY = root.scrollTop || 0;
+            if (scrollY === 0) scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+          }
+          
           // Hide if scrolled down more than 50px, show if near top
-          setShowHeader(currentScrollY < 50);
-          lastScrollY = currentScrollY;
+          setShowHeader(scrollY < 50);
           ticking = false;
         });
         ticking = true;
       }
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    // Wait for ref to be set, then set up listeners
+    const setupListeners = () => {
+      // Initial check
+      handleScroll();
+
+      // Listen to scroll on all possible scroll containers
+      const container = mainContainerRef.current;
+      const root = document.getElementById('root');
+      
+      if (container) {
+        container.addEventListener('scroll', handleScroll, { passive: true });
+      }
+      if (root) {
+        root.addEventListener('scroll', handleScroll, { passive: true });
+      }
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      document.addEventListener('scroll', handleScroll, { passive: true });
+    };
+
+    // Use setTimeout to ensure ref is set
+    const timeoutId = setTimeout(setupListeners, 0);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      const container = mainContainerRef.current;
+      const root = document.getElementById('root');
+      
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
+      }
+      if (root) {
+        root.removeEventListener('scroll', handleScroll);
+      }
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
+    };
   }, []);
   return (
     <AppTheme {...props} themeComponents={xThemeComponents} disableBackground={true}>
@@ -141,6 +200,7 @@ function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
         </Box>
         <Box
           component="main"
+          ref={mainContainerRef}
           sx={(theme) => ({
             flexGrow: 1,
             overflow: 'auto',
