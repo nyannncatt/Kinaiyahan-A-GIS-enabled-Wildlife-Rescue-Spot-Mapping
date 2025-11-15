@@ -146,7 +146,7 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
             position: "fixed", 
             top: "1rem", 
             right: "1rem", 
-            zIndex: (theme) => (theme.zIndex?.modal ?? 1300) + 1,
+            zIndex: (theme: any) => (theme.zIndex?.modal ?? 1300) + 1,
             fontSize: '0.75rem',
             minWidth: '64px',
             '& .MuiSelect-select': {
