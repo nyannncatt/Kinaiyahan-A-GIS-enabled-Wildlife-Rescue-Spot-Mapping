@@ -8,7 +8,16 @@ import { AuthProvider } from "./context/AuthContext";
 import "leaflet/dist/leaflet.css";
 
 // High-DPI display compensation: Scale down on high-DPI displays to match PC appearance
+// ONLY apply on desktop/laptop screens, NOT on mobile devices
 (function applyHighDPIScaling() {
+  // Detect if this is a mobile device
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 900;
+  
+  // Only apply scaling on desktop/laptop, not mobile
+  if (isMobile) {
+    return; // Skip scaling on mobile devices
+  }
+  
   const devicePixelRatio = window.devicePixelRatio || 1;
   // Detect if this is likely a high-DPI laptop display (devicePixelRatio > 1.25)
   // Scale down by 0.8 (80%) so 100% browser zoom on laptop = 100% on PC
@@ -21,6 +30,15 @@ import "leaflet/dist/leaflet.css";
         // Adjust container dimensions to compensate for scaling
         const scale = 0.8;
         const updateDimensions = () => {
+          // Check again if mobile (in case of resize)
+          const isMobileNow = window.innerWidth <= 900;
+          if (isMobileNow) {
+            // Remove scaling on mobile
+            root.style.transform = '';
+            root.style.width = '';
+            root.style.height = '';
+            return;
+          }
           const width = window.innerWidth / scale;
           const height = window.innerHeight / scale;
           root.style.width = `${width}px`;
