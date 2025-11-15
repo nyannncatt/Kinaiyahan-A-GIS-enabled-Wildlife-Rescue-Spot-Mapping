@@ -36,7 +36,6 @@ body {
   max-width: 100% !important;
   position: relative;
   box-sizing: border-box;
-  background-color: #4caf50 !important; /* Fallback green background */
 }
 
 /* Zoom status banner */
@@ -76,7 +75,6 @@ html {
   margin: 0 !important;
   padding: 0 !important;
   box-sizing: border-box;
-  background-color: #4caf50 !important; /* Fallback green background */
   height: 100% !important;
 }
 
@@ -98,7 +96,6 @@ html {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  background-color: #4caf50 !important; /* Ensure root has background */
 }
 
 @media screen and (max-width: 900px) {
@@ -141,7 +138,6 @@ body > div {
     margin: 0 !important;
     padding: 0 !important;
     height: 100% !important;
-    background-color: #4caf50 !important;
   }
   
   body {
@@ -154,7 +150,6 @@ body > div {
     padding: 0 !important;
     min-height: 100vh !important;
     min-height: -webkit-fill-available !important;
-    background-color: #4caf50 !important;
   }
   
   #root {
@@ -165,7 +160,6 @@ body > div {
     margin: 0 !important;
     padding: 0 !important;
     position: relative !important;
-    background-color: #4caf50 !important;
     transform: none !important;
     transform-origin: unset !important;
   }
@@ -199,6 +193,98 @@ body > div {
   div, section, main, article {
     box-sizing: border-box !important;
   }
+}
+
+/* Remove spinner arrows from Select components - COMPREHENSIVE */
+.MuiSelect-select,
+.MuiSelect-select input,
+.MuiInputBase-input,
+.MuiInputBase-root input,
+input[type="number"],
+input,
+select {
+  -moz-appearance: textfield !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
+}
+
+.MuiSelect-select::-webkit-inner-spin-button,
+.MuiSelect-select::-webkit-outer-spin-button,
+.MuiSelect-select input::-webkit-inner-spin-button,
+.MuiSelect-select input::-webkit-outer-spin-button,
+.MuiInputBase-input::-webkit-inner-spin-button,
+.MuiInputBase-input::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button,
+input::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  display: none !important;
+  margin: 0 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Remove spinner control from Select input */
+.MuiSelect-select[type="number"]::-webkit-inner-spin-button,
+.MuiSelect-select[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  display: none !important;
+  margin: 0 !important;
+}
+
+/* Hide dropdown arrow icon from Select components */
+.MuiSelect-icon,
+.MuiSelect-iconOutlined,
+.MuiSvgIcon-root.MuiSelect-icon,
+.MuiSelect-root .MuiSvgIcon-root,
+.MuiSelect-root svg {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.MuiSelect-root::after,
+.MuiSelect-root::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* Hide native select arrow */
+select::-ms-expand {
+  display: none !important;
+}
+
+select {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
+}
+
+/* Remove any icon wrapper */
+.MuiSelect-iconWrapper {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Force remove all spinner controls globally */
+*::-webkit-inner-spin-button,
+*::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  display: none !important;
+  margin: 0 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* Leaflet map fixes for Material UI compatibility */
