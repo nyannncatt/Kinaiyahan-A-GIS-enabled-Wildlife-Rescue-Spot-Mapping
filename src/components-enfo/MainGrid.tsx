@@ -422,29 +422,19 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
         }}
       >
         <DialogTitle sx={{ pb: 2, textAlign: 'center' }}>
-          <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mb: 2 }}>
-            <Box
-              component="img"
-              src="/images/kinaiyahanlogonobg.png"
-              alt="Kinaiyahan"
-              sx={{ width: 56, height: 56, objectFit: 'contain' }}
-            />
-            <Typography
-              component="p"
-              variant="h5"
-              sx={{
-                fontFamily: 'Inter, sans-serif',
-                fontWeight: 800,
-                letterSpacing: '0.3em',
-                color: '#2e7d32 !important',
-                userSelect: 'none',
-                lineHeight: 1,
-                margin: 0,
-              }}
-            >
-              ＫＩＮＡＩＹＡＨＡＮ
-            </Typography>
-          </Stack>
+          <Box
+            component="img"
+            src="/images/kinaiyahanlogonobg.png"
+            alt="Kinaiyahan"
+            sx={{ 
+              width: 56, 
+              height: 56, 
+              objectFit: 'contain',
+              display: 'block',
+              margin: '0 auto',
+              mb: 2
+            }}
+          />
           <Typography component="p" variant="h6" sx={{ fontWeight: 600, color: '#2e7d32 !important', margin: 0 }}>
             New Report Arrived!
           </Typography>
