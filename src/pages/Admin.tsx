@@ -36,6 +36,7 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
   const [showLogo, setShowLogo] = React.useState(false);
   const [displayedText, setDisplayedText] = React.useState('');
   const [showHeader, setShowHeader] = React.useState(true);
+  const mainContainerRef = React.useRef<HTMLElement | null>(null);
   const fullText = 'ＫＩＮＡＩＹＡＨＡＮ';
 
   // Typing animation effect
@@ -69,24 +70,56 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
 
   // Hide header on scroll
   React.useEffect(() => {
-    let lastScrollY = window.scrollY;
-    let ticking = false;
-
     const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const currentScrollY = window.scrollY;
-          // Hide if scrolled down more than 50px, show if near top
-          setShowHeader(currentScrollY < 50);
-          lastScrollY = currentScrollY;
-          ticking = false;
-        });
-        ticking = true;
+      // Check scroll position from main container or window
+      // Account for high-DPI scaling if active
+      let scrollY = 0;
+      if (mainContainerRef.current) {
+        scrollY = mainContainerRef.current.scrollTop || 0;
+      } else {
+        scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+      }
+      
+      // Check if high-DPI scaling is active (root has transform scale)
+      const root = document.getElementById('root');
+      if (root && root.style.transform && root.style.transform.includes('scale')) {
+        // Extract scale value (e.g., "scale(0.8)" -> 0.8)
+        const scaleMatch = root.style.transform.match(/scale\(([\d.]+)\)/);
+        if (scaleMatch) {
+          const scale = parseFloat(scaleMatch[1]);
+          // Adjust scroll position for scaling
+          scrollY = scrollY / scale;
+        }
+      }
+      
+      // Hide if scrolled down more than 50px, show if near top
+      setShowHeader(scrollY < 50);
+    };
+
+    // Wait for ref to be set, then set up listeners
+    const setupListeners = () => {
+      // Initial check
+      handleScroll();
+
+      // Listen to scroll on window
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      
+      // Also listen to scroll on the main container if it exists
+      if (mainContainerRef.current) {
+        mainContainerRef.current.addEventListener('scroll', handleScroll, { passive: true });
       }
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    // Use setTimeout to ensure ref is set
+    const timeoutId = setTimeout(setupListeners, 0);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('scroll', handleScroll);
+      if (mainContainerRef.current) {
+        mainContainerRef.current.removeEventListener('scroll', handleScroll);
+      }
+    };
   }, []);
 
   return (
@@ -95,7 +128,7 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
       <Box sx={{ display: 'flex' }}>
         <AdminSideMenu />
         <AppNavbar />
-        {/* Fixed centered header (matches login page position) */}
+        {/* Fixed centered header - Hidden on scroll */}
         <Box
           sx={{
             position: 'fixed',
@@ -107,6 +140,7 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
             pointerEvents: 'none',
             opacity: showHeader ? 1 : 0,
             transition: 'opacity 0.3s ease-in-out',
+            visibility: showHeader ? 'visible' : 'hidden',
           }}
         >
           <Stack direction="row" spacing={1} alignItems="center">
@@ -142,6 +176,7 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
         </Box>
         <Box
           component="main"
+          ref={mainContainerRef}
           sx={(t) => ({
             flexGrow: 1,
             overflow: 'auto',
