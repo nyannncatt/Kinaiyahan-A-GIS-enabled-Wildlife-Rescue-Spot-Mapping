@@ -7,6 +7,39 @@ import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
 import "leaflet/dist/leaflet.css";
 
+// High-DPI display compensation: Scale down on high-DPI displays to match PC appearance
+(function applyHighDPIScaling() {
+  const devicePixelRatio = window.devicePixelRatio || 1;
+  // Detect if this is likely a high-DPI laptop display (devicePixelRatio > 1.25)
+  // Scale down by 0.8 (80%) so 100% browser zoom on laptop = 100% on PC
+  if (devicePixelRatio > 1.25) {
+    const applyScale = () => {
+      const root = document.getElementById('root');
+      if (root) {
+        root.style.transform = 'scale(0.8)';
+        root.style.transformOrigin = 'top left';
+        // Adjust container dimensions to compensate for scaling
+        const scale = 0.8;
+        const updateDimensions = () => {
+          const width = window.innerWidth / scale;
+          const height = window.innerHeight / scale;
+          root.style.width = `${width}px`;
+          root.style.height = `${height}px`;
+        };
+        updateDimensions();
+        window.addEventListener('resize', updateDimensions);
+      }
+    };
+    
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyScale);
+    } else {
+      applyScale();
+    }
+  }
+})();
+
 // Prevent zooming and ensure 100% zoom level (with messaging for other values)
 (function preventZoom() {
   // Create or get banner element
