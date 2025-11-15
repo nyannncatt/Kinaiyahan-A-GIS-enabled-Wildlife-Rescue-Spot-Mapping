@@ -84,14 +84,6 @@ export default function Cenro() {
             position: 'relative',
           })}
         >
-          {environmentalBg && (
-            <Box className="bg-animals" sx={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-              <span className="animal rtl" title="Philippine Eagle" style={{ top: '14%', animationDuration: '22s', animationDelay: '0s', animationName: 'popFloatA' }}>🦅</span>
-              <span className="animal ltr" title="Butterfly" style={{ top: '30%', animationDuration: '24s', animationDelay: '0s', animationName: 'zigZagB' }}>🦋</span>
-              <span className="animal rtl" title="Deer" style={{ top: '46%', animationDuration: '26s', animationDelay: '0s', animationName: 'popFloatA' }}>🦌</span>
-              <span className="animal ltr" title="Turtle" style={{ top: '62%', animationDuration: '23s', animationDelay: '0s', animationName: 'zigZagB' }}>🐢</span>
-            </Box>
-          )}
           {/* Centered header with typing animation */}
           <Box sx={{ textAlign: 'center', mt: 3, mb: 4 }}>
             <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">

@@ -157,19 +157,6 @@ function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
             position: 'relative',
           })}
         >
-          {environmentalBg && (
-            <Box className="bg-animals" sx={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-              {/* Right -> Left */}
-              <span className="animal rtl" title="Philippine Eagle" style={{ top: '12%', animationDuration: '22s', animationDelay: '0s', animationName: 'popFloatA' }}>🦅</span>
-              <span className="animal rtl" title="Crocodile" style={{ top: '26%', animationDuration: '27s', animationDelay: '0s', animationName: 'zigZagA' }}>🐊</span>
-              <span className="animal rtl" title="Whale Shark" style={{ top: '40%', animationDuration: '24s', animationDelay: '0s', animationName: 'popFloatA' }}>🦈</span>
-              <span className="animal rtl" title="Deer" style={{ top: '54%', animationDuration: '26s', animationDelay: '0s', animationName: 'zigZagA' }}>🦌</span>
-              {/* Left -> Right */}
-              <span className="animal ltr" title="Turtle" style={{ top: '18%', animationDuration: '24s', animationDelay: '0s', animationName: 'popFloatB' }}>🐢</span>
-              <span className="animal ltr" title="Parrot" style={{ top: '32%', animationDuration: '27s', animationDelay: '0s', animationName: 'zigZagB' }}>🦜</span>
-              <span className="animal ltr" title="Butterfly" style={{ top: '46%', animationDuration: '23s', animationDelay: '0s', animationName: 'popFloatB' }}>🦋</span>
-            </Box>
-          )}
           <Stack
             spacing={2}
             sx={{
