@@ -96,6 +96,10 @@ html {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  /* Reset any transform/scale that might have been applied by high-DPI scaling */
+  transform: none !important;
+  transform-origin: unset !important;
+  zoom: unset !important;
 }
 
 @media screen and (max-width: 900px) {

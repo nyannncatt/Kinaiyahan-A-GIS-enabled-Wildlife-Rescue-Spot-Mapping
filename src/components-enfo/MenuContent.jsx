@@ -192,8 +192,21 @@ export default function MenuContent() {
       if (visibleSections.length > 0) setActiveTab(visibleSections[0].tab);
     };
 
-    // Add scroll listener
-    window.addEventListener('scroll', handleScroll);
+    // Listen to scroll on all possible scroll containers (main container, root, window)
+    const mainContainer = document.querySelector('main[style*="overflow"]') || 
+                          document.querySelector('[component="main"]') ||
+                          document.querySelector('main');
+    const root = document.getElementById('root');
+    
+    // Add scroll listeners to all possible containers
+    if (mainContainer) {
+      mainContainer.addEventListener('scroll', handleScroll, { passive: true });
+    }
+    if (root) {
+      root.addEventListener('scroll', handleScroll, { passive: true });
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
     
     // Initial check
     handleScroll();
@@ -202,7 +215,14 @@ export default function MenuContent() {
     const interval = setInterval(handleScroll, 500);
     
     return () => {
+      if (mainContainer) {
+        mainContainer.removeEventListener('scroll', handleScroll);
+      }
+      if (root) {
+        root.removeEventListener('scroll', handleScroll);
+      }
       window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
       clearInterval(interval);
     };
   }, []);
@@ -254,8 +274,10 @@ export default function MenuContent() {
       });
     } else {
       // Fallback: scroll to bottom of page
-      window.scrollTo({ 
-        top: document.body.scrollHeight, 
+      const container = getScrollContainer();
+      const scrollHeight = container === window ? document.body.scrollHeight : container.scrollHeight;
+      scrollContainer({ 
+        top: scrollHeight, 
         behavior: 'smooth' 
       });
     }
@@ -293,9 +315,38 @@ export default function MenuContent() {
     }
   };
 
+  // Helper function to get the actual scroll container
+  const getScrollContainer = () => {
+    // Try to find the main container first
+    const mainContainer = document.querySelector('main[style*="overflow"]') || 
+                          document.querySelector('[component="main"]') ||
+                          document.querySelector('main');
+    const root = document.getElementById('root');
+    
+    // Check which one is actually scrollable
+    if (mainContainer && (mainContainer.scrollHeight > mainContainer.clientHeight)) {
+      return mainContainer;
+    }
+    if (root && (root.scrollHeight > root.clientHeight)) {
+      return root;
+    }
+    // Fallback to window
+    return window;
+  };
+
+  // Helper function to scroll the correct container
+  const scrollContainer = (options) => {
+    const container = getScrollContainer();
+    if (container === window) {
+      window.scrollTo(options);
+    } else {
+      container.scrollTo(options);
+    }
+  };
+
   // Function to scroll to top
   const scrollToTop = () => {
-    window.scrollTo({ 
+    scrollContainer({ 
       top: 0, 
       behavior: 'smooth' 
     });
@@ -308,17 +359,11 @@ export default function MenuContent() {
       // Wait for next frame to ensure element is fully rendered and positioned
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          // Calculate absolute position using offsetTop (more reliable than getBoundingClientRect)
-          let elementTop = 0;
-          let element = profileElement;
-          while (element) {
-            elementTop += element.offsetTop;
-            element = element.offsetParent;
-          }
-          const offset = 10; // Offset from top of viewport
-          window.scrollTo({ 
-            top: elementTop - offset, 
-            behavior: 'smooth' 
+          // Use scrollIntoView which works with any scroll container
+          profileElement.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest'
           });
         });
       });
@@ -330,8 +375,10 @@ export default function MenuContent() {
           scrollToProfile();
         } else {
           // Fallback: scroll to bottom of page
-          window.scrollTo({ 
-            top: document.body.scrollHeight, 
+          const container = getScrollContainer();
+          const scrollHeight = container === window ? document.body.scrollHeight : container.scrollHeight;
+          scrollContainer({ 
+            top: scrollHeight, 
             behavior: 'smooth' 
           });
         }
