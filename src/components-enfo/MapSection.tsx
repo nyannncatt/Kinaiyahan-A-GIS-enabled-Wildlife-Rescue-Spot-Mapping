@@ -4,7 +4,6 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
-import Badge from '@mui/material/Badge';
 import Tooltip from '@mui/material/Tooltip';
 import MapOutlinedIcon from '@mui/icons-material/MapOutlined';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
@@ -119,9 +118,35 @@ export default function MapSection({ pendingCount, onScrollToRecordList, onScrol
           variant="outlined"
           size="small"
           startIcon={
-            <Badge badgeContent={pendingCount} color="error" max={99}>
+            <Box sx={{ position: 'relative', display: 'inline-flex' }}>
               <PendingActionsIcon />
-            </Badge>
+              {pendingCount > 0 && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 0,
+                    right: -120,
+                    transform: 'scale(1) translate(50%, -50%)',
+                    transformOrigin: '100% 0%',
+                    minWidth: 20,
+                    height: 20,
+                    borderRadius: '10px',
+                    backgroundColor: '#d32f2f',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    padding: '0 6px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    border: '2px solid white',
+                  }}
+                >
+                  {pendingCount}
+                </Box>
+              )}
+            </Box>
           }
           onClick={onScrollToPendingReports}
           sx={{

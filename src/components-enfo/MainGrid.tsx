@@ -7,6 +7,7 @@ import AnalyticsSection from './AnalyticsSection';
 import MapSection from './MapSection';
 import { MapNavigationProvider } from '../context/MapNavigationContext';
 import { getWildlifeRecords } from '../services/wildlifeRecords';
+import { supabase } from '../services/supabase';
 
 interface MainGridProps {
   onModalOpenChange?: (isOpen: boolean) => void;
@@ -41,7 +42,7 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
   const [pendingCount, setPendingCount] = useState(0);
   const [showPendingOnly, setShowPendingOnly] = useState(false);
 
-  // Load pending reports count
+  // Load pending reports count with real-time updates
   useEffect(() => {
     const loadPendingCount = async () => {
       try {
@@ -55,10 +56,35 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
       }
     };
 
+    // Load initial count
     loadPendingCount();
-    // Refresh every 30 seconds
-    const interval = setInterval(loadPendingCount, 30000);
-    return () => clearInterval(interval);
+
+    // Set up real-time subscription for wildlife_records table
+    const channel = supabase
+      .channel('wildlife-records-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'wildlife_records',
+          filter: 'approval_status=eq.pending'
+        },
+        (payload) => {
+          // Reload count when any change occurs to pending records
+          loadPendingCount();
+        }
+      )
+      .subscribe();
+
+    // Fallback: Refresh every 10 seconds as backup (in case real-time fails)
+    const interval = setInterval(loadPendingCount, 10000);
+
+    return () => {
+      // Cleanup: unsubscribe from real-time and clear interval
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
   }, []);
 
   // Function to scroll to record list section
