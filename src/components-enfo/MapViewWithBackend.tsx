@@ -2438,14 +2438,16 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                   fullWidth
                   margin="dense"
                   value={pendingMarker?.speciesName || ''}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    // Only allow letters, spaces, hyphens, apostrophes, and forward slashes (for scientific/common name format)
+                    const filteredValue = e.target.value.replace(/[^a-zA-Z\s\-'/]/g, '');
+                    setSpeciesHasDigits(/\d/.test(e.target.value));
                     setPendingMarker((p) => {
-                      setSpeciesHasDigits(/\d/.test(e.target.value));
-                      const next = p ? { ...p, speciesName: e.target.value } : p;
+                      const next = p ? { ...p, speciesName: filteredValue } : p;
                       if (next && isPendingComplete(next)) setPendingWarning(null);
                       return next as PendingMarker;
-                    })
-                  }
+                    });
+                  }}
                   onFocus={() => {
                     if (speciesOptions.length > 0) {
                       setShowSpeciesDropdown(true);
@@ -2525,15 +2527,17 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                   fullWidth
                   margin="dense"
                   value={pendingMarker?.reporterName || ""}
-                  onChange={(e) => setPendingMarker((p) => {
-                    // Allow only letters, spaces, dots and hyphens
+                  onChange={(e) => {
+                    // Only allow letters, spaces, hyphens, and apostrophes
+                    const filteredValue = e.target.value.replace(/[^a-zA-Z\s\-']/g, '');
                     const hasDigits = /\d/.test(e.target.value);
                     setNameHasDigits(hasDigits);
-                    const cleaned = e.target.value.replace(/[^A-Za-z .-]/g, '');
-                    const next = p ? { ...p, reporterName: cleaned } : p;
-                    if (next && isPendingComplete(next)) setPendingWarning(null);
-                    return next as PendingMarker;
-                  })}
+                    setPendingMarker((p) => {
+                      const next = p ? { ...p, reporterName: filteredValue } : p;
+                      if (next && isPendingComplete(next)) setPendingWarning(null);
+                      return next as PendingMarker;
+                    });
+                  }}
                   required
                   error={nameHasDigits || (Boolean(pendingWarning) && !(pendingMarker?.reporterName || '').trim())}
                   helperText={nameHasDigits ? 'Numbers are not allowed in name.' : 'Letters only'}
@@ -2547,8 +2551,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                   margin="dense"
                   value={pendingMarker?.phoneNumber || ""}
                   onChange={(e) => {
-                    // Digits only, max length 10
-                    const phoneNumber = e.target.value.replace(/\\D/g, '').slice(0, 10);
+                    // Only allow numbers and limit to 10 digits
+                    const phoneNumber = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
                     const countryCode = pendingMarker?.countryCode || '+63';
                     const fullNumber = countryCode + phoneNumber;
                     setPendingMarker((p) => {
@@ -2999,12 +3003,14 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                         : ([editingMarker.scientific_name, editingMarker.species_name].filter(Boolean).join(' / ') || editingMarker.species_name)
                     }
                     onChange={(e) => {
+                      // Only allow letters, spaces, hyphens, apostrophes, and forward slashes (for scientific/common name format)
+                      const filteredValue = e.target.value.replace(/[^a-zA-Z\s\-'/]/g, '');
                       setEditDrafts((prev) => ({
                         ...prev,
                         [editingMarker.id]: {
                           ...(prev[editingMarker.id] || {}),
                           // Store raw input; will be parsed on save into sci/common
-                          species_name: e.target.value,
+                          species_name: filteredValue,
                           status: prev[editingMarker.id]?.status ?? editingMarker.status,
                           photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
                           barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay,
@@ -3104,12 +3110,14 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                   fullWidth
                     margin="dense"
                     value={currentDraft.barangay !== undefined ? currentDraft.barangay : (editingMarker.barangay || '')}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    // Only allow letters, spaces, hyphens, and parentheses (for barangay names like "Poblacion(Sumilao)")
+                    const filteredValue = e.target.value.replace(/[^a-zA-Z\s\-()]/g, '');
                     setEditDrafts((prev) => ({
                       ...prev,
                         [editingMarker.id]: {
                           ...(prev[editingMarker.id] || {}),
-                          barangay: e.target.value,
+                          barangay: filteredValue,
                           species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name,
                           status: prev[editingMarker.id]?.status ?? editingMarker.status,
                           photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
@@ -3117,8 +3125,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                           reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
                           contact_number: prev[editingMarker.id]?.contact_number ?? editingMarker.contact_number,
                         },
-                    }))
-                  }
+                    }));
+                  }}
                 />
                 <TextField
                     placeholder="Municipality"
@@ -3127,12 +3135,14 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                   fullWidth
                     margin="dense"
                     value={currentDraft.municipality !== undefined ? currentDraft.municipality : (editingMarker.municipality || '')}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      // Only allow letters, spaces, and hyphens
+                      const filteredValue = e.target.value.replace(/[^a-zA-Z\s\-]/g, '');
                       setEditDrafts((prev) => ({
                         ...prev,
                         [editingMarker.id]: {
                           ...(prev[editingMarker.id] || {}),
-                          municipality: e.target.value,
+                          municipality: filteredValue,
                           species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name,
                           status: prev[editingMarker.id]?.status ?? editingMarker.status,
                           photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
@@ -3140,8 +3150,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                           reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
                           contact_number: prev[editingMarker.id]?.contact_number ?? editingMarker.contact_number,
                         },
-                      }))
-                    }
+                      }));
+                    }}
                   />
                   <TextField
                     placeholder="Name of who sighted"
@@ -3150,12 +3160,14 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                     fullWidth
                     margin="dense"
                     value={currentReporterName}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    // Only allow letters, spaces, hyphens, and apostrophes
+                    const filteredValue = e.target.value.replace(/[^a-zA-Z\s\-']/g, '');
                     setEditDrafts((prev) => ({
                       ...prev,
                         [editingMarker.id]: {
                           ...(prev[editingMarker.id] || {}),
-                          reporter_name: e.target.value,
+                          reporter_name: filteredValue,
                           species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name,
                           status: prev[editingMarker.id]?.status ?? editingMarker.status,
                           photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
@@ -3163,8 +3175,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                           municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality,
                           contact_number: prev[editingMarker.id]?.contact_number ?? editingMarker.contact_number,
                         },
-                    }))
-                  }
+                    }));
+                  }}
                 />
                   <TextField
                     placeholder="Phone number"
@@ -3174,8 +3186,9 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                     margin="dense"
                     value={phoneNumber}
                     onChange={(e) => {
-                      const phoneNumberValue = e.target.value;
-                      const fullNumber = countryCode + phoneNumberValue;
+                      // Only allow numbers and limit to 10 digits
+                      const filteredValue = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                      const fullNumber = countryCode + filteredValue;
                       setEditDrafts((prev) => ({
                         ...prev,
                         [editingMarker.id]: {
