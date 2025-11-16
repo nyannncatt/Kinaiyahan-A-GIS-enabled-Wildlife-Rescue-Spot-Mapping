@@ -547,8 +547,31 @@ a[data-tooltip],
 .MuiButton-root[title],
 .MuiButton-root[data-tooltip],
 .MuiIconButton-root[title],
-.MuiIconButton-root[data-tooltip] {
+.MuiIconButton-root[data-tooltip],
+span[title]:has(button),
+span[data-tooltip]:has(button),
+span[title][style*="inline-block"] {
   position: relative;
+}
+
+/* Remove tooltips from pagination buttons */
+.MuiTablePagination-root button[title],
+.MuiTablePagination-root button[data-tooltip],
+.MuiTablePagination-root .MuiIconButton-root[title],
+.MuiTablePagination-root .MuiIconButton-root[data-tooltip] {
+  position: static;
+}
+
+.MuiTablePagination-root button[title]:hover::before,
+.MuiTablePagination-root button[data-tooltip]:hover::before,
+.MuiTablePagination-root .MuiIconButton-root[title]:hover::before,
+.MuiTablePagination-root .MuiIconButton-root[data-tooltip]:hover::before,
+.MuiTablePagination-root button[title]:hover::after,
+.MuiTablePagination-root button[data-tooltip]:hover::after,
+.MuiTablePagination-root .MuiIconButton-root[title]:hover::after,
+.MuiTablePagination-root .MuiIconButton-root[data-tooltip]:hover::after {
+  display: none !important;
+  content: none !important;
 }
 
 /* Tooltip with data-tooltip (set by JavaScript on hover) */
@@ -556,7 +579,8 @@ button[data-tooltip]:hover::before,
 a[data-tooltip]:hover::before,
 [role="button"][data-tooltip]:hover::before,
 .MuiButton-root[data-tooltip]:hover::before,
-.MuiIconButton-root[data-tooltip]:hover::before {
+.MuiIconButton-root[data-tooltip]:hover::before,
+span[data-tooltip]:has(button):hover::before {
   content: attr(data-tooltip);
   position: absolute;
   bottom: 100%;
@@ -580,7 +604,9 @@ button[title]:not([data-tooltip]):hover::before,
 a[title]:not([data-tooltip]):hover::before,
 [role="button"][title]:not([data-tooltip]):hover::before,
 .MuiButton-root[title]:not([data-tooltip]):hover::before,
-.MuiIconButton-root[title]:not([data-tooltip]):hover::before {
+.MuiIconButton-root[title]:not([data-tooltip]):hover::before,
+span[title]:has(button):not([data-tooltip]):hover::before,
+span[title][style*="inline-block"]:not([data-tooltip]):hover::before {
   content: attr(title);
   position: absolute;
   bottom: 100%;
@@ -609,7 +635,10 @@ button[title]:not([data-tooltip]):hover::after,
 a[title]:not([data-tooltip]):hover::after,
 [role="button"][title]:not([data-tooltip]):hover::after,
 .MuiButton-root[title]:not([data-tooltip]):hover::after,
-.MuiIconButton-root[title]:not([data-tooltip]):hover::after {
+.MuiIconButton-root[title]:not([data-tooltip]):hover::after,
+span[data-tooltip]:has(button):hover::after,
+span[title]:has(button):not([data-tooltip]):hover::after,
+span[title][style*="inline-block"]:not([data-tooltip]):hover::after {
   content: '';
   position: absolute;
   bottom: 100%;
@@ -639,7 +668,9 @@ button[title],
 a[title],
 [role="button"][title],
 .MuiButton-root[title],
-.MuiIconButton-root[title] {
+.MuiIconButton-root[title],
+span[title]:has(button),
+span[title][style*="inline-block"] {
   pointer-events: auto;
 }
 
@@ -653,6 +684,10 @@ a[title]:hover::after,
 .MuiButton-root[title]:hover::before,
 .MuiButton-root[title]:hover::after,
 .MuiIconButton-root[title]:hover::before,
-.MuiIconButton-root[title]:hover::after {
+.MuiIconButton-root[title]:hover::after,
+span[title]:has(button):hover::before,
+span[title]:has(button):hover::after,
+span[title][style*="inline-block"]:hover::before,
+span[title][style*="inline-block"]:hover::after {
   pointer-events: none;
 }
