@@ -2260,18 +2260,24 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             </Button>
             <Button 
               onClick={handleFinalApprove} 
-              variant="contained"
+              variant="outlined"
               startIcon={<CheckCircle />}
               disabled={!hasScrolledToBottom}
               sx={{
-                bgcolor: hasScrolledToBottom ? '#4caf50' : 'rgba(46, 125, 50, 0.3)',
-                color: hasScrolledToBottom ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                borderColor: '#4caf50 !important',
+                color: '#4caf50 !important',
                 '&:hover': {
-                  bgcolor: hasScrolledToBottom ? '#388e3c' : 'rgba(46, 125, 50, 0.3)'
+                  borderColor: '#2e7d32 !important',
+                  color: '#2e7d32 !important',
+                  bgcolor: 'rgba(76, 175, 80, 0.1)'
                 },
                 '&:disabled': {
-                  bgcolor: 'rgba(46, 125, 50, 0.3)',
-                  color: 'rgba(255, 255, 255, 0.5)'
+                  borderColor: '#4caf50 !important',
+                  color: '#4caf50 !important',
+                  opacity: 0.6
+                },
+                '& .MuiSvgIcon-root': {
+                  color: '#4caf50 !important'
                 }
               }}
             >
@@ -2279,18 +2285,24 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             </Button>
             <Button 
               onClick={handleApproveAndPrint} 
-              variant="contained"
+              variant="outlined"
               startIcon={<PrintIcon />}
               disabled={!hasScrolledToBottom}
               sx={{
-                bgcolor: hasScrolledToBottom ? '#4caf50' : 'rgba(46, 125, 50, 0.3)',
-                color: hasScrolledToBottom ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                borderColor: '#4caf50 !important',
+                color: '#4caf50 !important',
                 '&:hover': {
-                  bgcolor: hasScrolledToBottom ? '#388e3c' : 'rgba(46, 125, 50, 0.3)'
+                  borderColor: '#2e7d32 !important',
+                  color: '#2e7d32 !important',
+                  bgcolor: 'rgba(76, 175, 80, 0.1)'
                 },
                 '&:disabled': {
-                  bgcolor: 'rgba(46, 125, 50, 0.3)',
-                  color: 'rgba(255, 255, 255, 0.5)'
+                  borderColor: '#4caf50 !important',
+                  color: '#4caf50 !important',
+                  opacity: 0.6
+                },
+                '& .MuiSvgIcon-root': {
+                  color: '#4caf50 !important'
                 }
               }}
             >
