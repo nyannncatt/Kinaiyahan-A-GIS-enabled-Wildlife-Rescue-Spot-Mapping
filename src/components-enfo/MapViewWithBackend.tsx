@@ -75,14 +75,20 @@ function MapRefSetter({ onReady }: { onReady: (map: L.Map) => void }) {
 }
 
 // Utility: status -> color and marker icon
-function createStatusIcon(status: string | undefined): L.Icon {
-  const v = String(status || "").toLowerCase();
+function createStatusIcon(status: string | undefined, approval_status?: string): L.Icon {
   const base = "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img";
   let iconColor = "blue"; // default style
-  if (v === "reported") iconColor = "red";
-  else if (v === "rescued") iconColor = "blue";
-  else if (v === "turned over") iconColor = "gold"; // yellow variant is named gold
-  else if (v === "released" || v === "released".toUpperCase()) iconColor = "green";
+  
+  // If pending, always use gray
+  if (approval_status === 'pending') {
+    iconColor = "grey";
+  } else {
+    const v = String(status || "").toLowerCase();
+    if (v === "reported") iconColor = "red";
+    else if (v === "rescued") iconColor = "blue";
+    else if (v === "turned over") iconColor = "gold"; // yellow variant is named gold
+    else if (v === "released" || v === "released".toUpperCase()) iconColor = "green";
+  }
 
   const iconUrl = `${base}/marker-icon-2x-${iconColor}.png`;
   const shadowUrl = `https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png`;
@@ -1786,6 +1792,12 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
   }
 
   const filteredMarkers = wildlifeRecords.filter((m) => {
+    // Always show the target record even if it's pending (bypass all filters)
+    const isTargetRecord = targetRecordId && m.id === targetRecordId;
+    if (isTargetRecord) {
+      return true;
+    }
+    
     const normalizedStatus = normalizeStatus(m.status);
     const showAllBecauseReported = enabledStatuses.includes('reported');
     const isIncluded = showAllBecauseReported || enabledStatuses.includes(normalizedStatus);
@@ -1820,6 +1832,12 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
 
   const allMarkers = [...wildlifeRecords, ...testMarkers];
   const finalFilteredMarkers = allMarkers.filter((m) => {
+    // Always show the target record even if it's pending (bypass all filters)
+    const isTargetRecord = targetRecordId && m.id === targetRecordId;
+    if (isTargetRecord) {
+      return true;
+    }
+    
     const normalizedStatus = normalizeStatus(m.status);
     const showAllBecauseReported = enabledStatuses.includes('reported');
     const isIncluded = showAllBecauseReported || enabledStatuses.includes(normalizedStatus);
@@ -3284,7 +3302,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
           <Marker
             key={`editing-${editingMarker.id}`}
             position={[editingMarker.latitude, editingMarker.longitude]}
-            icon={createStatusIcon(editingMarker.status)}
+            icon={createStatusIcon(editingMarker.status, editingMarker.approval_status)}
             ref={(ref) => { if (ref) markerRefs.current[editingMarker.id] = ref; }}
           />
         )}
@@ -3296,7 +3314,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
             <Marker
               key={`relocating-${relocatingMarker.id}`}
               position={[relocatingMarker.latitude, relocatingMarker.longitude]}
-              icon={createStatusIcon(relocatingMarker.status)}
+              icon={createStatusIcon(relocatingMarker.status, relocatingMarker.approval_status)}
               ref={(ref) => { if (ref) markerRefs.current[relocatingMarker.id] = ref; }}
             >
               <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]} maxWidth={420}>
@@ -3330,7 +3348,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
               <Marker
                 key={`original-${dispersingMarker.id}`}
                 position={[originalLocation?.lat || dispersingMarker.latitude, originalLocation?.lng || dispersingMarker.longitude]}
-                icon={createStatusIcon(dispersingMarker.status)}
+                icon={createStatusIcon(dispersingMarker.status, dispersingMarker.approval_status)}
                 ref={(ref) => { if (ref) markerRefs.current[`original-${dispersingMarker.id}`] = ref; }}
               >
                 <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
@@ -3658,7 +3676,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
               <Marker
                 key={m.id}
                 position={[m.latitude, m.longitude]}
-                icon={createStatusIcon(m.status)}
+                icon={createStatusIcon(m.status, m.approval_status)}
                 ref={(ref) => { markerRefs.current[m.id] = ref; }}
                 eventHandlers={{
                   click: () => {
