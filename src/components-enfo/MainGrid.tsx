@@ -279,13 +279,8 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
               }
             }, 5000);
           } else if (status === 'CLOSED') {
-            console.warn('Real-time subscription closed (will retry)');
-            // Retry subscription after a delay
-            setTimeout(() => {
-              if (channel) {
-                setupSubscription();
-              }
-            }, 5000);
+            // Supabase automatically retries closed connections, no need to manually retry
+            // This is normal behavior and will reconnect automatically
           }
         });
     };
