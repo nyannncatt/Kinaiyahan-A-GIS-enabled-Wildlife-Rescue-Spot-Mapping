@@ -1777,20 +1777,26 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       <span>
                         <IconButton
                           size="small"
-                          title={record.approval_status === 'rejected' ? 'Rejected reports cannot be edited' : 'Edit'}
+                          title={
+                            record.approval_status === 'rejected' 
+                              ? 'Rejected reports cannot be edited' 
+                              : record.approval_status === 'pending' 
+                                ? 'Pending reports cannot be edited' 
+                                : 'Edit'
+                          }
                           onClick={(e) => { e.stopPropagation(); handleEditRecord(record); }}
-                          disabled={record.approval_status === 'rejected'}
+                          disabled={record.approval_status === 'rejected' || record.approval_status === 'pending'}
                           sx={{ 
                             color: 'text.secondary',
-                            opacity: record.approval_status === 'rejected' ? 0.5 : 1,
-                            cursor: record.approval_status === 'rejected' ? 'not-allowed' : 'pointer',
+                            opacity: (record.approval_status === 'rejected' || record.approval_status === 'pending') ? 0.5 : 1,
+                            cursor: (record.approval_status === 'rejected' || record.approval_status === 'pending') ? 'not-allowed' : 'pointer',
                             '&:hover': { 
-                              bgcolor: record.approval_status === 'rejected'
+                              bgcolor: (record.approval_status === 'rejected' || record.approval_status === 'pending')
                                 ? 'transparent'
                                 : (theme.palette.mode === 'dark' 
                                     ? 'rgba(25, 118, 210, 0.1)' 
                                     : 'rgba(25, 118, 210, 0.04)'),
-                              color: record.approval_status === 'rejected' ? 'text.secondary' : theme.palette.primary.main
+                              color: (record.approval_status === 'rejected' || record.approval_status === 'pending') ? 'text.secondary' : theme.palette.primary.main
                             }
                           }}
                         >
@@ -2260,18 +2266,24 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             </Button>
             <Button 
               onClick={handleFinalApprove} 
-              variant="contained"
+              variant="outlined"
               startIcon={<CheckCircle />}
               disabled={!hasScrolledToBottom}
               sx={{
-                bgcolor: hasScrolledToBottom ? '#4caf50' : 'rgba(46, 125, 50, 0.3)',
-                color: hasScrolledToBottom ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                borderColor: '#4caf50 !important',
+                color: '#4caf50 !important',
                 '&:hover': {
-                  bgcolor: hasScrolledToBottom ? '#388e3c' : 'rgba(46, 125, 50, 0.3)'
+                  borderColor: '#2e7d32 !important',
+                  color: '#2e7d32 !important',
+                  bgcolor: 'rgba(76, 175, 80, 0.1)'
                 },
                 '&:disabled': {
-                  bgcolor: 'rgba(46, 125, 50, 0.3)',
-                  color: 'rgba(255, 255, 255, 0.5)'
+                  borderColor: '#4caf50 !important',
+                  color: '#4caf50 !important',
+                  opacity: 0.6
+                },
+                '& .MuiSvgIcon-root': {
+                  color: '#4caf50 !important'
                 }
               }}
             >
@@ -2279,18 +2291,24 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             </Button>
             <Button 
               onClick={handleApproveAndPrint} 
-              variant="contained"
+              variant="outlined"
               startIcon={<PrintIcon />}
               disabled={!hasScrolledToBottom}
               sx={{
-                bgcolor: hasScrolledToBottom ? '#4caf50' : 'rgba(46, 125, 50, 0.3)',
-                color: hasScrolledToBottom ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                borderColor: '#4caf50 !important',
+                color: '#4caf50 !important',
                 '&:hover': {
-                  bgcolor: hasScrolledToBottom ? '#388e3c' : 'rgba(46, 125, 50, 0.3)'
+                  borderColor: '#2e7d32 !important',
+                  color: '#2e7d32 !important',
+                  bgcolor: 'rgba(76, 175, 80, 0.1)'
                 },
                 '&:disabled': {
-                  bgcolor: 'rgba(46, 125, 50, 0.3)',
-                  color: 'rgba(255, 255, 255, 0.5)'
+                  borderColor: '#4caf50 !important',
+                  color: '#4caf50 !important',
+                  opacity: 0.6
+                },
+                '& .MuiSvgIcon-root': {
+                  color: '#4caf50 !important'
                 }
               }}
             >
@@ -2822,9 +2840,10 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   margin="dense"
                   value={editSpeciesInput}
                   onChange={(e) => {
-                    const val = e.target.value;
-                    setEditSpeciesInput(val);
-                    setEditFormData(prev => ({ ...prev, species_name: val }));
+                    // Only allow letters, spaces, hyphens, apostrophes, and forward slashes (for scientific/common name format)
+                    const filteredValue = e.target.value.replace(/[^a-zA-Z\s\-'/]/g, '');
+                    setEditSpeciesInput(filteredValue);
+                    setEditFormData(prev => ({ ...prev, species_name: filteredValue }));
                   }}
                   required
                   onFocus={() => {
@@ -2903,7 +2922,11 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   fullWidth
                   margin="dense"
                   value={editFormData.barangay || ''}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, barangay: e.target.value }))}
+                  onChange={(e) => {
+                    // Only allow letters, spaces, hyphens, and parentheses (for barangay names like "Poblacion(Sumilao)")
+                    const filteredValue = e.target.value.replace(/[^a-zA-Z\s\-()]/g, '');
+                    setEditFormData(prev => ({ ...prev, barangay: filteredValue }));
+                  }}
                 />
                 
                 <TextField
@@ -2913,7 +2936,11 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   fullWidth
                   margin="dense"
                   value={editFormData.municipality || ''}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, municipality: e.target.value }))}
+                  onChange={(e) => {
+                    // Only allow letters, spaces, and hyphens
+                    const filteredValue = e.target.value.replace(/[^a-zA-Z\s\-]/g, '');
+                    setEditFormData(prev => ({ ...prev, municipality: filteredValue }));
+                  }}
                 />
                 
                 <TextField
@@ -2923,7 +2950,11 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   fullWidth
                   margin="dense"
                   value={editFormData.reporter_name || ''}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, reporter_name: e.target.value }))}
+                  onChange={(e) => {
+                    // Only allow letters, spaces, hyphens, and apostrophes
+                    const filteredValue = e.target.value.replace(/[^a-zA-Z\s\-']/g, '');
+                    setEditFormData(prev => ({ ...prev, reporter_name: filteredValue }));
+                  }}
                 />
                 
                 <TextField
@@ -2934,7 +2965,8 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   margin="dense"
                   value={phoneNumber}
                   onChange={(e) => {
-                    const phoneNumberValue = e.target.value;
+                    // Only allow numbers and limit to 10 digits
+                    const phoneNumberValue = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
                     setEditFormData(prev => {
                       const currentCountryCode = prev.country_code || '+63';
                       const fullNumber = currentCountryCode + phoneNumberValue;
