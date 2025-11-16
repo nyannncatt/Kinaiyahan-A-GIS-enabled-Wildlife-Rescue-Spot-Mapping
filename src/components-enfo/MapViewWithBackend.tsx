@@ -876,7 +876,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
       clearTimeout(timer);
       controller.abort();
     };
-  }, [editDrafts, editingMarkerId, showEditSpeciesDropdown, speciesSelectedFromDropdown]);
+  }, [editingMarkerId ? editDrafts[editingMarkerId]?.species_name : null, editingMarkerId, showEditSpeciesDropdown, speciesSelectedFromDropdown]);
 
   // Debounced place search
   useEffect(() => {
