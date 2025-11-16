@@ -1,6 +1,5 @@
 import type {} from '@mui/x-date-pickers/themeAugmentation';
 import type {} from '@mui/x-charts/themeAugmentation';
-import type {} from '@mui/x-data-grid-pro/themeAugmentation';
 import type {} from '@mui/x-tree-view/themeAugmentation';
 import { alpha } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -67,26 +66,85 @@ function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
     };
   }, [fullText]);
 
+  // Get ref to main scrollable container
+  const mainContainerRef = React.useRef<HTMLElement>(null);
+
   // Hide header on scroll
   React.useEffect(() => {
-    let lastScrollY = window.scrollY;
     let ticking = false;
 
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          const currentScrollY = window.scrollY;
+          // Check scroll position from multiple possible scroll containers
+          // 1. Main container (which has overflow: auto)
+          const container = mainContainerRef.current;
+          // 2. Root element (which has overflow-y: auto and might be the actual scroll container)
+          const root = document.getElementById('root');
+          // 3. Window/document
+          
+          let scrollY = 0;
+          
+          // Priority: main container > root > window
+          if (container && container.scrollTop > 0) {
+            scrollY = container.scrollTop;
+          } else if (root && root.scrollTop > 0) {
+            scrollY = root.scrollTop;
+          } else {
+            scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+          }
+          
+          // If no scroll detected from containers, check all of them
+          if (scrollY === 0) {
+            if (container) scrollY = container.scrollTop || 0;
+            if (scrollY === 0 && root) scrollY = root.scrollTop || 0;
+            if (scrollY === 0) scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+          }
+          
           // Hide if scrolled down more than 50px, show if near top
-          setShowHeader(currentScrollY < 50);
-          lastScrollY = currentScrollY;
+          setShowHeader(scrollY < 50);
           ticking = false;
         });
         ticking = true;
       }
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    // Wait for ref to be set, then set up listeners
+    const setupListeners = () => {
+      // Initial check
+      handleScroll();
+
+      // Listen to scroll on all possible scroll containers
+      const container = mainContainerRef.current;
+      const root = document.getElementById('root');
+      
+      if (container) {
+        container.addEventListener('scroll', handleScroll, { passive: true });
+      }
+      if (root) {
+        root.addEventListener('scroll', handleScroll, { passive: true });
+      }
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      document.addEventListener('scroll', handleScroll, { passive: true });
+    };
+
+    // Use setTimeout to ensure ref is set
+    const timeoutId = setTimeout(setupListeners, 0);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      const container = mainContainerRef.current;
+      const root = document.getElementById('root');
+      
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
+      }
+      if (root) {
+        root.removeEventListener('scroll', handleScroll);
+      }
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
+    };
   }, []);
   return (
     <AppTheme {...props} themeComponents={xThemeComponents} disableBackground={true}>
@@ -141,6 +199,7 @@ function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
         </Box>
         <Box
           component="main"
+          ref={mainContainerRef}
           sx={(theme) => ({
             flexGrow: 1,
             overflow: 'auto',
@@ -157,19 +216,6 @@ function EnforcementComponent(props: { disableCustomTheme?: boolean }) {
             position: 'relative',
           })}
         >
-          {environmentalBg && (
-            <Box className="bg-animals" sx={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-              {/* Right -> Left */}
-              <span className="animal rtl" title="Philippine Eagle" style={{ top: '12%', animationDuration: '22s', animationDelay: '0s', animationName: 'popFloatA' }}>🦅</span>
-              <span className="animal rtl" title="Crocodile" style={{ top: '26%', animationDuration: '27s', animationDelay: '0s', animationName: 'zigZagA' }}>🐊</span>
-              <span className="animal rtl" title="Whale Shark" style={{ top: '40%', animationDuration: '24s', animationDelay: '0s', animationName: 'popFloatA' }}>🦈</span>
-              <span className="animal rtl" title="Deer" style={{ top: '54%', animationDuration: '26s', animationDelay: '0s', animationName: 'zigZagA' }}>🦌</span>
-              {/* Left -> Right */}
-              <span className="animal ltr" title="Turtle" style={{ top: '18%', animationDuration: '24s', animationDelay: '0s', animationName: 'popFloatB' }}>🐢</span>
-              <span className="animal ltr" title="Parrot" style={{ top: '32%', animationDuration: '27s', animationDelay: '0s', animationName: 'zigZagB' }}>🦜</span>
-              <span className="animal ltr" title="Butterfly" style={{ top: '46%', animationDuration: '23s', animationDelay: '0s', animationName: 'popFloatB' }}>🦋</span>
-            </Box>
-          )}
           <Stack
             spacing={2}
             sx={{

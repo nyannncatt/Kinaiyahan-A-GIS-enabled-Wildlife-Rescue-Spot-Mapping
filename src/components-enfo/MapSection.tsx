@@ -4,8 +4,6 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
-import Badge from '@mui/material/Badge';
-import Tooltip from '@mui/material/Tooltip';
 import MapOutlinedIcon from '@mui/icons-material/MapOutlined';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import SatelliteAltOutlinedIcon from '@mui/icons-material/SatelliteAltOutlined';
@@ -38,59 +36,56 @@ export default function MapSection({ pendingCount, onScrollToRecordList, onScrol
 
       {/* Skin Switch (icon-only, no background) */}
       <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-        <Tooltip title="Streets" placement="top" enterDelay={2000} enterNextDelay={2000}>
-          <IconButton
-            size="small"
-            aria-label="Streets"
-            aria-pressed={skin === 'streets'}
-            onClick={() => setSkin('streets')}
-            sx={{
-              color: skin === 'streets' ? '#fff' : '#666',
-              backgroundColor: skin === 'streets' ? '#4caf50' : 'transparent',
-              '&:hover': {
-                backgroundColor: skin === 'streets' ? '#2e7d32' : 'rgba(76, 175, 80, 0.1)',
-              },
-            }}
-          >
-            <MapOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        <IconButton
+          size="small"
+          aria-label="Streets"
+          aria-pressed={skin === 'streets'}
+          onClick={() => setSkin('streets')}
+          title="Streets"
+          sx={{
+            color: skin === 'streets' ? '#fff' : '#666',
+            backgroundColor: skin === 'streets' ? '#4caf50' : 'transparent',
+            '&:hover': {
+              backgroundColor: skin === 'streets' ? '#2e7d32' : 'rgba(76, 175, 80, 0.1)',
+            },
+          }}
+        >
+          <MapOutlinedIcon fontSize="small" />
+        </IconButton>
 
-        <Tooltip title="Dark" placement="top" enterDelay={2000} enterNextDelay={2000}>
-          <IconButton
-            size="small"
-            aria-label="Dark"
-            aria-pressed={skin === 'dark'}
-            onClick={() => setSkin('dark')}
-            sx={{
-              color: skin === 'dark' ? '#fff' : '#666',
-              backgroundColor: skin === 'dark' ? '#4caf50' : 'transparent',
-              '&:hover': {
-                backgroundColor: skin === 'dark' ? '#2e7d32' : 'rgba(76, 175, 80, 0.1)',
-              },
-            }}
-          >
-            <DarkModeOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        <IconButton
+          size="small"
+          aria-label="Dark"
+          aria-pressed={skin === 'dark'}
+          onClick={() => setSkin('dark')}
+          title="Dark"
+          sx={{
+            color: skin === 'dark' ? '#fff' : '#666',
+            backgroundColor: skin === 'dark' ? '#4caf50' : 'transparent',
+            '&:hover': {
+              backgroundColor: skin === 'dark' ? '#2e7d32' : 'rgba(76, 175, 80, 0.1)',
+            },
+          }}
+        >
+          <DarkModeOutlinedIcon fontSize="small" />
+        </IconButton>
 
-        <Tooltip title="Satellite" placement="top" enterDelay={2000} enterNextDelay={2000}>
-          <IconButton
-            size="small"
-            aria-label="Satellite"
-            aria-pressed={skin === 'satellite'}
-            onClick={() => setSkin('satellite')}
-            sx={{
-              color: skin === 'satellite' ? '#fff' : '#666',
-              backgroundColor: skin === 'satellite' ? '#4caf50' : 'transparent',
-              '&:hover': {
-                backgroundColor: skin === 'satellite' ? '#2e7d32' : 'rgba(76, 175, 80, 0.1)',
-              },
-            }}
-          >
-            <SatelliteAltOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        <IconButton
+          size="small"
+          aria-label="Satellite"
+          aria-pressed={skin === 'satellite'}
+          onClick={() => setSkin('satellite')}
+          title="Satellite"
+          sx={{
+            color: skin === 'satellite' ? '#fff' : '#666',
+            backgroundColor: skin === 'satellite' ? '#4caf50' : 'transparent',
+            '&:hover': {
+              backgroundColor: skin === 'satellite' ? '#2e7d32' : 'rgba(76, 175, 80, 0.1)',
+            },
+          }}
+        >
+          <SatelliteAltOutlinedIcon fontSize="small" />
+        </IconButton>
 
         {/* View Record List Button */}
         <Button
@@ -119,9 +114,35 @@ export default function MapSection({ pendingCount, onScrollToRecordList, onScrol
           variant="outlined"
           size="small"
           startIcon={
-            <Badge badgeContent={pendingCount} color="error" max={99}>
+            <Box sx={{ position: 'relative', display: 'inline-flex' }}>
               <PendingActionsIcon />
-            </Badge>
+              {pendingCount > 0 && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 0,
+                    right: -120,
+                    transform: 'scale(1) translate(50%, -50%)',
+                    transformOrigin: '100% 0%',
+                    minWidth: 20,
+                    height: 20,
+                    borderRadius: '10px',
+                    backgroundColor: '#d32f2f',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    padding: '0 6px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    border: '2px solid white',
+                  }}
+                >
+                  {pendingCount}
+                </Box>
+              )}
+            </Box>
           }
           onClick={onScrollToPendingReports}
           sx={{

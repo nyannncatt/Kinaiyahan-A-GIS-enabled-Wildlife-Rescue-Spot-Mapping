@@ -13,7 +13,6 @@ import {
   Typography,
   TablePagination,
   Chip,
-  Tooltip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -554,29 +553,50 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     setRejectDialogOpen(true);
   };
 
-  const proceedReject = async () => {
-    if (!recordToReject) { setRejectDialogOpen(false); return; }
+  const proceedReject = async (skipReload = false) => {
+    if (!recordToReject) { 
+      if (!skipReload) setRejectDialogOpen(false); 
+      return; 
+    }
     try {
       const updatedRecord = await rejectWildlifeRecord(recordToReject.id);
       setWildlifeRecords(prev => prev.map(record => record.id === recordToReject.id ? updatedRecord : record));
-      showSuccess('Wildlife record has been rejected successfully! Refreshing data...');
-      setRejectDialogOpen(false);
-      setRecordToReject(null);
-      setTimeout(() => { window.location.reload(); }, 1500);
+      showSuccess('Wildlife record has been rejected successfully!');
+      if (!skipReload) {
+        setRejectDialogOpen(false);
+        setRecordToReject(null);
+        setTimeout(() => { window.location.reload(); }, 1500);
+      } else {
+        setRecordToReject(null);
+      }
     } catch (error) {
       console.error('Error rejecting wildlife record:', error);
       setErrorSnackbar({ open: true, message: 'Failed to reject wildlife record' });
-      setRejectDialogOpen(false);
+      if (!skipReload) setRejectDialogOpen(false);
     }
   };
 
   const openPrintAndReject = async () => {
+    if (!recordToReject) return;
+    
     try {
-      const idParam = recordToReject?.id ? `?recordId=${recordToReject.id}` : '';
-      const denrUrl = new URL('./denr-form.html', import.meta.url).toString();
-      window.open(`${denrUrl}${idParam}`, '_blank');
-    } catch {}
-    await proceedReject();
+      // Open print form in new tab - site stays on current page
+      const idParam = recordToReject.id ? `?recordId=${recordToReject.id}` : '';
+      const denrUrl = `/forms/denr-form.html${idParam}`;
+      window.open(denrUrl, '_blank');
+      
+      // Close the dialog first
+      setRejectDialogOpen(false);
+      
+      // Then reject the record (with small delay to ensure dialog closes smoothly)
+      // Skip reload so site stays on current page
+      setTimeout(async () => {
+        await proceedReject(true);
+      }, 100);
+    } catch (error) {
+      console.error('Error opening print form:', error);
+      setErrorSnackbar({ open: true, message: 'Failed to open print form' });
+    }
   };
 
   // View Form for any record: show message if no saved form exists, then open form
@@ -1738,78 +1758,101 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                 </TableCell>
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
                   <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <Tooltip title="View location">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => { e.stopPropagation(); handleLocationClick(record); }}
-                        sx={{ 
-                          color: '#4caf50',
-                          '&:hover': { 
-                            bgcolor: theme.palette.mode === 'dark' 
-                              ? 'rgba(76, 175, 80, 0.12)' 
-                              : 'rgba(76, 175, 80, 0.08)'
-                          }
-                        }}
-                      >
-                        <LocationIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    <IconButton
+                      size="small"
+                      title="View location"
+                      onClick={(e) => { e.stopPropagation(); handleLocationClick(record); }}
+                      sx={{ 
+                        color: '#4caf50',
+                        '&:hover': { 
+                          bgcolor: theme.palette.mode === 'dark' 
+                            ? 'rgba(76, 175, 80, 0.12)' 
+                            : 'rgba(76, 175, 80, 0.08)'
+                        }
+                      }}
+                    >
+                      <LocationIcon fontSize="small" />
+                    </IconButton>
                     {resolvedRole === 'enforcement' && (
-                      <Tooltip
-                        title={record.approval_status === 'rejected' ? 'Rejected reports cannot be edited' : 'Edit'}
-                      >
-                        <span>
-                          <IconButton
-                            size="small"
-                            onClick={(e) => { e.stopPropagation(); handleEditRecord(record); }}
-                            disabled={record.approval_status === 'rejected'}
-                            sx={{ 
-                              color: 'text.secondary',
-                              opacity: record.approval_status === 'rejected' ? 0.5 : 1,
-                              cursor: record.approval_status === 'rejected' ? 'not-allowed' : 'pointer',
-                              '&:hover': { 
-                                bgcolor: record.approval_status === 'rejected'
-                                  ? 'transparent'
-                                  : (theme.palette.mode === 'dark' 
-                                      ? 'rgba(25, 118, 210, 0.1)' 
-                                      : 'rgba(25, 118, 210, 0.04)'),
-                                color: record.approval_status === 'rejected' ? 'text.secondary' : theme.palette.primary.main
-                              }
-                            }}
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </span>
-                      </Tooltip>
+                      <span>
+                        <IconButton
+                          size="small"
+                          title={record.approval_status === 'rejected' ? 'Rejected reports cannot be edited' : 'Edit'}
+                          onClick={(e) => { e.stopPropagation(); handleEditRecord(record); }}
+                          disabled={record.approval_status === 'rejected'}
+                          sx={{ 
+                            color: 'text.secondary',
+                            opacity: record.approval_status === 'rejected' ? 0.5 : 1,
+                            cursor: record.approval_status === 'rejected' ? 'not-allowed' : 'pointer',
+                            '&:hover': { 
+                              bgcolor: record.approval_status === 'rejected'
+                                ? 'transparent'
+                                : (theme.palette.mode === 'dark' 
+                                    ? 'rgba(25, 118, 210, 0.1)' 
+                                    : 'rgba(25, 118, 210, 0.04)'),
+                              color: record.approval_status === 'rejected' ? 'text.secondary' : theme.palette.primary.main
+                            }
+                          }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </span>
                     )}
-                    <Tooltip title="Print" enterDelay={500}>
-                      <IconButton
-                        size="small"
-                        onClick={(e) => { e.stopPropagation(); handlePrintRecord(record); }}
-                        sx={{ 
-                          color: 'text.secondary',
-                          '&:hover': { 
-                            bgcolor: theme.palette.mode === 'dark' 
-                              ? 'rgba(76, 175, 80, 0.1)' 
-                              : 'rgba(76, 175, 80, 0.04)',
-                            color: '#4caf50'
-                          }
-                        }}
-                      >
-                        <PrintIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    <IconButton
+                      size="small"
+                      title="Print"
+                      onClick={(e) => { e.stopPropagation(); handlePrintRecord(record); }}
+                      sx={{ 
+                        color: 'text.secondary',
+                        '&:hover': { 
+                          bgcolor: theme.palette.mode === 'dark' 
+                            ? 'rgba(76, 175, 80, 0.1)' 
+                            : 'rgba(76, 175, 80, 0.04)',
+                          color: '#4caf50'
+                        }
+                      }}
+                    >
+                      <PrintIcon fontSize="small" />
+                    </IconButton>
                     {record.approval_status === 'pending' && record.user_id === null && (
                       <>
-                        <Tooltip title={resolvedRole === 'cenro' ? 'Only enforcement can approve or reject' : ''}>
+                        {resolvedRole === 'cenro' ? (
+                          <span data-tooltip="Only enforcement can approve or reject" style={{ display: 'inline-block', position: 'relative' }}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<CheckCircle fontSize="small" />}
+                              onClick={(e) => { e.stopPropagation(); handleApproveClick(record); }}
+                              disabled={true}
+                              sx={{ 
+                              color: '#4caf50',
+                              borderColor: '#4caf50',
+                              textTransform: 'none',
+                              fontWeight: 500,
+                              '&:hover': { 
+                                bgcolor: theme.palette.mode === 'dark' 
+                                  ? 'rgba(76, 175, 80, 0.1)' 
+                                  : 'rgba(76, 175, 80, 0.04)',
+                                borderColor: '#4caf50'
+                              },
+                              '&.Mui-disabled': {
+                                color: 'rgba(0, 0, 0, 0.26)',
+                                borderColor: 'rgba(0, 0, 0, 0.12)',
+                              }
+                            }}
+                            >
+                              Approve
+                            </Button>
+                          </span>
+                        ) : (
                           <span>
                             <Button
                               size="small"
                               variant="outlined"
                               startIcon={<CheckCircle fontSize="small" />}
                               onClick={(e) => { e.stopPropagation(); handleApproveClick(record); }}
-                              disabled={resolvedRole === 'cenro'}
-                              sx={{ 
+                              disabled={false}
+                              sx={{
                                 color: '#4caf50',
                                 borderColor: '#4caf50',
                                 textTransform: 'none',
@@ -1829,16 +1872,44 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                               Approve
                             </Button>
                           </span>
-                        </Tooltip>
-                        <Tooltip title={resolvedRole === 'cenro' ? 'Only enforcement can approve or reject' : ''}>
+                        )}
+                        {resolvedRole === 'cenro' ? (
+                          <span data-tooltip="Only enforcement can approve or reject" style={{ display: 'inline-block', position: 'relative' }}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<Close fontSize="small" />}
+                              onClick={(e) => { e.stopPropagation(); handleRejectRecord(record.id); }}
+                              disabled={true}
+                              sx={{ 
+                              color: theme.palette.error.main,
+                              borderColor: theme.palette.error.main,
+                              textTransform: 'none',
+                              fontWeight: 500,
+                              '&:hover': { 
+                                bgcolor: theme.palette.mode === 'dark' 
+                                  ? 'rgba(239, 68, 68, 0.1)' 
+                                  : 'rgba(239, 68, 68, 0.04)',
+                                borderColor: theme.palette.error.main
+                              },
+                              '&.Mui-disabled': {
+                                color: 'rgba(0, 0, 0, 0.26)',
+                                borderColor: 'rgba(0, 0, 0, 0.12)',
+                              }
+                            }}
+                            >
+                              Reject
+                            </Button>
+                          </span>
+                        ) : (
                           <span>
                             <Button
                               size="small"
                               variant="outlined"
                               startIcon={<Close fontSize="small" />}
                               onClick={(e) => { e.stopPropagation(); handleRejectRecord(record.id); }}
-                              disabled={resolvedRole === 'cenro'}
-                              sx={{ 
+                              disabled={false}
+                              sx={{
                                 color: theme.palette.error.main,
                                 borderColor: theme.palette.error.main,
                                 textTransform: 'none',
@@ -1858,41 +1929,39 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                               Reject
                             </Button>
                           </span>
-                        </Tooltip>
+                        )}
                       </>
                     )}
                     {resolvedRole === 'enforcement' && (
-                      <Tooltip title="Delete">
-                        <IconButton
-                          size="small"
-                          onClick={(e) => { e.stopPropagation(); handleOpenDeleteDialog(record); }}
-                          sx={{ 
-                            color: '#ff1744',
-                            '&:hover': { 
-                              bgcolor: 'rgba(255, 23, 68, 0.08)'
-                            }
-                          }}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                    <Tooltip title="View details">
                       <IconButton
                         size="small"
-                        onClick={(e) => { e.stopPropagation(); handleViewDetails(record); }}
+                        title="Delete"
+                        onClick={(e) => { e.stopPropagation(); handleOpenDeleteDialog(record); }}
                         sx={{ 
-                          color: theme.palette.primary.main,
+                          color: '#ff1744',
                           '&:hover': { 
-                            bgcolor: theme.palette.mode === 'dark' 
-                              ? 'rgba(25, 118, 210, 0.1)' 
-                              : 'rgba(25, 118, 210, 0.04)'
+                            bgcolor: 'rgba(255, 23, 68, 0.08)'
                           }
                         }}
                       >
-                        <InfoOutlinedIcon fontSize="small" />
+                        <DeleteIcon fontSize="small" />
                       </IconButton>
-                    </Tooltip>
+                    )}
+                    <IconButton
+                      size="small"
+                      title="View details"
+                      onClick={(e) => { e.stopPropagation(); handleViewDetails(record); }}
+                      sx={{ 
+                        color: theme.palette.primary.main,
+                        '&:hover': { 
+                          bgcolor: theme.palette.mode === 'dark' 
+                            ? 'rgba(25, 118, 210, 0.1)' 
+                            : 'rgba(25, 118, 210, 0.04)'
+                        }
+                      }}
+                    >
+                      <InfoOutlinedIcon fontSize="small" />
+                    </IconButton>
                     <Button
                       size="small"
                       variant="text"
@@ -2313,7 +2382,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   </Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                     <Box>
-                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                         Species Name
                       </Typography>
                       <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
@@ -2321,7 +2390,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       </Typography>
                     </Box>
                     <Box>
-                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                         Status
                       </Typography>
                       <Chip
@@ -2348,7 +2417,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                     {recordToReject.barangay && (
                       <Box>
-                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                           Barangay
                         </Typography>
                         <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
@@ -2358,7 +2427,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     )}
                     {recordToReject.municipality && (
                       <Box>
-                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                           Municipality
                         </Typography>
                         <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
@@ -2367,7 +2436,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       </Box>
                     )}
                     <Box>
-                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                         Coordinates
                       </Typography>
                       <Typography variant="body2" sx={{ fontFamily: 'monospace', color: '#2e7d32 !important' }}>
@@ -2403,7 +2472,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                       {recordToReject.reporter_name && (
                         <Box>
-                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                             Reporter Name
                           </Typography>
                           <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
@@ -2413,7 +2482,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       )}
                       {recordToReject.contact_number && (
                         <Box>
-                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                             Contact Number
                           </Typography>
                           <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
@@ -2431,7 +2500,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     Report Details
                   </Typography>
                   <Box>
-                    <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                    <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>
                       Date Captured
                     </Typography>
                     <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
@@ -3101,11 +3170,11 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                    <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>Species Information</Typography>
                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                      <Box>
-                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Species Name</Typography>
+                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Species Name</Typography>
                        <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.species_name}</Typography>
                      </Box>
                      <Box>
-                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Status</Typography>
+                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Status</Typography>
                        <Chip label={recordToView.status} size="small" sx={{ borderColor: '#2e7d32', color: '#2e7d32', '& .MuiChip-label': { color: '#2e7d32' } }} variant="outlined" />
                      </Box>
                    </Box>
@@ -3116,18 +3185,18 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                      {recordToView.barangay && (
                        <Box>
-                         <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Barangay</Typography>
+                         <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Barangay</Typography>
                          <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.barangay}</Typography>
                        </Box>
                      )}
                      {recordToView.municipality && (
                        <Box>
-                         <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Municipality</Typography>
+                         <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Municipality</Typography>
                          <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.municipality}</Typography>
                        </Box>
                      )}
                      <Box>
-                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Coordinates</Typography>
+                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Coordinates</Typography>
                        <Typography variant="body2" sx={{ fontFamily: 'monospace', color: '#2e7d32 !important' }}>{recordToView.latitude.toFixed(6)}, {recordToView.longitude.toFixed(6)}</Typography>
                      </Box>
                    </Box>
@@ -3141,13 +3210,13 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                        {recordToView.reporter_name && (
                          <Box>
-                           <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Reporter Name</Typography>
+                           <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Reporter Name</Typography>
                            <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.reporter_name}</Typography>
                          </Box>
                        )}
                        {recordToView.contact_number && (
                          <Box>
-                           <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Contact Number</Typography>
+                           <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Contact Number</Typography>
                            <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.contact_number}</Typography>
                          </Box>
                        )}
@@ -3158,7 +3227,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                  <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
                    <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>Report Details</Typography>
                    <Box>
-                     <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Date Captured</Typography>
+                     <Typography variant="caption" sx={{ color: '#2e7d32 !important', fontWeight: 700, display: 'block', mb: 0.5 }}>Date Captured</Typography>
                      <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{new Date(recordToView.timestamp_captured).toLocaleString()}</Typography>
                    </Box>
                  </Card>

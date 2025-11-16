@@ -44,4 +44,19 @@ export const feedbackCustomizations: Components<Theme> = {
       }),
     },
   },
+  MuiTooltip: {
+    styleOverrides: {
+      popper: {
+        position: 'fixed !important' as any,
+        zIndex: 1500,
+      },
+      tooltip: {
+        position: 'relative',
+      },
+    },
+    defaultProps: {
+      placement: 'top',
+      arrow: false,
+    },
+  },
 };

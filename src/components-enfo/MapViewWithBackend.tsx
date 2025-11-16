@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, GeoJSON, 
 import { Icon, LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { Box, Button, TextField, Alert, CircularProgress, Typography, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Chip, Tooltip, IconButton, ToggleButtonGroup, ToggleButton, useTheme } from '@mui/material';
+import { Box, Button, TextField, Alert, CircularProgress, Typography, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Chip, IconButton, ToggleButtonGroup, ToggleButton, useTheme, InputAdornment } from '@mui/material';
 import SuccessModal from './SuccessModal';
 import FetchingModal from './FetchingModal';
 import { alpha } from '@mui/material/styles';
@@ -11,6 +11,7 @@ import AddLocationAltOutlinedIcon from '@mui/icons-material/AddLocationAltOutlin
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
+import ClearIcon from '@mui/icons-material/Clear';
 import { useAuth } from '../context/AuthContext';
 import { useMapNavigation } from '../context/MapNavigationContext';
 import { 
@@ -75,14 +76,20 @@ function MapRefSetter({ onReady }: { onReady: (map: L.Map) => void }) {
 }
 
 // Utility: status -> color and marker icon
-function createStatusIcon(status: string | undefined): L.Icon {
-  const v = String(status || "").toLowerCase();
+function createStatusIcon(status: string | undefined, approval_status?: string): L.Icon {
   const base = "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img";
   let iconColor = "blue"; // default style
-  if (v === "reported") iconColor = "red";
-  else if (v === "rescued") iconColor = "blue";
-  else if (v === "turned over") iconColor = "gold"; // yellow variant is named gold
-  else if (v === "released" || v === "released".toUpperCase()) iconColor = "green";
+  
+  // If pending, always use gray
+  if (approval_status === 'pending') {
+    iconColor = "grey";
+  } else {
+    const v = String(status || "").toLowerCase();
+    if (v === "reported") iconColor = "red";
+    else if (v === "rescued") iconColor = "blue";
+    else if (v === "turned over") iconColor = "gold"; // yellow variant is named gold
+    else if (v === "released" || v === "released".toUpperCase()) iconColor = "green";
+  }
 
   const iconUrl = `${base}/marker-icon-2x-${iconColor}.png`;
   const shadowUrl = `https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png`;
@@ -129,10 +136,10 @@ function MapBoundsController() {
     const specificLocation: [number, number] = [8.371964645263802, 124.85604137091526];
     try {
       if ((map as any)?._loaded) {
-        map.setView(specificLocation, 10, { animate: false });
+        map.setView(specificLocation, 11, { animate: false });
       } else {
         map.whenReady(() => {
-          try { map.setView(specificLocation, 10, { animate: false }); } catch {}
+          try { map.setView(specificLocation, 11, { animate: false }); } catch {}
         });
       }
     } catch {}
@@ -140,7 +147,7 @@ function MapBoundsController() {
     const locationBounds = L.latLngBounds([8.0, 124.6], [8.84, 125.3]);
     map.setMaxBounds(locationBounds);
 
-    map.setMinZoom(11);
+    map.setMinZoom(10);
     map.setMaxZoom(18);
   }, [map]);
 
@@ -896,6 +903,12 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
     }, 350);
     return () => { clearTimeout(t); controller.abort(); };
   }, [searchQuery]);
+
+  function handleClearSearch() {
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowResults(false);
+  }
 
   function handleResultSelect(item: any) {
     setShowResults(false);
@@ -1786,6 +1799,12 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
   }
 
   const filteredMarkers = wildlifeRecords.filter((m) => {
+    // Always show the target record even if it's pending (bypass all filters)
+    const isTargetRecord = targetRecordId && m.id === targetRecordId;
+    if (isTargetRecord) {
+      return true;
+    }
+    
     const normalizedStatus = normalizeStatus(m.status);
     const showAllBecauseReported = enabledStatuses.includes('reported');
     const isIncluded = showAllBecauseReported || enabledStatuses.includes(normalizedStatus);
@@ -1820,6 +1839,12 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
 
   const allMarkers = [...wildlifeRecords, ...testMarkers];
   const finalFilteredMarkers = allMarkers.filter((m) => {
+    // Always show the target record even if it's pending (bypass all filters)
+    const isTargetRecord = targetRecordId && m.id === targetRecordId;
+    if (isTargetRecord) {
+      return true;
+    }
+    
     const normalizedStatus = normalizeStatus(m.status);
     const showAllBecauseReported = enabledStatuses.includes('reported');
     const isIncluded = showAllBecauseReported || enabledStatuses.includes(normalizedStatus);
@@ -1861,6 +1886,27 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
             onChange={(e) => { setSearchQuery(e.target.value); setShowResults(true); }}
             onFocus={() => setShowResults(true)}
             InputProps={{
+              endAdornment: searchQuery ? (
+                <InputAdornment position="end">
+                  <Box
+                    component="span"
+                    onClick={handleClearSearch}
+                    sx={{ 
+                      cursor: 'pointer',
+                      color: 'text.secondary',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '4px',
+                      '&:hover': {
+                        color: 'text.primary',
+                      }
+                    }}
+                  >
+                    <ClearIcon fontSize="small" />
+                  </Box>
+                </InputAdornment>
+              ) : null,
               sx: { 
                 bgcolor: 'background.paper',
                 transition: 'all 0.2s ease-in-out',
@@ -1940,18 +1986,12 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
             ].map((status) => {
               const isSelected = enabledStatuses.includes(status.value);
               return (
-                <Tooltip 
-                  key={status.value}
-                  title={isSelected ? `Hide ${status.label} records` : `Show ${status.label} records`} 
-                  enterDelay={500}
-                  PopperProps={{
-                    style: { zIndex: 1500 }
-                  }}
-                >
                   <Button
+                    key={status.value}
                     variant={isSelected ? "contained" : "outlined"}
                     color="inherit"
                     size="small"
+                    title={isSelected ? `Hide ${status.label} records` : `Show ${status.label} records`}
                     onClick={() => {
                       setEnabledStatuses(prev => {
                         let next: string[];
@@ -2020,7 +2060,6 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                       />
                     </Box>
                   </Button>
-                </Tooltip>
               );
             })}
         </Box>
@@ -2155,41 +2194,38 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
 
       {/* Map control buttons */}
       <Box sx={{ position: "absolute", top: 60, left: 10, zIndex: 1000, display: "flex", flexDirection: "column", gap: 1 }}>
-          <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
-            <span>
-              <Button
-                variant={isAddingMarker ? "contained" : "outlined"}
-                color={isAddingMarker ? "primary" : "inherit"}
-                size="small"
-                onClick={() => { if (role === 'enforcement') setIsAddingMarker((v) => !v); }}
-                disabled={role !== 'enforcement'}
-                sx={{ 
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  minWidth: 'auto',
-                  px: 2,
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'flex-start',
-                  gap: 1,
-                  border: '1px solid black',
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    backgroundColor: isAddingMarker ? 'primary.dark' : 'action.hover',
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                    borderColor: isAddingMarker ? 'primary.dark' : 'primary.main',
-                    color: 'primary.main'
-                  }
-                }}
-              >
-                <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
-                {isAddingMarker ? "Adding Marker" : "Add Marker"}
-              </Button>
-            </span>
-          </Tooltip>
+          <span>
+            <Button
+              variant={isAddingMarker ? "contained" : "outlined"}
+              color={isAddingMarker ? "primary" : "inherit"}
+              size="small"
+              onClick={() => { if (role === 'enforcement') setIsAddingMarker((v) => !v); }}
+              disabled={role !== 'enforcement'}
+              sx={{ 
+                textTransform: 'none',
+                fontWeight: 600,
+                minWidth: 'auto',
+                px: 2,
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'flex-start',
+                gap: 1,
+                border: '1px solid black',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  backgroundColor: isAddingMarker ? 'primary.dark' : 'action.hover',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                  borderColor: isAddingMarker ? 'primary.dark' : 'primary.main',
+                  color: 'primary.main'
+                }
+              }}
+            >
+              <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
+              {isAddingMarker ? "Adding Marker" : "Add Marker"}
+            </Button>
+          </span>
           
-          <Tooltip title="Refresh map data" enterDelay={500}>
           <Button
             variant="outlined"
             color="inherit"
@@ -2219,79 +2255,74 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
             <RefreshIcon sx={{ fontSize: 18 }} />
             Refresh
           </Button>
-        </Tooltip>
         
-        <Tooltip title="Zoom in" enterDelay={500}>
-          <Button
-            variant="outlined"
-            color="inherit"
-            size="small"
-            onClick={() => {
-              if (mapInstance) {
-                const currentZoom = mapInstance.getZoom();
-                mapInstance.setZoom(currentZoom + 1);
-              }
-            }}
-            sx={{ 
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 'auto',
-              px: 2,
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'flex-start',
-              gap: 1,
-              border: '1px solid black',
-              transition: 'all 0.2s ease-in-out',
-              '&:hover': {
-                backgroundColor: 'action.hover',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                borderColor: 'primary.main',
-                color: 'primary.main'
-              }
-            }}
-          >
-            <ZoomInIcon sx={{ fontSize: 18 }} />
-            Zoom In
-          </Button>
-        </Tooltip>
+        <Button
+          variant="outlined"
+          color="inherit"
+          size="small"
+          onClick={() => {
+            if (mapInstance) {
+              const currentZoom = mapInstance.getZoom();
+              mapInstance.setZoom(currentZoom + 1);
+            }
+          }}
+          sx={{ 
+            textTransform: 'none',
+            fontWeight: 600,
+            minWidth: 'auto',
+            px: 2,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'flex-start',
+            gap: 1,
+            border: '1px solid black',
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              backgroundColor: 'action.hover',
+              transform: 'translateY(-2px)',
+              boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+              borderColor: 'primary.main',
+              color: 'primary.main'
+            }
+          }}
+        >
+          <ZoomInIcon sx={{ fontSize: 18 }} />
+          Zoom In
+        </Button>
         
-        <Tooltip title="Zoom out" enterDelay={500}>
-          <Button
-            variant="outlined"
-            color="inherit"
-            size="small"
-            onClick={() => {
-              if (mapInstance) {
-                const currentZoom = mapInstance.getZoom();
-                mapInstance.setZoom(currentZoom - 1);
-              }
-            }}
-            sx={{ 
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 'auto',
-              px: 2,
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'flex-start',
-              gap: 1,
-              border: '1px solid black',
-              transition: 'all 0.2s ease-in-out',
-              '&:hover': {
-                backgroundColor: 'action.hover',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                borderColor: 'primary.main',
-                color: 'primary.main'
-              }
-            }}
-          >
-            <ZoomOutIcon sx={{ fontSize: 18 }} />
-            Zoom Out
-          </Button>
-          </Tooltip>
+        <Button
+          variant="outlined"
+          color="inherit"
+          size="small"
+          onClick={() => {
+            if (mapInstance) {
+              const currentZoom = mapInstance.getZoom();
+              mapInstance.setZoom(currentZoom - 1);
+            }
+          }}
+          sx={{ 
+            textTransform: 'none',
+            fontWeight: 600,
+            minWidth: 'auto',
+            px: 2,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'flex-start',
+            gap: 1,
+            border: '1px solid black',
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              backgroundColor: 'action.hover',
+              transform: 'translateY(-2px)',
+              boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+              borderColor: 'primary.main',
+              color: 'primary.main'
+            }
+          }}
+        >
+          <ZoomOutIcon sx={{ fontSize: 18 }} />
+          Zoom Out
+        </Button>
           
       </Box>
 
@@ -2306,7 +2337,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
 
       <MapContainer
         center={[8.371964645263802, 124.85604137091526]}
-        zoom={15}
+        zoom={11}
         style={{
           height: "100%",
           width: "100%",
@@ -2315,7 +2346,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
         }}
         zoomControl={false}
         scrollWheelZoom={true}
-        minZoom={12}
+        minZoom={10}
         maxZoom={18}
         maxBoundsViscosity={0.5}
         whenReady={() => { /* set in effect below */ }}
@@ -2737,25 +2768,24 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                   
                   {viewingMarker.photo_url && (
                     <Box sx={{ mt: 1 }}>
-                      <Tooltip title="Click to view the whole photo size" arrow>
-                        <Box
-                          component="img"
-                          src={viewingMarker.photo_url}
-                          alt="marker"
-                          onClick={() => window.open(viewingMarker.photo_url, '_blank')}
-                          sx={{
-                            width: "100%",
-                            maxHeight: "280px",
-                            objectFit: "contain",
-                            borderRadius: 8,
-                            cursor: "pointer",
-                            transition: "opacity 0.2s ease-in-out",
-                            "&:hover": {
-                              opacity: 0.8
-                            }
-                          }}
-                        />
-                      </Tooltip>
+                      <Box
+                        component="img"
+                        src={viewingMarker.photo_url}
+                        alt="marker"
+                        title="Click to view the whole photo size"
+                        onClick={() => window.open(viewingMarker.photo_url, '_blank')}
+                        sx={{
+                          width: "100%",
+                          maxHeight: "280px",
+                          objectFit: "contain",
+                          borderRadius: 8,
+                          cursor: "pointer",
+                          transition: "opacity 0.2s ease-in-out",
+                          "&:hover": {
+                            opacity: 0.8
+                          }
+                        }}
+                      />
                     </Box>
                   )}
                   
@@ -3300,7 +3330,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
           <Marker
             key={`editing-${editingMarker.id}`}
             position={[editingMarker.latitude, editingMarker.longitude]}
-            icon={createStatusIcon(editingMarker.status)}
+            icon={createStatusIcon(editingMarker.status, editingMarker.approval_status)}
             ref={(ref) => { if (ref) markerRefs.current[editingMarker.id] = ref; }}
           />
         )}
@@ -3312,7 +3342,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
             <Marker
               key={`relocating-${relocatingMarker.id}`}
               position={[relocatingMarker.latitude, relocatingMarker.longitude]}
-              icon={createStatusIcon(relocatingMarker.status)}
+              icon={createStatusIcon(relocatingMarker.status, relocatingMarker.approval_status)}
               ref={(ref) => { if (ref) markerRefs.current[relocatingMarker.id] = ref; }}
             >
               <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]} maxWidth={420}>
@@ -3346,7 +3376,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
               <Marker
                 key={`original-${dispersingMarker.id}`}
                 position={[originalLocation?.lat || dispersingMarker.latitude, originalLocation?.lng || dispersingMarker.longitude]}
-                icon={createStatusIcon(dispersingMarker.status)}
+                icon={createStatusIcon(dispersingMarker.status, dispersingMarker.approval_status)}
                 ref={(ref) => { if (ref) markerRefs.current[`original-${dispersingMarker.id}`] = ref; }}
               >
                 <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
@@ -3674,7 +3704,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
               <Marker
                 key={m.id}
                 position={[m.latitude, m.longitude]}
-                icon={createStatusIcon(m.status)}
+                icon={createStatusIcon(m.status, m.approval_status)}
                 ref={(ref) => { markerRefs.current[m.id] = ref; }}
                 eventHandlers={{
                   click: () => {

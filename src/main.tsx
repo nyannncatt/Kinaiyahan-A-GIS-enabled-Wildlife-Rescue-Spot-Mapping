@@ -7,6 +7,69 @@ import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
 import "leaflet/dist/leaflet.css";
 
+// High-DPI display compensation: DISABLED
+// The transform scale approach was breaking click events, scroll detection, and auto-scroll functionality
+// Users on high-DPI displays should adjust their browser zoom manually if needed
+// (function applyHighDPIScaling() {
+//   // DISABLED - was causing issues with:
+//   // 1. Side menu tab clicks not working
+//   // 2. Auto-scroll navigation broken
+//   // 3. Scroll position tracking incorrect
+//   // 4. getBoundingClientRect() calculations off
+// })();
+
+// Suppress native browser tooltips and use custom CSS tooltips instead
+(function suppressNativeTooltips() {
+  // Store original title attributes in data attribute
+  document.addEventListener('mouseover', (e) => {
+    const target = e.target as HTMLElement;
+    if (target) {
+      // Check if target is a button, link, or has button role
+      const isButton = target.tagName === 'BUTTON' || target.tagName === 'A' || 
+                       (target.hasAttribute('role') && target.getAttribute('role') === 'button') ||
+                       target.classList.contains('MuiButton-root') || 
+                       target.classList.contains('MuiIconButton-root');
+      
+      // Check if target is a span wrapper with title (for disabled buttons)
+      const isSpanWrapper = target.tagName === 'SPAN' && target.hasAttribute('title');
+      
+      // Check if target is inside MUI TablePagination (remove tooltips from pagination buttons)
+      const isPaginationButton = target.closest('.MuiTablePagination-root') && 
+                                 (target.tagName === 'BUTTON' || target.classList.contains('MuiIconButton-root'));
+      
+      if (isPaginationButton) {
+        // Remove title attribute from pagination buttons to prevent any tooltips
+        target.removeAttribute('title');
+        target.removeAttribute('data-tooltip');
+      } else if (isButton || isSpanWrapper) {
+        const title = target.getAttribute('title');
+        if (title) {
+          target.setAttribute('data-tooltip', title);
+          target.removeAttribute('title');
+        }
+      }
+    }
+  }, true);
+  
+  // Restore title on mouseout for accessibility (but not for pagination buttons)
+  document.addEventListener('mouseout', (e) => {
+    const target = e.target as HTMLElement;
+    if (target && target.hasAttribute('data-tooltip')) {
+      // Don't restore title for pagination buttons
+      const isPaginationButton = target.closest('.MuiTablePagination-root') && 
+                                 (target.tagName === 'BUTTON' || target.classList.contains('MuiIconButton-root'));
+      
+      if (!isPaginationButton) {
+        const tooltip = target.getAttribute('data-tooltip');
+        if (tooltip) {
+          target.setAttribute('title', tooltip);
+          target.removeAttribute('data-tooltip');
+        }
+      }
+    }
+  }, true);
+})();
+
 // Prevent zooming and ensure 100% zoom level (with messaging for other values)
 (function preventZoom() {
   // Create or get banner element

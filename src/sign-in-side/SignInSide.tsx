@@ -14,6 +14,32 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
   const [showHeader, setShowHeader] = useState(true);
   const [isPortraitMode, setIsPortraitMode] = useState(false);
 
+  // Unlock audio for notifications on login page (any user interaction)
+  useEffect(() => {
+    const unlockAudioOnInteraction = async () => {
+      try {
+        const { unlockAudio, isAudioUnlocked } = await import('../utils/audioUnlock');
+        if (!isAudioUnlocked()) {
+          unlockAudio();
+        }
+      } catch (error) {
+        // Ignore errors - audio unlock is optional
+      }
+    };
+
+    // Unlock on any user interaction (click, type, etc.)
+    const events = ['click', 'touchstart', 'keydown', 'mousedown', 'input'];
+    events.forEach(event => {
+      document.addEventListener(event, unlockAudioOnInteraction, { once: true, passive: true });
+    });
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, unlockAudioOnInteraction);
+      });
+    };
+  }, []);
+
   // Detect mobile/portrait/zoomed view to hide header and make animals smaller
   useEffect(() => {
     const checkViewport = () => {
@@ -92,8 +118,25 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
   }, [user, loading, navigate]);
 
   return (
-    <AppTheme {...props}>
-      <CssBaseline enableColorScheme />
+    <Box sx={{ 
+      width: '100vw', 
+      maxWidth: '100vw', 
+      minWidth: '100vw',
+      overflowX: 'hidden', 
+      margin: 0, 
+      padding: 0,
+      position: 'relative',
+      boxSizing: 'border-box',
+      '@media (max-width: 900px)': {
+        width: '100vw !important',
+        maxWidth: '100vw !important',
+        minWidth: '100vw !important',
+        padding: '0 !important',
+        margin: '0 !important',
+      }
+    }}>
+      <AppTheme {...props}>
+        <CssBaseline enableColorScheme />
 
       {/* Top-right theme toggle */}
       {!isPortraitMode && (
@@ -103,7 +146,7 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
             position: "fixed", 
             top: "1rem", 
             right: "1rem", 
-            zIndex: (theme) => (theme.zIndex?.modal ?? 1300) + 1,
+            zIndex: (theme: any) => (theme.zIndex?.modal ?? 1300) + 1,
             fontSize: '0.75rem',
             minWidth: '64px',
             '& .MuiSelect-select': {
@@ -155,24 +198,43 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
           position: "fixed",
           top: 0,
           left: 0,
+          right: 0,
+          bottom: 0,
           width: "100vw",
           height: "100vh",
+          minWidth: "100vw",
+          maxWidth: "100vw",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
           textAlign: "center",
-          px: 2,
+          px: { xs: 0, sm: 2 },
+          overflow: "hidden",
+          margin: 0,
+          padding: 0,
           background: theme.palette.mode === 'light' 
             ? "linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)"
             : "radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))",
           backgroundRepeat: "no-repeat",
-          backgroundSize: "100% 100%",
-          backgroundAttachment: "fixed",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: { xs: "scroll", md: "fixed" },
+          boxSizing: "border-box",
+          '@media (max-width: 900px)': {
+            width: '100vw !important',
+            maxWidth: '100vw !important',
+            minWidth: '100vw !important',
+            left: '0 !important',
+            right: '0 !important',
+            padding: '0 !important',
+            margin: '0 !important',
+            height: '100vh',
+          }
         })}
       >
         {/* Animated background species */}
-        <Box className="bg-animals" sx={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+        <Box className="bg-animals" sx={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
           {/* Right -> Left */}
           <span 
             className="animal rtl" 
@@ -342,8 +404,40 @@ export default function SignInSide(props: { disableCustomTheme?: boolean }) {
       </Box>
 
       {/* Corner animals images */}
-      <Box component="img" src="/images/animals.png" alt="animals-left" sx={{ position: 'fixed', bottom: 8, left: 8, height: isPortraitMode ? 32 : 64, objectFit: 'contain', pointerEvents: 'none', opacity: 0.95 }} />
-      <Box component="img" src="/images/animals.png" alt="animals-right" sx={{ position: 'fixed', bottom: 8, right: 8, height: isPortraitMode ? 32 : 64, objectFit: 'contain', pointerEvents: 'none', opacity: 0.95, transform: 'scaleX(-1)' }} />
-    </AppTheme>
+      <Box 
+        component="img" 
+        src="/images/animals.png" 
+        alt="animals-left" 
+        sx={{ 
+          position: 'fixed', 
+          bottom: 8, 
+          left: 8, 
+          height: isPortraitMode ? 32 : 64, 
+          objectFit: 'contain', 
+          pointerEvents: 'none', 
+          opacity: 0.95,
+          maxWidth: 'calc(100% - 16px)',
+          width: 'auto'
+        }} 
+      />
+      <Box 
+        component="img" 
+        src="/images/animals.png" 
+        alt="animals-right" 
+        sx={{ 
+          position: 'fixed', 
+          bottom: 8, 
+          right: 8, 
+          height: isPortraitMode ? 32 : 64, 
+          objectFit: 'contain', 
+          pointerEvents: 'none', 
+          opacity: 0.95, 
+          transform: 'scaleX(-1)',
+          maxWidth: 'calc(100% - 16px)',
+          width: 'auto'
+        }} 
+      />
+      </AppTheme>
+    </Box>
   );
 }
