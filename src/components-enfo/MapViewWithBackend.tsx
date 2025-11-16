@@ -2155,7 +2155,6 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
               size="small"
               onClick={() => { if (role === 'enforcement') setIsAddingMarker((v) => !v); }}
               disabled={role !== 'enforcement'}
-              title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"}
               sx={{ 
                 textTransform: 'none',
                 fontWeight: 600,
@@ -2187,7 +2186,6 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
               size="small"
               onClick={refreshMapData}
               disabled={fetchingModal.open}
-              title="Refresh map data"
             sx={{ 
               textTransform: 'none',
               fontWeight: 600,
@@ -2222,7 +2220,6 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
               mapInstance.setZoom(currentZoom + 1);
             }
           }}
-          title="Zoom in"
           sx={{ 
             textTransform: 'none',
             fontWeight: 600,
@@ -2257,7 +2254,6 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
               mapInstance.setZoom(currentZoom - 1);
             }
           }}
-          title="Zoom out"
           sx={{ 
             textTransform: 'none',
             fontWeight: 600,

@@ -835,7 +835,6 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
           variant={isAddingMarker ? "contained" : "outlined"}
           color={isAddingMarker ? "primary" : "inherit"}
           size="small"
-          title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"}
           onClick={() => setIsAddingMarker((v) => !v)}
           sx={{ 
             textTransform: 'none',
@@ -865,7 +864,6 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
           variant="outlined"
           color="inherit"
           size="small"
-          title="Zoom in"
           onClick={() => {
             if (mapInstance) {
               const currentZoom = mapInstance.getZoom();
@@ -900,7 +898,6 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
           variant="outlined"
           color="inherit"
           size="small"
-          title="Zoom out"
           onClick={() => {
             if (mapInstance) {
               const currentZoom = mapInstance.getZoom();
