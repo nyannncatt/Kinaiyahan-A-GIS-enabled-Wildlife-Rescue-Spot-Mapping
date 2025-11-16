@@ -1816,15 +1816,15 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     </IconButton>
                     {record.approval_status === 'pending' && record.user_id === null && (
                       <>
-                        <span>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            title={resolvedRole === 'cenro' ? 'Only enforcement can approve or reject' : ''}
-                            startIcon={<CheckCircle fontSize="small" />}
-                            onClick={(e) => { e.stopPropagation(); handleApproveClick(record); }}
-                            disabled={resolvedRole === 'cenro'}
-                            sx={{ 
+                        {resolvedRole === 'cenro' ? (
+                          <span data-tooltip="Only enforcement can approve or reject" style={{ display: 'inline-block', position: 'relative' }}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<CheckCircle fontSize="small" />}
+                              onClick={(e) => { e.stopPropagation(); handleApproveClick(record); }}
+                              disabled={true}
+                              sx={{ 
                               color: '#4caf50',
                               borderColor: '#4caf50',
                               textTransform: 'none',
@@ -1840,19 +1840,48 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                                 borderColor: 'rgba(0, 0, 0, 0.12)',
                               }
                             }}
-                          >
-                            Approve
-                          </Button>
-                        </span>
-                        <span>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            title={resolvedRole === 'cenro' ? 'Only enforcement can approve or reject' : ''}
-                            startIcon={<Close fontSize="small" />}
-                            onClick={(e) => { e.stopPropagation(); handleRejectRecord(record.id); }}
-                            disabled={resolvedRole === 'cenro'}
-                            sx={{ 
+                            >
+                              Approve
+                            </Button>
+                          </span>
+                        ) : (
+                          <span>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<CheckCircle fontSize="small" />}
+                              onClick={(e) => { e.stopPropagation(); handleApproveClick(record); }}
+                              disabled={false}
+                              sx={{
+                                color: '#4caf50',
+                                borderColor: '#4caf50',
+                                textTransform: 'none',
+                                fontWeight: 500,
+                                '&:hover': { 
+                                  bgcolor: theme.palette.mode === 'dark' 
+                                    ? 'rgba(76, 175, 80, 0.1)' 
+                                    : 'rgba(76, 175, 80, 0.04)',
+                                  borderColor: '#4caf50'
+                                },
+                                '&.Mui-disabled': {
+                                  color: 'rgba(0, 0, 0, 0.26)',
+                                  borderColor: 'rgba(0, 0, 0, 0.12)',
+                                }
+                              }}
+                            >
+                              Approve
+                            </Button>
+                          </span>
+                        )}
+                        {resolvedRole === 'cenro' ? (
+                          <span data-tooltip="Only enforcement can approve or reject" style={{ display: 'inline-block', position: 'relative' }}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<Close fontSize="small" />}
+                              onClick={(e) => { e.stopPropagation(); handleRejectRecord(record.id); }}
+                              disabled={true}
+                              sx={{ 
                               color: theme.palette.error.main,
                               borderColor: theme.palette.error.main,
                               textTransform: 'none',
@@ -1868,10 +1897,39 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                                 borderColor: 'rgba(0, 0, 0, 0.12)',
                               }
                             }}
-                          >
-                            Reject
-                          </Button>
-                        </span>
+                            >
+                              Reject
+                            </Button>
+                          </span>
+                        ) : (
+                          <span>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<Close fontSize="small" />}
+                              onClick={(e) => { e.stopPropagation(); handleRejectRecord(record.id); }}
+                              disabled={false}
+                              sx={{
+                                color: theme.palette.error.main,
+                                borderColor: theme.palette.error.main,
+                                textTransform: 'none',
+                                fontWeight: 500,
+                                '&:hover': { 
+                                  bgcolor: theme.palette.mode === 'dark' 
+                                    ? 'rgba(239, 68, 68, 0.1)' 
+                                    : 'rgba(239, 68, 68, 0.04)',
+                                  borderColor: theme.palette.error.main
+                                },
+                                '&.Mui-disabled': {
+                                  color: 'rgba(0, 0, 0, 0.26)',
+                                  borderColor: 'rgba(0, 0, 0, 0.12)',
+                                }
+                              }}
+                            >
+                              Reject
+                            </Button>
+                          </span>
+                        )}
                       </>
                     )}
                     {resolvedRole === 'enforcement' && (

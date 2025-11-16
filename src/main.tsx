@@ -23,23 +23,48 @@ import "leaflet/dist/leaflet.css";
   // Store original title attributes in data attribute
   document.addEventListener('mouseover', (e) => {
     const target = e.target as HTMLElement;
-    if (target && (target.tagName === 'BUTTON' || target.tagName === 'A' || target.hasAttribute('role') && target.getAttribute('role') === 'button' || target.classList.contains('MuiButton-root') || target.classList.contains('MuiIconButton-root'))) {
-      const title = target.getAttribute('title');
-      if (title) {
-        target.setAttribute('data-tooltip', title);
+    if (target) {
+      // Check if target is a button, link, or has button role
+      const isButton = target.tagName === 'BUTTON' || target.tagName === 'A' || 
+                       (target.hasAttribute('role') && target.getAttribute('role') === 'button') ||
+                       target.classList.contains('MuiButton-root') || 
+                       target.classList.contains('MuiIconButton-root');
+      
+      // Check if target is a span wrapper with title (for disabled buttons)
+      const isSpanWrapper = target.tagName === 'SPAN' && target.hasAttribute('title');
+      
+      // Check if target is inside MUI TablePagination (remove tooltips from pagination buttons)
+      const isPaginationButton = target.closest('.MuiTablePagination-root') && 
+                                 (target.tagName === 'BUTTON' || target.classList.contains('MuiIconButton-root'));
+      
+      if (isPaginationButton) {
+        // Remove title attribute from pagination buttons to prevent any tooltips
         target.removeAttribute('title');
+        target.removeAttribute('data-tooltip');
+      } else if (isButton || isSpanWrapper) {
+        const title = target.getAttribute('title');
+        if (title) {
+          target.setAttribute('data-tooltip', title);
+          target.removeAttribute('title');
+        }
       }
     }
   }, true);
   
-  // Restore title on mouseout for accessibility
+  // Restore title on mouseout for accessibility (but not for pagination buttons)
   document.addEventListener('mouseout', (e) => {
     const target = e.target as HTMLElement;
     if (target && target.hasAttribute('data-tooltip')) {
-      const tooltip = target.getAttribute('data-tooltip');
-      if (tooltip) {
-        target.setAttribute('title', tooltip);
-        target.removeAttribute('data-tooltip');
+      // Don't restore title for pagination buttons
+      const isPaginationButton = target.closest('.MuiTablePagination-root') && 
+                                 (target.tagName === 'BUTTON' || target.classList.contains('MuiIconButton-root'));
+      
+      if (!isPaginationButton) {
+        const tooltip = target.getAttribute('data-tooltip');
+        if (tooltip) {
+          target.setAttribute('title', tooltip);
+          target.removeAttribute('data-tooltip');
+        }
       }
     }
   }, true);
