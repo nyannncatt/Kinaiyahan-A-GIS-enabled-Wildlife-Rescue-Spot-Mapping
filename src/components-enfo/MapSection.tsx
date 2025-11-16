@@ -45,24 +45,8 @@ export default function MapSection({ pendingCount, onScrollToRecordList, onScrol
           sx={{
             color: skin === 'streets' ? '#fff' : '#666',
             backgroundColor: skin === 'streets' ? '#4caf50' : 'transparent',
-            position: 'relative',
             '&:hover': {
               backgroundColor: skin === 'streets' ? '#2e7d32' : 'rgba(76, 175, 80, 0.1)',
-              '&::after': {
-                content: '"Streets"',
-                position: 'absolute',
-                bottom: '-25px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                color: 'white',
-                padding: '4px 8px',
-                borderRadius: '4px',
-                fontSize: '0.75rem',
-                whiteSpace: 'nowrap',
-                zIndex: 1000,
-                pointerEvents: 'none',
-              },
             },
           }}
         >
@@ -78,24 +62,8 @@ export default function MapSection({ pendingCount, onScrollToRecordList, onScrol
           sx={{
             color: skin === 'dark' ? '#fff' : '#666',
             backgroundColor: skin === 'dark' ? '#4caf50' : 'transparent',
-            position: 'relative',
             '&:hover': {
               backgroundColor: skin === 'dark' ? '#2e7d32' : 'rgba(76, 175, 80, 0.1)',
-              '&::after': {
-                content: '"Dark"',
-                position: 'absolute',
-                bottom: '-25px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                color: 'white',
-                padding: '4px 8px',
-                borderRadius: '4px',
-                fontSize: '0.75rem',
-                whiteSpace: 'nowrap',
-                zIndex: 1000,
-                pointerEvents: 'none',
-              },
             },
           }}
         >
@@ -111,24 +79,8 @@ export default function MapSection({ pendingCount, onScrollToRecordList, onScrol
           sx={{
             color: skin === 'satellite' ? '#fff' : '#666',
             backgroundColor: skin === 'satellite' ? '#4caf50' : 'transparent',
-            position: 'relative',
             '&:hover': {
               backgroundColor: skin === 'satellite' ? '#2e7d32' : 'rgba(76, 175, 80, 0.1)',
-              '&::after': {
-                content: '"Satellite"',
-                position: 'absolute',
-                bottom: '-25px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                color: 'white',
-                padding: '4px 8px',
-                borderRadius: '4px',
-                fontSize: '0.75rem',
-                whiteSpace: 'nowrap',
-                zIndex: 1000,
-                pointerEvents: 'none',
-              },
             },
           }}
         >
