@@ -2834,9 +2834,10 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   margin="dense"
                   value={editSpeciesInput}
                   onChange={(e) => {
-                    const val = e.target.value;
-                    setEditSpeciesInput(val);
-                    setEditFormData(prev => ({ ...prev, species_name: val }));
+                    // Only allow letters, spaces, hyphens, apostrophes, and forward slashes (for scientific/common name format)
+                    const filteredValue = e.target.value.replace(/[^a-zA-Z\s\-'/]/g, '');
+                    setEditSpeciesInput(filteredValue);
+                    setEditFormData(prev => ({ ...prev, species_name: filteredValue }));
                   }}
                   required
                   onFocus={() => {
@@ -2915,7 +2916,11 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   fullWidth
                   margin="dense"
                   value={editFormData.barangay || ''}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, barangay: e.target.value }))}
+                  onChange={(e) => {
+                    // Only allow letters, spaces, hyphens, and parentheses (for barangay names like "Poblacion(Sumilao)")
+                    const filteredValue = e.target.value.replace(/[^a-zA-Z\s\-()]/g, '');
+                    setEditFormData(prev => ({ ...prev, barangay: filteredValue }));
+                  }}
                 />
                 
                 <TextField
@@ -2925,7 +2930,11 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   fullWidth
                   margin="dense"
                   value={editFormData.municipality || ''}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, municipality: e.target.value }))}
+                  onChange={(e) => {
+                    // Only allow letters, spaces, and hyphens
+                    const filteredValue = e.target.value.replace(/[^a-zA-Z\s\-]/g, '');
+                    setEditFormData(prev => ({ ...prev, municipality: filteredValue }));
+                  }}
                 />
                 
                 <TextField
@@ -2935,7 +2944,11 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   fullWidth
                   margin="dense"
                   value={editFormData.reporter_name || ''}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, reporter_name: e.target.value }))}
+                  onChange={(e) => {
+                    // Only allow letters, spaces, hyphens, and apostrophes
+                    const filteredValue = e.target.value.replace(/[^a-zA-Z\s\-']/g, '');
+                    setEditFormData(prev => ({ ...prev, reporter_name: filteredValue }));
+                  }}
                 />
                 
                 <TextField
@@ -2946,7 +2959,8 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                   margin="dense"
                   value={phoneNumber}
                   onChange={(e) => {
-                    const phoneNumberValue = e.target.value;
+                    // Only allow numbers and limit to 10 digits
+                    const phoneNumberValue = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
                     setEditFormData(prev => {
                       const currentCountryCode = prev.country_code || '+63';
                       const fullNumber = currentCountryCode + phoneNumberValue;
