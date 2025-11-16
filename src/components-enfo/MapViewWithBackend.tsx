@@ -2217,8 +2217,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                   backgroundColor: isAddingMarker ? 'primary.dark' : 'action.hover',
                   transform: 'translateY(-2px)',
                   boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                  borderColor: isAddingMarker ? 'primary.dark' : 'primary.main',
-                  color: 'primary.main'
+                  borderColor: '#4caf50',
+                  color: '#2e7d32'
                 }
               }}
             >
@@ -2248,8 +2248,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                 backgroundColor: 'action.hover',
                 transform: 'translateY(-2px)',
                 boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                borderColor: 'primary.main',
-                color: 'primary.main'
+                borderColor: '#4caf50',
+                color: '#2e7d32'
               }
             }}
           >
@@ -2282,8 +2282,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
               backgroundColor: 'action.hover',
               transform: 'translateY(-2px)',
               boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-              borderColor: 'primary.main',
-              color: 'primary.main'
+              borderColor: '#4caf50',
+              color: '#2e7d32'
             }
           }}
         >
@@ -2316,8 +2316,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
               backgroundColor: 'action.hover',
               transform: 'translateY(-2px)',
               boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-              borderColor: 'primary.main',
-              color: 'primary.main'
+              borderColor: '#4caf50',
+              color: '#2e7d32'
             }
           }}
         >
