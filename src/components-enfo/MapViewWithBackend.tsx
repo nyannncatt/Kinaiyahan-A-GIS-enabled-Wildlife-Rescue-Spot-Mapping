@@ -681,7 +681,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
         setLoading(false);
         try { mapInstance?.closePopup?.(); } catch {}
         try { (document.activeElement as HTMLElement | null)?.blur?.(); } catch {}
-        setEditingMarkerId(null);
+        // Don't close edit modal when tab becomes visible - let user continue editing
+        // setEditingMarkerId(null);
         setIsAddingMarker(false);
         try { mapInstance?.invalidateSize?.(); } catch {}
 
