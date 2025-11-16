@@ -87,7 +87,7 @@ export const columns: GridColDef[] = [
     headerName: 'Status',
     flex: 0.5,
     minWidth: 80,
-    renderCell: (params) => renderStatus(params.value as any),
+    renderCell: (params: GridCellParams) => renderStatus(params.value as 'Online' | 'Offline'),
   },
   {
     field: 'users',
