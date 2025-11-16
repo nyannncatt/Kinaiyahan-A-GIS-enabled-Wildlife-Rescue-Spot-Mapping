@@ -1777,20 +1777,26 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       <span>
                         <IconButton
                           size="small"
-                          title={record.approval_status === 'rejected' ? 'Rejected reports cannot be edited' : 'Edit'}
+                          title={
+                            record.approval_status === 'rejected' 
+                              ? 'Rejected reports cannot be edited' 
+                              : record.approval_status === 'pending' 
+                                ? 'Pending reports cannot be edited' 
+                                : 'Edit'
+                          }
                           onClick={(e) => { e.stopPropagation(); handleEditRecord(record); }}
-                          disabled={record.approval_status === 'rejected'}
+                          disabled={record.approval_status === 'rejected' || record.approval_status === 'pending'}
                           sx={{ 
                             color: 'text.secondary',
-                            opacity: record.approval_status === 'rejected' ? 0.5 : 1,
-                            cursor: record.approval_status === 'rejected' ? 'not-allowed' : 'pointer',
+                            opacity: (record.approval_status === 'rejected' || record.approval_status === 'pending') ? 0.5 : 1,
+                            cursor: (record.approval_status === 'rejected' || record.approval_status === 'pending') ? 'not-allowed' : 'pointer',
                             '&:hover': { 
-                              bgcolor: record.approval_status === 'rejected'
+                              bgcolor: (record.approval_status === 'rejected' || record.approval_status === 'pending')
                                 ? 'transparent'
                                 : (theme.palette.mode === 'dark' 
                                     ? 'rgba(25, 118, 210, 0.1)' 
                                     : 'rgba(25, 118, 210, 0.04)'),
-                              color: record.approval_status === 'rejected' ? 'text.secondary' : theme.palette.primary.main
+                              color: (record.approval_status === 'rejected' || record.approval_status === 'pending') ? 'text.secondary' : theme.palette.primary.main
                             }
                           }}
                         >
