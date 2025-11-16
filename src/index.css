@@ -181,11 +181,41 @@ body > div {
   }
   
   /* Force all fixed/absolute elements to stay within bounds */
-  [style*="position: fixed"],
-  [style*="position:absolute"] {
+  /* BUT exclude MUI tooltips, poppers, menus, popovers, and dialogs */
+  /* Use attribute selectors to exclude tooltips more reliably */
+  [style*="position: fixed"]:not([role="tooltip"]):not([data-popper-placement]):not([class*="MuiTooltip"]):not([class*="MuiPopper"]):not([class*="MuiMenu"]):not([class*="MuiPopover"]):not([class*="MuiDialog"]),
+  [style*="position:absolute"]:not([role="tooltip"]):not([data-popper-placement]):not([class*="MuiTooltip"]):not([class*="MuiPopper"]):not([class*="MuiMenu"]):not([class*="MuiPopover"]):not([class*="MuiDialog"]) {
     max-width: 100vw !important;
     left: 0 !important;
     right: 0 !important;
+  }
+  
+  /* CRITICAL: Ensure MUI Tooltips and Poppers can position correctly */
+  /* These rules override the above with higher specificity */
+  /* Target tooltip poppers by their attributes and classes */
+  [role="tooltip"],
+  [data-popper-placement],
+  [class*="MuiTooltip-popper"],
+  [class*="MuiPopper-root"],
+  div[class*="MuiTooltip"],
+  div[class*="MuiPopper"] {
+    position: fixed !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    max-width: none !important;
+    transform: none !important;
+  }
+  
+  /* Additional override for tooltip popper container */
+  .MuiTooltip-popper[style*="position: fixed"],
+  .MuiPopper-root[style*="position: fixed"] {
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    max-width: none !important;
   }
   
   /* Ensure all Box components respect viewport */
@@ -473,4 +503,156 @@ button:focus-visible {
     transform: translate(-50%, -50%) scale(1.15);
     box-shadow: 0 0 0 6px rgba(76, 175, 80, 0.3);
   }
+}
+
+/* FIX: Ensure MUI Tooltips position correctly - must override mobile CSS rules */
+/* This rule has highest specificity and comes last to override the mobile viewport rules */
+body [role="tooltip"],
+body [data-popper-placement],
+body [class*="MuiTooltip-popper"],
+body [class*="MuiPopper-root"],
+body div[class*="MuiTooltip"],
+body div[class*="MuiPopper"],
+html body [role="tooltip"],
+html body [data-popper-placement] {
+  position: fixed !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  max-width: none !important;
+  transform: none !important;
+  width: auto !important;
+}
+
+/* Additional specific override for tooltip popper with inline styles */
+body [class*="MuiTooltip-popper"][style*="position: fixed"],
+body [class*="MuiPopper-root"][style*="position: fixed"],
+body [data-popper-placement][style*="position: fixed"] {
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  max-width: none !important;
+  width: auto !important;
+}
+
+/* Custom tooltip that appears on top of buttons */
+button[title],
+button[data-tooltip],
+a[title],
+a[data-tooltip],
+[role="button"][title],
+[role="button"][data-tooltip],
+.MuiButton-root[title],
+.MuiButton-root[data-tooltip],
+.MuiIconButton-root[title],
+.MuiIconButton-root[data-tooltip] {
+  position: relative;
+}
+
+/* Tooltip with data-tooltip (set by JavaScript on hover) */
+button[data-tooltip]:hover::before,
+a[data-tooltip]:hover::before,
+[role="button"][data-tooltip]:hover::before,
+.MuiButton-root[data-tooltip]:hover::before,
+.MuiIconButton-root[data-tooltip]:hover::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  padding: 6px 12px;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: white;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  animation: tooltipFadeIn 0.2s ease-in-out;
+}
+
+/* Fallback tooltip with title attribute */
+button[title]:not([data-tooltip]):hover::before,
+a[title]:not([data-tooltip]):hover::before,
+[role="button"][title]:not([data-tooltip]):hover::before,
+.MuiButton-root[title]:not([data-tooltip]):hover::before,
+.MuiIconButton-root[title]:not([data-tooltip]):hover::before {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  padding: 6px 12px;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: white;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  animation: tooltipFadeIn 0.2s ease-in-out;
+}
+
+/* Tooltip arrow pointing down */
+button[data-tooltip]:hover::after,
+a[data-tooltip]:hover::after,
+[role="button"][data-tooltip]:hover::after,
+.MuiButton-root[data-tooltip]:hover::after,
+.MuiIconButton-root[data-tooltip]:hover::after,
+button[title]:not([data-tooltip]):hover::after,
+a[title]:not([data-tooltip]):hover::after,
+[role="button"][title]:not([data-tooltip]):hover::after,
+.MuiButton-root[title]:not([data-tooltip]):hover::after,
+.MuiIconButton-root[title]:not([data-tooltip]):hover::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 2px;
+  border: 5px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  z-index: 9999;
+  animation: tooltipFadeIn 0.2s ease-in-out;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Hide native browser tooltip */
+button[title],
+a[title],
+[role="button"][title],
+.MuiButton-root[title],
+.MuiIconButton-root[title] {
+  pointer-events: auto;
+}
+
+/* Ensure tooltip doesn't interfere with button clicks */
+button[title]:hover::before,
+button[title]:hover::after,
+a[title]:hover::before,
+a[title]:hover::after,
+[role="button"][title]:hover::before,
+[role="button"][title]:hover::after,
+.MuiButton-root[title]:hover::before,
+.MuiButton-root[title]:hover::after,
+.MuiIconButton-root[title]:hover::before,
+.MuiIconButton-root[title]:hover::after {
+  pointer-events: none;
 }

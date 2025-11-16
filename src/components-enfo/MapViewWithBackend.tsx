@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, GeoJSON, 
 import { Icon, LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { Box, Button, TextField, Alert, CircularProgress, Typography, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Chip, Tooltip, IconButton, ToggleButtonGroup, ToggleButton, useTheme } from '@mui/material';
+import { Box, Button, TextField, Alert, CircularProgress, Typography, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Chip, IconButton, ToggleButtonGroup, ToggleButton, useTheme } from '@mui/material';
 import SuccessModal from './SuccessModal';
 import FetchingModal from './FetchingModal';
 import { alpha } from '@mui/material/styles';
@@ -1940,18 +1940,12 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
             ].map((status) => {
               const isSelected = enabledStatuses.includes(status.value);
               return (
-                <Tooltip 
-                  key={status.value}
-                  title={isSelected ? `Hide ${status.label} records` : `Show ${status.label} records`} 
-                  enterDelay={500}
-                  PopperProps={{
-                    style: { zIndex: 1500 }
-                  }}
-                >
                   <Button
+                    key={status.value}
                     variant={isSelected ? "contained" : "outlined"}
                     color="inherit"
                     size="small"
+                    title={isSelected ? `Hide ${status.label} records` : `Show ${status.label} records`}
                     onClick={() => {
                       setEnabledStatuses(prev => {
                         let next: string[];
@@ -2020,7 +2014,6 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                       />
                     </Box>
                   </Button>
-                </Tooltip>
               );
             })}
         </Box>
@@ -2155,47 +2148,46 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
 
       {/* Map control buttons */}
       <Box sx={{ position: "absolute", top: 60, left: 10, zIndex: 1000, display: "flex", flexDirection: "column", gap: 1 }}>
-          <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
-            <span>
-              <Button
-                variant={isAddingMarker ? "contained" : "outlined"}
-                color={isAddingMarker ? "primary" : "inherit"}
-                size="small"
-                onClick={() => { if (role === 'enforcement') setIsAddingMarker((v) => !v); }}
-                disabled={role !== 'enforcement'}
-                sx={{ 
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  minWidth: 'auto',
-                  px: 2,
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'flex-start',
-                  gap: 1,
-                  border: '1px solid black',
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    backgroundColor: isAddingMarker ? 'primary.dark' : 'action.hover',
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                    borderColor: isAddingMarker ? 'primary.dark' : 'primary.main',
-                    color: 'primary.main'
-                  }
-                }}
-              >
-                <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
-                {isAddingMarker ? "Adding Marker" : "Add Marker"}
-              </Button>
-            </span>
-          </Tooltip>
+          <span>
+            <Button
+              variant={isAddingMarker ? "contained" : "outlined"}
+              color={isAddingMarker ? "primary" : "inherit"}
+              size="small"
+              onClick={() => { if (role === 'enforcement') setIsAddingMarker((v) => !v); }}
+              disabled={role !== 'enforcement'}
+              title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"}
+              sx={{ 
+                textTransform: 'none',
+                fontWeight: 600,
+                minWidth: 'auto',
+                px: 2,
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'flex-start',
+                gap: 1,
+                border: '1px solid black',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  backgroundColor: isAddingMarker ? 'primary.dark' : 'action.hover',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                  borderColor: isAddingMarker ? 'primary.dark' : 'primary.main',
+                  color: 'primary.main'
+                }
+              }}
+            >
+              <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
+              {isAddingMarker ? "Adding Marker" : "Add Marker"}
+            </Button>
+          </span>
           
-          <Tooltip title="Refresh map data" enterDelay={500}>
           <Button
             variant="outlined"
             color="inherit"
               size="small"
               onClick={refreshMapData}
               disabled={fetchingModal.open}
+              title="Refresh map data"
             sx={{ 
               textTransform: 'none',
               fontWeight: 600,
@@ -2219,79 +2211,76 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
             <RefreshIcon sx={{ fontSize: 18 }} />
             Refresh
           </Button>
-        </Tooltip>
         
-        <Tooltip title="Zoom in" enterDelay={500}>
-          <Button
-            variant="outlined"
-            color="inherit"
-            size="small"
-            onClick={() => {
-              if (mapInstance) {
-                const currentZoom = mapInstance.getZoom();
-                mapInstance.setZoom(currentZoom + 1);
-              }
-            }}
-            sx={{ 
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 'auto',
-              px: 2,
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'flex-start',
-              gap: 1,
-              border: '1px solid black',
-              transition: 'all 0.2s ease-in-out',
-              '&:hover': {
-                backgroundColor: 'action.hover',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                borderColor: 'primary.main',
-                color: 'primary.main'
-              }
-            }}
-          >
-            <ZoomInIcon sx={{ fontSize: 18 }} />
-            Zoom In
-          </Button>
-        </Tooltip>
+        <Button
+          variant="outlined"
+          color="inherit"
+          size="small"
+          onClick={() => {
+            if (mapInstance) {
+              const currentZoom = mapInstance.getZoom();
+              mapInstance.setZoom(currentZoom + 1);
+            }
+          }}
+          title="Zoom in"
+          sx={{ 
+            textTransform: 'none',
+            fontWeight: 600,
+            minWidth: 'auto',
+            px: 2,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'flex-start',
+            gap: 1,
+            border: '1px solid black',
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              backgroundColor: 'action.hover',
+              transform: 'translateY(-2px)',
+              boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+              borderColor: 'primary.main',
+              color: 'primary.main'
+            }
+          }}
+        >
+          <ZoomInIcon sx={{ fontSize: 18 }} />
+          Zoom In
+        </Button>
         
-        <Tooltip title="Zoom out" enterDelay={500}>
-          <Button
-            variant="outlined"
-            color="inherit"
-            size="small"
-            onClick={() => {
-              if (mapInstance) {
-                const currentZoom = mapInstance.getZoom();
-                mapInstance.setZoom(currentZoom - 1);
-              }
-            }}
-            sx={{ 
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 'auto',
-              px: 2,
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'flex-start',
-              gap: 1,
-              border: '1px solid black',
-              transition: 'all 0.2s ease-in-out',
-              '&:hover': {
-                backgroundColor: 'action.hover',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                borderColor: 'primary.main',
-                color: 'primary.main'
-              }
-            }}
-          >
-            <ZoomOutIcon sx={{ fontSize: 18 }} />
-            Zoom Out
-          </Button>
-          </Tooltip>
+        <Button
+          variant="outlined"
+          color="inherit"
+          size="small"
+          onClick={() => {
+            if (mapInstance) {
+              const currentZoom = mapInstance.getZoom();
+              mapInstance.setZoom(currentZoom - 1);
+            }
+          }}
+          title="Zoom out"
+          sx={{ 
+            textTransform: 'none',
+            fontWeight: 600,
+            minWidth: 'auto',
+            px: 2,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'flex-start',
+            gap: 1,
+            border: '1px solid black',
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              backgroundColor: 'action.hover',
+              transform: 'translateY(-2px)',
+              boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+              borderColor: 'primary.main',
+              color: 'primary.main'
+            }
+          }}
+        >
+          <ZoomOutIcon sx={{ fontSize: 18 }} />
+          Zoom Out
+        </Button>
           
       </Box>
 
@@ -2737,25 +2726,24 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                   
                   {viewingMarker.photo_url && (
                     <Box sx={{ mt: 1 }}>
-                      <Tooltip title="Click to view the whole photo size" arrow>
-                        <Box
-                          component="img"
-                          src={viewingMarker.photo_url}
-                          alt="marker"
-                          onClick={() => window.open(viewingMarker.photo_url, '_blank')}
-                          sx={{
-                            width: "100%",
-                            maxHeight: "280px",
-                            objectFit: "contain",
-                            borderRadius: 8,
-                            cursor: "pointer",
-                            transition: "opacity 0.2s ease-in-out",
-                            "&:hover": {
-                              opacity: 0.8
-                            }
-                          }}
-                        />
-                      </Tooltip>
+                      <Box
+                        component="img"
+                        src={viewingMarker.photo_url}
+                        alt="marker"
+                        title="Click to view the whole photo size"
+                        onClick={() => window.open(viewingMarker.photo_url, '_blank')}
+                        sx={{
+                          width: "100%",
+                          maxHeight: "280px",
+                          objectFit: "contain",
+                          borderRadius: 8,
+                          cursor: "pointer",
+                          transition: "opacity 0.2s ease-in-out",
+                          "&:hover": {
+                            opacity: 0.8
+                          }
+                        }}
+                      />
                     </Box>
                   )}
                   

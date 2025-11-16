@@ -13,7 +13,6 @@ import {
   Typography,
   TablePagination,
   Chip,
-  Tooltip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -1759,161 +1758,152 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                 </TableCell>
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
                   <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <Tooltip title="View location">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => { e.stopPropagation(); handleLocationClick(record); }}
-                        sx={{ 
-                          color: '#4caf50',
-                          '&:hover': { 
-                            bgcolor: theme.palette.mode === 'dark' 
-                              ? 'rgba(76, 175, 80, 0.12)' 
-                              : 'rgba(76, 175, 80, 0.08)'
-                          }
-                        }}
-                      >
-                        <LocationIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                    <IconButton
+                      size="small"
+                      title="View location"
+                      onClick={(e) => { e.stopPropagation(); handleLocationClick(record); }}
+                      sx={{ 
+                        color: '#4caf50',
+                        '&:hover': { 
+                          bgcolor: theme.palette.mode === 'dark' 
+                            ? 'rgba(76, 175, 80, 0.12)' 
+                            : 'rgba(76, 175, 80, 0.08)'
+                        }
+                      }}
+                    >
+                      <LocationIcon fontSize="small" />
+                    </IconButton>
                     {resolvedRole === 'enforcement' && (
-                      <Tooltip
-                        title={record.approval_status === 'rejected' ? 'Rejected reports cannot be edited' : 'Edit'}
-                      >
-                        <span>
-                          <IconButton
-                            size="small"
-                            onClick={(e) => { e.stopPropagation(); handleEditRecord(record); }}
-                            disabled={record.approval_status === 'rejected'}
-                            sx={{ 
-                              color: 'text.secondary',
-                              opacity: record.approval_status === 'rejected' ? 0.5 : 1,
-                              cursor: record.approval_status === 'rejected' ? 'not-allowed' : 'pointer',
-                              '&:hover': { 
-                                bgcolor: record.approval_status === 'rejected'
-                                  ? 'transparent'
-                                  : (theme.palette.mode === 'dark' 
-                                      ? 'rgba(25, 118, 210, 0.1)' 
-                                      : 'rgba(25, 118, 210, 0.04)'),
-                                color: record.approval_status === 'rejected' ? 'text.secondary' : theme.palette.primary.main
-                              }
-                            }}
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                    )}
-                    <Tooltip title="Print" enterDelay={500}>
-                      <IconButton
-                        size="small"
-                        onClick={(e) => { e.stopPropagation(); handlePrintRecord(record); }}
-                        sx={{ 
-                          color: 'text.secondary',
-                          '&:hover': { 
-                            bgcolor: theme.palette.mode === 'dark' 
-                              ? 'rgba(76, 175, 80, 0.1)' 
-                              : 'rgba(76, 175, 80, 0.04)',
-                            color: '#4caf50'
-                          }
-                        }}
-                      >
-                        <PrintIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    {record.approval_status === 'pending' && record.user_id === null && (
-                      <>
-                        <Tooltip title={resolvedRole === 'cenro' ? 'Only enforcement can approve or reject' : ''}>
-                          <span>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              startIcon={<CheckCircle fontSize="small" />}
-                              onClick={(e) => { e.stopPropagation(); handleApproveClick(record); }}
-                              disabled={resolvedRole === 'cenro'}
-                              sx={{ 
-                                color: '#4caf50',
-                                borderColor: '#4caf50',
-                                textTransform: 'none',
-                                fontWeight: 500,
-                                '&:hover': { 
-                                  bgcolor: theme.palette.mode === 'dark' 
-                                    ? 'rgba(76, 175, 80, 0.1)' 
-                                    : 'rgba(76, 175, 80, 0.04)',
-                                  borderColor: '#4caf50'
-                                },
-                                '&.Mui-disabled': {
-                                  color: 'rgba(0, 0, 0, 0.26)',
-                                  borderColor: 'rgba(0, 0, 0, 0.12)',
-                                }
-                              }}
-                            >
-                              Approve
-                            </Button>
-                          </span>
-                        </Tooltip>
-                        <Tooltip title={resolvedRole === 'cenro' ? 'Only enforcement can approve or reject' : ''}>
-                          <span>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              startIcon={<Close fontSize="small" />}
-                              onClick={(e) => { e.stopPropagation(); handleRejectRecord(record.id); }}
-                              disabled={resolvedRole === 'cenro'}
-                              sx={{ 
-                                color: theme.palette.error.main,
-                                borderColor: theme.palette.error.main,
-                                textTransform: 'none',
-                                fontWeight: 500,
-                                '&:hover': { 
-                                  bgcolor: theme.palette.mode === 'dark' 
-                                    ? 'rgba(239, 68, 68, 0.1)' 
-                                    : 'rgba(239, 68, 68, 0.04)',
-                                  borderColor: theme.palette.error.main
-                                },
-                                '&.Mui-disabled': {
-                                  color: 'rgba(0, 0, 0, 0.26)',
-                                  borderColor: 'rgba(0, 0, 0, 0.12)',
-                                }
-                              }}
-                            >
-                              Reject
-                            </Button>
-                          </span>
-                        </Tooltip>
-                      </>
-                    )}
-                    {resolvedRole === 'enforcement' && (
-                      <Tooltip title="Delete">
+                      <span>
                         <IconButton
                           size="small"
-                          onClick={(e) => { e.stopPropagation(); handleOpenDeleteDialog(record); }}
+                          title={record.approval_status === 'rejected' ? 'Rejected reports cannot be edited' : 'Edit'}
+                          onClick={(e) => { e.stopPropagation(); handleEditRecord(record); }}
+                          disabled={record.approval_status === 'rejected'}
                           sx={{ 
-                            color: '#ff1744',
+                            color: 'text.secondary',
+                            opacity: record.approval_status === 'rejected' ? 0.5 : 1,
+                            cursor: record.approval_status === 'rejected' ? 'not-allowed' : 'pointer',
                             '&:hover': { 
-                              bgcolor: 'rgba(255, 23, 68, 0.08)'
+                              bgcolor: record.approval_status === 'rejected'
+                                ? 'transparent'
+                                : (theme.palette.mode === 'dark' 
+                                    ? 'rgba(25, 118, 210, 0.1)' 
+                                    : 'rgba(25, 118, 210, 0.04)'),
+                              color: record.approval_status === 'rejected' ? 'text.secondary' : theme.palette.primary.main
                             }
                           }}
                         >
-                          <DeleteIcon fontSize="small" />
+                          <EditIcon fontSize="small" />
                         </IconButton>
-                      </Tooltip>
+                      </span>
                     )}
-                    <Tooltip title="View details">
+                    <IconButton
+                      size="small"
+                      title="Print"
+                      onClick={(e) => { e.stopPropagation(); handlePrintRecord(record); }}
+                      sx={{ 
+                        color: 'text.secondary',
+                        '&:hover': { 
+                          bgcolor: theme.palette.mode === 'dark' 
+                            ? 'rgba(76, 175, 80, 0.1)' 
+                            : 'rgba(76, 175, 80, 0.04)',
+                          color: '#4caf50'
+                        }
+                      }}
+                    >
+                      <PrintIcon fontSize="small" />
+                    </IconButton>
+                    {record.approval_status === 'pending' && record.user_id === null && (
+                      <>
+                        <span>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            title={resolvedRole === 'cenro' ? 'Only enforcement can approve or reject' : ''}
+                            startIcon={<CheckCircle fontSize="small" />}
+                            onClick={(e) => { e.stopPropagation(); handleApproveClick(record); }}
+                            disabled={resolvedRole === 'cenro'}
+                            sx={{ 
+                              color: '#4caf50',
+                              borderColor: '#4caf50',
+                              textTransform: 'none',
+                              fontWeight: 500,
+                              '&:hover': { 
+                                bgcolor: theme.palette.mode === 'dark' 
+                                  ? 'rgba(76, 175, 80, 0.1)' 
+                                  : 'rgba(76, 175, 80, 0.04)',
+                                borderColor: '#4caf50'
+                              },
+                              '&.Mui-disabled': {
+                                color: 'rgba(0, 0, 0, 0.26)',
+                                borderColor: 'rgba(0, 0, 0, 0.12)',
+                              }
+                            }}
+                          >
+                            Approve
+                          </Button>
+                        </span>
+                        <span>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            title={resolvedRole === 'cenro' ? 'Only enforcement can approve or reject' : ''}
+                            startIcon={<Close fontSize="small" />}
+                            onClick={(e) => { e.stopPropagation(); handleRejectRecord(record.id); }}
+                            disabled={resolvedRole === 'cenro'}
+                            sx={{ 
+                              color: theme.palette.error.main,
+                              borderColor: theme.palette.error.main,
+                              textTransform: 'none',
+                              fontWeight: 500,
+                              '&:hover': { 
+                                bgcolor: theme.palette.mode === 'dark' 
+                                  ? 'rgba(239, 68, 68, 0.1)' 
+                                  : 'rgba(239, 68, 68, 0.04)',
+                                borderColor: theme.palette.error.main
+                              },
+                              '&.Mui-disabled': {
+                                color: 'rgba(0, 0, 0, 0.26)',
+                                borderColor: 'rgba(0, 0, 0, 0.12)',
+                              }
+                            }}
+                          >
+                            Reject
+                          </Button>
+                        </span>
+                      </>
+                    )}
+                    {resolvedRole === 'enforcement' && (
                       <IconButton
                         size="small"
-                        onClick={(e) => { e.stopPropagation(); handleViewDetails(record); }}
+                        title="Delete"
+                        onClick={(e) => { e.stopPropagation(); handleOpenDeleteDialog(record); }}
                         sx={{ 
-                          color: theme.palette.primary.main,
+                          color: '#ff1744',
                           '&:hover': { 
-                            bgcolor: theme.palette.mode === 'dark' 
-                              ? 'rgba(25, 118, 210, 0.1)' 
-                              : 'rgba(25, 118, 210, 0.04)'
+                            bgcolor: 'rgba(255, 23, 68, 0.08)'
                           }
                         }}
                       >
-                        <InfoOutlinedIcon fontSize="small" />
+                        <DeleteIcon fontSize="small" />
                       </IconButton>
-                    </Tooltip>
+                    )}
+                    <IconButton
+                      size="small"
+                      title="View details"
+                      onClick={(e) => { e.stopPropagation(); handleViewDetails(record); }}
+                      sx={{ 
+                        color: theme.palette.primary.main,
+                        '&:hover': { 
+                          bgcolor: theme.palette.mode === 'dark' 
+                            ? 'rgba(25, 118, 210, 0.1)' 
+                            : 'rgba(25, 118, 210, 0.04)'
+                        }
+                      }}
+                    >
+                      <InfoOutlinedIcon fontSize="small" />
+                    </IconButton>
                     <Button
                       size="small"
                       variant="text"
