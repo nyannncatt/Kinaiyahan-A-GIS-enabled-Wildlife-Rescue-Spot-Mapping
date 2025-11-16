@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, GeoJSON, 
 import { Icon, LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { Box, Button, TextField, Alert, CircularProgress, Typography, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Chip, IconButton, ToggleButtonGroup, ToggleButton, useTheme } from '@mui/material';
+import { Box, Button, TextField, Alert, CircularProgress, Typography, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Chip, IconButton, ToggleButtonGroup, ToggleButton, useTheme, InputAdornment } from '@mui/material';
 import SuccessModal from './SuccessModal';
 import FetchingModal from './FetchingModal';
 import { alpha } from '@mui/material/styles';
@@ -11,6 +11,7 @@ import AddLocationAltOutlinedIcon from '@mui/icons-material/AddLocationAltOutlin
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
+import ClearIcon from '@mui/icons-material/Clear';
 import { useAuth } from '../context/AuthContext';
 import { useMapNavigation } from '../context/MapNavigationContext';
 import { 
@@ -146,7 +147,7 @@ function MapBoundsController() {
     const locationBounds = L.latLngBounds([8.0, 124.6], [8.84, 125.3]);
     map.setMaxBounds(locationBounds);
 
-    map.setMinZoom(11);
+    map.setMinZoom(10);
     map.setMaxZoom(18);
   }, [map]);
 
@@ -902,6 +903,12 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
     }, 350);
     return () => { clearTimeout(t); controller.abort(); };
   }, [searchQuery]);
+
+  function handleClearSearch() {
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowResults(false);
+  }
 
   function handleResultSelect(item: any) {
     setShowResults(false);
@@ -1879,6 +1886,27 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
             onChange={(e) => { setSearchQuery(e.target.value); setShowResults(true); }}
             onFocus={() => setShowResults(true)}
             InputProps={{
+              endAdornment: searchQuery ? (
+                <InputAdornment position="end">
+                  <Box
+                    component="span"
+                    onClick={handleClearSearch}
+                    sx={{ 
+                      cursor: 'pointer',
+                      color: 'text.secondary',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '4px',
+                      '&:hover': {
+                        color: 'text.primary',
+                      }
+                    }}
+                  >
+                    <ClearIcon fontSize="small" />
+                  </Box>
+                </InputAdornment>
+              ) : null,
               sx: { 
                 bgcolor: 'background.paper',
                 transition: 'all 0.2s ease-in-out',
@@ -2309,7 +2337,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
 
       <MapContainer
         center={[8.371964645263802, 124.85604137091526]}
-        zoom={15}
+        zoom={10}
         style={{
           height: "100%",
           width: "100%",
@@ -2318,7 +2346,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
         }}
         zoomControl={false}
         scrollWheelZoom={true}
-        minZoom={12}
+        minZoom={10}
         maxZoom={18}
         maxBoundsViscosity={0.5}
         whenReady={() => { /* set in effect below */ }}
