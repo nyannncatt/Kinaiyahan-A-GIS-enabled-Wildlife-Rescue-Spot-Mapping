@@ -28,6 +28,7 @@ interface ArchivedRecord {
   id: string;
   species_name: string;
   status: string;
+  approval_status?: 'pending' | 'approved' | 'rejected';
   deleted_at?: string;
   created_at?: string;
   timestamp_captured?: string;
@@ -197,6 +198,7 @@ export default function ArchivedRecords() {
                       <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32 !important' }}>ID</TableCell>
                       <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32 !important' }}>Species</TableCell>
                       <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32 !important' }}>Status</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32 !important' }}>Approval Status</TableCell>
                       <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32 !important' }}>Deleted At</TableCell>
                       <TableCell sx={{ fontWeight: 'bold', color: '#2e7d32 !important' }}>Location</TableCell>
                     </TableRow>
@@ -209,6 +211,25 @@ export default function ArchivedRecords() {
                         </TableCell>
                         <TableCell sx={{ color: '#2e7d32 !important' }}>{rec.species_name || '—'}</TableCell>
                         <TableCell sx={{ textTransform: 'capitalize', color: '#2e7d32 !important' }}>{rec.status || '—'}</TableCell>
+                        <TableCell>
+                          {rec.approval_status ? (
+                            <Typography
+                              sx={{
+                                color: rec.approval_status === 'approved' 
+                                  ? '#4caf50' 
+                                  : rec.approval_status === 'rejected' 
+                                    ? '#f44336' 
+                                    : '#9e9e9e',
+                                fontWeight: 600,
+                                textTransform: 'capitalize',
+                              }}
+                            >
+                              {rec.approval_status === 'approved' ? 'Approved' : rec.approval_status === 'rejected' ? 'Rejected' : 'Pending'}
+                            </Typography>
+                          ) : (
+                            <Typography sx={{ color: '#2e7d32 !important' }}>—</Typography>
+                          )}
+                        </TableCell>
                         <TableCell sx={{ color: '#2e7d32 !important' }}>
                           {rec.deleted_at ? new Date(rec.deleted_at).toLocaleString() : '—'}
                         </TableCell>
