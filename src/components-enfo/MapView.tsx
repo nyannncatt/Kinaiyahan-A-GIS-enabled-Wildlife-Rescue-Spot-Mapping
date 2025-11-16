@@ -191,7 +191,7 @@ function BoundaryGuide() {
       data={geojsonData as any}
       pane="boundary-guide"
       style={{
-        color: "#ff0000",
+        color: "#2e7d32",
         weight: 4,
         dashArray: "6 6",
         fill: false,
@@ -260,6 +260,8 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
 
   const [speciesOptions, setSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
   const [speciesLoading, setSpeciesLoading] = useState(false);
+  const [editSpeciesOptions, setEditSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
+  const [editSpeciesLoading, setEditSpeciesLoading] = useState(false);
   const [editDrafts, setEditDrafts] = useState<Record<number, { speciesName: string; status: string; photo?: string | null; reporterName?: string; contactNumber?: string }>>({});
   const [editingMarkerId, setEditingMarkerId] = useState<number | null>(null);
   const editInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
@@ -390,16 +392,73 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
         if (!enabled) return;
         const lat = Number(e.latlng.lat);
         const lng = Number(e.latlng.lng);
-        setPendingMarker({
-          pos: [lat, lng],
-          speciesName: "",
-          status: "",
-          timestampIso: new Date().toISOString(),
-          addressLoading: true,
-          photo: null,
-          reporterName: "",
-          contactNumber: "",
-        });
+        
+        // Get the pixel coordinates for the animation
+        const point = map.latLngToContainerPoint(e.latlng);
+        
+        // Create and show click animation
+        const container = map.getContainer();
+        const ripple = document.createElement('div');
+        ripple.style.position = 'absolute';
+        ripple.style.left = `${point.x}px`;
+        ripple.style.top = `${point.y}px`;
+        ripple.style.width = '20px';
+        ripple.style.height = '20px';
+        ripple.style.borderRadius = '50%';
+        ripple.style.background = 'rgba(76, 175, 80, 0.6)';
+        ripple.style.transform = 'translate(-50%, -50%)';
+        ripple.style.pointerEvents = 'none';
+        ripple.style.zIndex = '10000';
+        ripple.style.animation = 'ripple 0.6s ease-out';
+        ripple.style.boxShadow = '0 0 0 0 rgba(76, 175, 80, 0.7)';
+        
+        container.appendChild(ripple);
+        
+        // Add animation keyframes if not already added
+        if (!document.getElementById('ripple-animation-style')) {
+          const style = document.createElement('style');
+          style.id = 'ripple-animation-style';
+          style.textContent = `
+            @keyframes ripple {
+              0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+              }
+              50% {
+                opacity: 0.8;
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0.4);
+              }
+              100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+                box-shadow: 0 0 0 20px rgba(76, 175, 80, 0);
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        // Remove animation element after animation completes
+        setTimeout(() => {
+          if (ripple.parentNode) {
+            ripple.parentNode.removeChild(ripple);
+          }
+        }, 600);
+        
+        // Add delay before setting pending marker
+        setTimeout(() => {
+          setPendingMarker({
+            pos: [lat, lng],
+            speciesName: "",
+            status: "",
+            timestampIso: new Date().toISOString(),
+            addressLoading: true,
+            photo: null,
+            reporterName: "",
+            contactNumber: "",
+          });
+        }, 300); // 300ms delay
       },
     });
 
@@ -475,6 +534,45 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
       controller.abort();
     };
   }, [pendingMarker?.speciesName]);
+
+  // iNaturalist autocomplete for Edit Marker (mirror Add Marker behavior)
+  useEffect(() => {
+    if (!editingMarkerId) {
+      setEditSpeciesOptions([]);
+      setEditSpeciesLoading(false);
+      return;
+    }
+    const current = editDrafts[editingMarkerId];
+    // Fallback to existing marker speciesName if no draft yet
+    const existing = userMarkers.find((m) => m.id === editingMarkerId);
+    const query = (current?.speciesName ?? existing?.speciesName ?? "").trim();
+    if (query.length < 2) {
+      setEditSpeciesOptions([]);
+      setEditSpeciesLoading(false);
+      return;
+    }
+    setEditSpeciesLoading(true);
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const url = `https://api.inaturalist.org/v1/taxa/autocomplete?q=${encodeURIComponent(query)}&per_page=8`;
+        const res = await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
+        if (!res.ok) throw new Error("inat autocomplete failed");
+        const data = await res.json();
+        const options = (data?.results || [])
+          .map((r: any) => ({ label: r?.name || "", common: r?.preferred_common_name || undefined }))
+          .filter((o: any) => o.label);
+        setEditSpeciesOptions(options);
+      } catch {
+      } finally {
+        setEditSpeciesLoading(false);
+      }
+    }, 350);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [editingMarkerId, editDrafts, userMarkers]);
 
   // Debounced place search
   useEffect(() => {
@@ -1102,6 +1200,33 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                       }
                       inputRef={(el) => { editInputRefs.current[m.id] = el; }}
                     />
+                    <Box sx={{ mt: 0.5, border: "1px solid", borderColor: "divider", borderRadius: 1, maxHeight: 128, overflow: "auto" }}>
+                      {editSpeciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
+                      {!editSpeciesLoading && editSpeciesOptions.length === 0 && (
+                        <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
+                      )}
+                      {!editSpeciesLoading && editSpeciesOptions.length > 0 && (
+                        <Box>
+                          {editSpeciesOptions.map((opt) => (
+                            <Box
+                              key={`${opt.label}-${opt.common || ""}`}
+                              sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEditDrafts((prev) => ({
+                                  ...prev,
+                                  [m.id]: { ...(prev[m.id] || {}), speciesName: opt.label, status: prev[m.id]?.status ?? m.status, photo: prev[m.id]?.photo ?? m.photo },
+                                }));
+                              }}
+                            >
+                              {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                              <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
                     <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Status</Box>
                     <TextField
                       select
@@ -1161,8 +1286,8 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
           chunkedLoading
           iconCreateFunction={(cluster: any) => {
             const count = cluster.getChildCount();
-            const html = `<div style="
-              background:#ff9800; /* orange */
+            const html = `<div class="cluster-icon-animated" style="
+              background:#4caf50; /* green */
               color:#fff;
               border-radius:50%;
               width:32px;height:32px;
@@ -1170,7 +1295,11 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
               border:2px solid #fff;
               box-shadow:0 0 0 2px rgba(0,0,0,0.3);
               font-weight:600;
-            ">${count}</div>`;
+              position:relative;
+            ">
+              <div class="cluster-glow-ring"></div>
+              <span style="position:relative;z-index:1;">${count}</span>
+            </div>`;
             return L.divIcon({ html, className: "cluster-icon", iconSize: [32, 32] });
           }}
         >
@@ -1211,6 +1340,38 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
                       }
                       inputRef={(el) => { editInputRefs.current[m.id] = el; }}
                     />
+                    <Box sx={{ mt: 0.5, border: "1px solid", borderColor: "divider", borderRadius: 1, maxHeight: 128, overflow: "auto" }}>
+                      {editSpeciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
+                      {!editSpeciesLoading && editSpeciesOptions.length === 0 && (
+                        <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
+                      )}
+                      {!editSpeciesLoading && editSpeciesOptions.length > 0 && (
+                        <Box>
+                          {editSpeciesOptions.map((opt) => (
+                            <Box
+                              key={`${opt.label}-${opt.common || ""}`}
+                              sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEditDrafts((prev) => ({
+                                  ...prev,
+                                  [m.id]: {
+                                    ...prev[m.id],
+                                    speciesName: opt.label,
+                                    status: prev[m.id]?.status ?? m.status,
+                                    photo: prev[m.id]?.photo ?? m.photo,
+                                  },
+                                }));
+                              }}
+                            >
+                              {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
+                              <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
                     <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Status</Box>
                     <TextField
                       select

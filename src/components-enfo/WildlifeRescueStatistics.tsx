@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Button,
@@ -30,6 +30,7 @@ import {
   CardContent,
   InputAdornment,
   Collapse,
+  Stack,
 } from '@mui/material';
 import {
   LocationOn as LocationIcon,
@@ -45,17 +46,19 @@ import {
   CheckCircle,
   Close,
   FileDownload as FileDownloadIcon,
+  InfoOutlined as InfoOutlinedIcon,
 } from '@mui/icons-material';
-import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, getUserRole, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
+import { getWildlifeRecords, deleteWildlifeRecord, updateWildlifeRecord, approveWildlifeRecord, rejectWildlifeRecord, getUserRole, uploadWildlifePhoto, archiveWildlifeRecord, type WildlifeRecord, type UpdateWildlifeRecord } from '../services/wildlifeRecords';
 import { useAuth } from '../context/AuthContext';
 import { useMapNavigation } from '../context/MapNavigationContext';
 import * as XLSX from 'xlsx';
 
 interface WildlifeRescueStatisticsProps {
   showPendingOnly?: boolean;
+  environmentalBg?: boolean;
 }
 
-const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ showPendingOnly = false }) => {
+const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ showPendingOnly = false, environmentalBg = false }) => {
   const { user } = useAuth();
   const [resolvedRole, setResolvedRole] = useState<string | null>((user?.user_metadata as any)?.role || null);
   const theme = useTheme();
@@ -68,11 +71,14 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any[]>([]);
-  const [printDateFrom, setPrintDateFrom] = useState('');
-  const [printDateTo, setPrintDateTo] = useState('');
   // Reject confirmation dialog
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [recordToReject, setRecordToReject] = useState<WildlifeRecord | null>(null);
+  // Approval preview modal
+  const [approvalPreviewOpen, setApprovalPreviewOpen] = useState(false);
+  const [recordToApprove, setRecordToApprove] = useState<WildlifeRecord | null>(null);
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+  const approvalContentRef = useRef<HTMLDivElement>(null);
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,17 +89,27 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [printDateFrom, setPrintDateFrom] = useState('');
+  const [printDateTo, setPrintDateTo] = useState('');
   
   // Edit dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<WildlifeRecord | null>(null);
   const [editFormData, setEditFormData] = useState<UpdateWildlifeRecord>({});
+  const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
+  const [editPhotoPreview, setEditPhotoPreview] = useState<string | null>(null);
+  // Visible species input value (prevents cursor jump and keeps UX smooth)
+  const [editSpeciesInput, setEditSpeciesInput] = useState<string>('');
+  // iNaturalist species autocomplete (edit modal)
+  const [editSpeciesOptions, setEditSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
+  const [editSpeciesLoading, setEditSpeciesLoading] = useState(false);
+  const [showEditSpeciesDropdown, setShowEditSpeciesDropdown] = useState(false);
   
   const [editError, setEditError] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
-  const [speciesOptions, setSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
-  const [speciesLoading, setSpeciesLoading] = useState(false);
-  const [showSpeciesDropdown, setShowSpeciesDropdown] = useState(false);
+  // No-saved-form dialog state
+  const [noFormDialogOpen, setNoFormDialogOpen] = useState(false);
+  const [recordForNoForm, setRecordForNoForm] = useState<WildlifeRecord | null>(null);
   
   // Success notification state
   const [successSnackbar, setSuccessSnackbar] = useState<{
@@ -112,6 +128,14 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     open: false,
     message: '',
   });
+
+  // View details dialog
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [recordToView, setRecordToView] = useState<WildlifeRecord | null>(null);
+
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState<WildlifeRecord | null>(null);
 
   // Resolve role from DB if not in auth metadata
   useEffect(() => {
@@ -176,20 +200,78 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   };
 
   // Handle delete record
-  const handleDeleteRecord = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this wildlife record?')) {
-      try {
-        await deleteWildlifeRecord(id);
-        setWildlifeRecords(prev => prev.filter(record => record.id !== id));
-      } catch (error) {
-        console.error('Error deleting wildlife record:', error);
-      }
+  const handleOpenDeleteDialog = (record: WildlifeRecord) => {
+    setRecordToDelete(record);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setRecordToDelete(null);
+  };
+
+  const handleDeleteRecord = async () => {
+    if (!recordToDelete) return;
+
+    const recordName = recordToDelete.species_name || 'record';
+
+    try {
+      // Archive before delete
+      try { await archiveWildlifeRecord(recordToDelete); } catch (e) { console.error('Archive failed, proceeding to delete:', e); }
+
+      await deleteWildlifeRecord(recordToDelete.id);
+      setWildlifeRecords(prev => prev.filter(record => record.id !== recordToDelete.id));
+
+      showSuccess(`Wildlife record "${recordName}" has been archived and deleted.`);
+      handleCloseDeleteDialog();
+    } catch (error) {
+      console.error('Error deleting record:', error);
+      setErrorSnackbar({
+        open: true,
+        message: 'Failed to delete wildlife record',
+      });
+      handleCloseDeleteDialog();
     }
   };
 
   // Handle edit record
   const handleEditRecord = (record: WildlifeRecord) => {
     setEditingRecord(record);
+    
+    // Extract country code and phone number from contact_number
+    const contactNumber = record.contact_number || '';
+    let countryCode = '+63';
+    let phoneNumber = '';
+    if (contactNumber) {
+      if (contactNumber.startsWith('+63')) {
+        countryCode = '+63';
+        phoneNumber = contactNumber.replace(/^\+63/, '');
+      } else if (contactNumber.startsWith('+1')) {
+        countryCode = '+1';
+        phoneNumber = contactNumber.replace(/^\+1/, '');
+      } else if (contactNumber.startsWith('+44')) {
+        countryCode = '+44';
+        phoneNumber = contactNumber.replace(/^\+44/, '');
+      } else if (contactNumber.startsWith('+81')) {
+        countryCode = '+81';
+        phoneNumber = contactNumber.replace(/^\+81/, '');
+      } else if (contactNumber.startsWith('+86')) {
+        countryCode = '+86';
+        phoneNumber = contactNumber.replace(/^\+86/, '');
+      } else if (contactNumber.startsWith('+82')) {
+        countryCode = '+82';
+        phoneNumber = contactNumber.replace(/^\+82/, '');
+      } else if (contactNumber.startsWith('+65')) {
+        countryCode = '+65';
+        phoneNumber = contactNumber.replace(/^\+65/, '');
+      } else if (contactNumber.startsWith('+60')) {
+        countryCode = '+60';
+        phoneNumber = contactNumber.replace(/^\+60/, '');
+      } else {
+        phoneNumber = contactNumber;
+      }
+    }
+    
     setEditFormData({
       species_name: record.species_name,
       status: record.status as 'reported' | 'rescued' | 'turned over' | 'released',
@@ -197,10 +279,81 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       municipality: record.municipality || '',
       reporter_name: record.reporter_name || '',
       contact_number: record.contact_number || '',
+      photo_url: record.photo_url || '',
+      country_code: countryCode,
+      phone_number: phoneNumber,
     });
+    setEditPhotoFile(null);
+    setEditPhotoPreview(record.photo_url || null);
     setEditError(null);
+    // Initialize the visible species input from existing record fields
+    const combined =
+      [record.scientific_name, record.species_name].filter(Boolean).join(' / ') ||
+      (record.species_name || '');
+    setEditSpeciesInput(combined);
     setEditDialogOpen(true);
   };
+
+  // Load initial species suggestions when opening Edit dialog (mirror add-marker UX)
+  useEffect(() => {
+    if (!editDialogOpen) return;
+    let cancelled = false;
+    const loadInitial = async () => {
+      setEditSpeciesLoading(true);
+      try {
+        const url = `https://api.inaturalist.org/v1/taxa/autocomplete?q=wildlife&per_page=12`;
+        const res = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled) {
+            const options = (data?.results || [])
+              .map((r: any) => ({ label: r?.name || '', common: r?.preferred_common_name || undefined }))
+              .filter((o: any) => o.label);
+            setEditSpeciesOptions(options);
+            setShowEditSpeciesDropdown(true);
+          }
+        }
+      } catch {
+      } finally {
+        if (!cancelled) setEditSpeciesLoading(false);
+      }
+    };
+    const t = setTimeout(loadInitial, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [editDialogOpen]);
+
+  // Debounced iNaturalist query for edit species field
+  useEffect(() => {
+    if (!editDialogOpen) return;
+    const qRaw = (editSpeciesInput || '').trim();
+    // If user has typed combined format, search by scientific part before '/'
+    const query = qRaw.includes('/') ? qRaw.split('/')[0].trim() : qRaw;
+    if (query.length < 2) {
+      setEditSpeciesOptions([]);
+      setEditSpeciesLoading(false);
+      setShowEditSpeciesDropdown(false);
+      return;
+    }
+    setEditSpeciesLoading(true);
+    setShowEditSpeciesDropdown(true);
+    const controller = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const url = `https://api.inaturalist.org/v1/taxa/autocomplete?q=${encodeURIComponent(query)}&per_page=8`;
+        const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: controller.signal });
+        if (!res.ok) throw new Error('inat autocomplete failed');
+        const data = await res.json();
+        const options = (data?.results || [])
+          .map((r: any) => ({ label: r?.name || '', common: r?.preferred_common_name || undefined }))
+          .filter((o: any) => o.label);
+        setEditSpeciesOptions(options);
+      } catch {
+      } finally {
+        setEditSpeciesLoading(false);
+      }
+    }, 350);
+    return () => { clearTimeout(t); controller.abort(); };
+  }, [editDialogOpen, editSpeciesInput]);
 
   // Handle edit form submission
   const handleEditSubmit = async () => {
@@ -210,19 +363,76 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     setEditLoading(true);
 
     try {
-      const updatedRecord = await updateWildlifeRecord(editingRecord.id, editFormData);
+      // Parse combined "Scientific / Common" input into separate fields if needed
+      const parsed = { ...editFormData };
+      const raw = (editSpeciesInput || '').trim();
+      if (raw.includes('/')) {
+        const parts = raw.split('/');
+        const sci = parts[0]?.trim();
+        const common = parts.slice(1).join('/').trim();
+        if (sci) parsed.scientific_name = sci;
+        if (common) parsed.species_name = common;
+      } else if (raw) {
+        // If only one value provided, treat it as the species_name (common) unless we already have scientific_name set
+        if (!parsed.species_name) parsed.species_name = raw;
+      }
+
+      // Get the current record from the list to ensure we have the latest photo_url
+      const currentRecord = wildlifeRecords.find(r => r.id === editingRecord.id);
+      const originalPhotoUrl = currentRecord?.photo_url || editingRecord.photo_url;
+      
+      // Filter out phone_number and country_code as they're not database columns
+      // Also exclude photo_url from form data since we'll handle it separately
+      const { phone_number, country_code, photo_url: formPhotoUrl, ...baseUpdateData } = parsed;
+      
+      // Build update data
+      const updateData: UpdateWildlifeRecord = {
+        ...baseUpdateData,
+      };
+      
+      // Handle photo upload/removal
+      if (editPhotoFile) {
+        // New photo was selected - upload it
+        try {
+          const uploadedPhotoUrl = await uploadWildlifePhoto(editPhotoFile, editingRecord.id);
+          if (uploadedPhotoUrl) {
+            updateData.photo_url = uploadedPhotoUrl;
+          }
+        } catch (photoError) {
+          console.error('Error uploading photo:', photoError);
+          setEditError('Failed to upload photo. Please try again.');
+          setEditLoading(false);
+          return;
+        }
+      } else if (editPhotoPreview === null && originalPhotoUrl) {
+        // Photo was removed - set to null
+        updateData.photo_url = null as any;
+      } else if (!editPhotoFile && originalPhotoUrl) {
+        // No new photo selected and no removal - preserve original photo_url
+        // CRITICAL: Always preserve photo_url from original record to prevent ERR_FILE_NOT_FOUND
+        if (typeof originalPhotoUrl === 'string' && originalPhotoUrl.trim() !== '') {
+          updateData.photo_url = originalPhotoUrl;
+        }
+      }
+      
+      const updatedRecord = await updateWildlifeRecord(editingRecord.id, updateData);
       setWildlifeRecords(prev => 
         prev.map(record => record.id === editingRecord.id ? updatedRecord : record)
       );
+      
+      // Clean up blob URL if it exists
+      if (editPhotoPreview && editPhotoPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(editPhotoPreview);
+      }
+      
       setEditDialogOpen(false);
       setEditingRecord(null);
       setEditFormData({});
+      setEditPhotoFile(null);
+      setEditPhotoPreview(null);
       
       // Show success popup
-      setSuccessSnackbar({
-        open: true,
-        message: `Wildlife record for "${updatedRecord.species_name}" has been updated successfully!`,
-      });
+      showSuccess(`Wildlife record for "${updatedRecord.species_name}" has been updated successfully!`);
     } catch (error) {
       console.error('Error updating wildlife record:', error);
       setEditError(error instanceof Error ? error.message : 'Failed to update wildlife record');
@@ -233,63 +443,101 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
 
   // Handle edit dialog close
   const handleEditDialogClose = () => {
+    // Clean up blob URL if it exists
+    if (editPhotoPreview && editPhotoPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(editPhotoPreview);
+    }
     setEditDialogOpen(false);
     setEditingRecord(null);
     setEditFormData({});
+    setEditPhotoFile(null);
+    setEditPhotoPreview(null);
     setEditError(null);
-    setSpeciesOptions([]);
-    setShowSpeciesDropdown(false);
   };
 
-  // Species autocomplete for edit mode
+  // Cleanup blob URLs on unmount
   useEffect(() => {
-    const query = editFormData.species_name?.trim() || "";
-    if (!editDialogOpen || query.length < 2 || !showSpeciesDropdown) {
-      setSpeciesOptions([]);
-      setSpeciesLoading(false);
-      setShowSpeciesDropdown(false);
-      return;
-    }
-    setSpeciesLoading(true);
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      try {
-        const url = `https://api.inaturalist.org/v1/taxa/autocomplete?q=${encodeURIComponent(query)}&per_page=8`;
-        const res = await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
-        if (!res.ok) throw new Error("inat autocomplete failed");
-        const data = await res.json();
-        const options = (data?.results || [])
-          .map((r: any) => ({ label: r?.name || "", common: r?.preferred_common_name || undefined }))
-          .filter((o: any) => o.label);
-        setSpeciesOptions(options);
-      } catch {
-        // ignore errors
-      } finally {
-        setSpeciesLoading(false);
-      }
-    }, 350);
     return () => {
-      clearTimeout(timer);
-      controller.abort();
+      if (editPhotoPreview && editPhotoPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(editPhotoPreview);
+      }
     };
-  }, [editFormData.species_name, editDialogOpen, showSpeciesDropdown]);
+  }, [editPhotoPreview]);
 
-  // Handle approve record
-  const handleApproveRecord = async (id: string) => {
+
+  // Handle approve record - open preview modal
+  const handleApproveClick = (record: WildlifeRecord) => {
+    setRecordToApprove(record);
+    setApprovalPreviewOpen(true);
+    setHasScrolledToBottom(false);
+  };
+
+  // Handle scroll in approval modal
+  const handleApprovalScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const scrollTop = target.scrollTop;
+    const scrollHeight = target.scrollHeight;
+    const clientHeight = target.clientHeight;
+    
+    // Check if scrolled to bottom (with 50px threshold)
+    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 50;
+    setHasScrolledToBottom(isAtBottom);
+  };
+
+  // Final approve function
+  const handleFinalApprove = async () => {
+    if (!recordToApprove) return;
+    
     try {
-      const updatedRecord = await approveWildlifeRecord(id);
+      const updatedRecord = await approveWildlifeRecord(recordToApprove.id);
       setWildlifeRecords(prev => 
-        prev.map(record => record.id === id ? updatedRecord : record)
+        prev.map(record => record.id === recordToApprove.id ? updatedRecord : record)
       );
-      setSuccessSnackbar({
-        open: true,
-        message: 'Wildlife record has been approved successfully! Refreshing data...',
-      });
+      showSuccess('Wildlife record has been approved successfully! Refreshing data...');
+      
+      // Close modal
+      setApprovalPreviewOpen(false);
+      setRecordToApprove(null);
+      setHasScrolledToBottom(false);
       
       // Refresh the entire site after successful approval
       setTimeout(() => {
         window.location.reload();
       }, 1500);
+    } catch (error) {
+      console.error('Error approving wildlife record:', error);
+      setErrorSnackbar({
+        open: true,
+        message: 'Failed to approve wildlife record',
+      });
+    }
+  };
+
+  // Approve and print function
+  const handleApproveAndPrint = async () => {
+    if (!recordToApprove) return;
+    
+    try {
+      const updatedRecord = await approveWildlifeRecord(recordToApprove.id);
+      setWildlifeRecords(prev => 
+        prev.map(record => record.id === recordToApprove.id ? updatedRecord : record)
+      );
+      showSuccess('Wildlife record has been approved successfully! Opening print form...');
+      
+      // Close modal
+      setApprovalPreviewOpen(false);
+      const recordToPrint = recordToApprove;
+      setRecordToApprove(null);
+      setHasScrolledToBottom(false);
+      
+      // Open print form
+      setTimeout(() => {
+        handlePrintRecord(recordToPrint);
+        // Refresh the entire site after opening print form
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      }, 500);
     } catch (error) {
       console.error('Error approving wildlife record:', error);
       setErrorSnackbar({
@@ -311,7 +559,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     try {
       const updatedRecord = await rejectWildlifeRecord(recordToReject.id);
       setWildlifeRecords(prev => prev.map(record => record.id === recordToReject.id ? updatedRecord : record));
-      setSuccessSnackbar({ open: true, message: 'Wildlife record has been rejected successfully! Refreshing data...' });
+      showSuccess('Wildlife record has been rejected successfully! Refreshing data...');
       setRejectDialogOpen(false);
       setRecordToReject(null);
       setTimeout(() => { window.location.reload(); }, 1500);
@@ -325,7 +573,8 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
   const openPrintAndReject = async () => {
     try {
       const idParam = recordToReject?.id ? `?recordId=${recordToReject.id}` : '';
-      window.open(`/forms/denr-form.html${idParam}`, '_blank');
+      const denrUrl = new URL('./denr-form.html', import.meta.url).toString();
+      window.open(`${denrUrl}${idParam}`, '_blank');
     } catch {}
     await proceedReject();
   };
@@ -336,14 +585,20 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       const key = `denrForm:${rec.id}`;
       const exists = !!localStorage.getItem(key);
       if (!exists) {
-        alert('No saved form exists yet for this record. You can fill and save from the form page.');
+        setRecordForNoForm(rec);
+        setNoFormDialogOpen(true);
         return; // do not open if nothing saved yet
       }
     } catch {}
-    window.open(`/forms/denr-form.html?recordId=${rec.id}`,'_blank');
+    const denrUrl = new URL('./denr-form.html', import.meta.url).toString();
+    window.open(`${denrUrl}?recordId=${rec.id}`,'_blank');
   };
 
-
+  // Open read-only details dialog for a record (from list action)
+  const handleViewDetails = (rec: WildlifeRecord) => {
+    setRecordToView(rec);
+    setDetailsDialogOpen(true);
+  };
 
   // Handle Excel export preview
   const handleExcelPreview = () => {
@@ -368,7 +623,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       'Status': formatStatusLabel(record.status),
       'Location': record.barangay || '',
       'Reporter': record.reporter_name || '',
-      'Contact': record.reporter_contact || '',
+      'Contact': record.contact_number || record.reporter_contact || '',
       'Date Reported': record.timestamp_captured ? new Date(record.timestamp_captured).toLocaleDateString() : '',
       'Approval Status': record.approval_status || '',
       'Notes': record.notes || ''
@@ -517,7 +772,8 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     } catch {}
 
     // Open the DENR form template with recordId in a new tab
-    const templatePath = `/forms/denr-form.html?recordId=${record.id}`;
+    const denrUrl = new URL('./denr-form.html', import.meta.url).toString();
+    const templatePath = `${denrUrl}?recordId=${record.id}`;
     const printWindow = window.open(templatePath, '_blank');
     
     if (!printWindow) {
@@ -912,28 +1168,30 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
     );
   }
 
+  function showSuccess(message: string, delayMs: number = 700) {
+    window.setTimeout(() => {
+      setSuccessSnackbar({ open: true, message });
+    }, delayMs);
+  }
+
   return (
     <Box sx={{ width: '100%', p: 3 }}>
       {/* Header with Print and Back to Map Buttons */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1" sx={{ color: theme.palette.primary.main }}>
+        <Typography variant="h4" component="h1" sx={{ color: '#2e7d32 !important' }}>
           Wildlife Record List
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
-            variant="outlined"
+            variant="contained"
             startIcon={<MapIcon />}
             onClick={handleBackToMap}
             sx={{
               textTransform: 'none',
               fontWeight: 500,
-              borderColor: 'secondary.main',
-              color: 'secondary.main',
-              '&:hover': {
-                backgroundColor: 'secondary.main',
-                color: 'white',
-                borderColor: 'secondary.main',
-              }
+              bgcolor: '#4caf50',
+              color: '#fff',
+              '&:hover': { bgcolor: '#2e7d32' },
             }}
           >
             Back to Map
@@ -942,9 +1200,10 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             variant="contained"
             startIcon={<PrintIcon />}
             onClick={handlePrint}
-            sx={{ 
-              bgcolor: theme.palette.primary.main,
-              '&:hover': { bgcolor: theme.palette.primary.dark }
+            sx={{
+              bgcolor: '#4caf50',
+              color: '#fff',
+              '&:hover': { bgcolor: '#2e7d32' }
             }}
           >
             Print
@@ -954,11 +1213,24 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             startIcon={<FileDownloadIcon />}
             onClick={() => setExportDialogOpen(true)}
             sx={{ 
-              bgcolor: theme.palette.success.main,
-              '&:hover': { bgcolor: theme.palette.success.dark }
+              bgcolor: '#4caf50',
+              color: '#fff',
+              '&:hover': { bgcolor: '#2e7d32' }
             }}
           >
             Export Excel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => window.open('/archived-records', '_blank')}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 500,
+              bgcolor: theme.palette.success.main,
+              '&:hover': { bgcolor: '#4caf50' },
+            }}
+          >
+            View Archive
           </Button>
         </Box>
       </Box>
@@ -976,6 +1248,15 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               startIcon={filtersExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
               onClick={() => setFiltersExpanded(!filtersExpanded)}
               size="small"
+              sx={{
+                borderColor: '#4caf50',
+                color: '#1b5e20',
+                '&:hover': {
+                  backgroundColor: '#4caf50',
+                  color: 'white',
+                  borderColor: '#4caf50',
+                }
+              }}
             >
               {filtersExpanded ? 'Hide Filters' : 'Show Filters'}
             </Button>
@@ -1025,12 +1306,31 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       setSpeciesFilter(e.target.value);
                       setPage(0);
                     }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: '#1b5e20',
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#1b5e20',
+                      },
+                    }}
                   />
                 </Box>
                 
                 <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
                   <FormControl fullWidth>
-                    <InputLabel>Status</InputLabel>
+                    <InputLabel sx={{ color: '#1b5e20', '&.Mui-focused': { color: '#1b5e20' } }}>Status</InputLabel>
                     <Select
                       value={statusFilter}
                       onChange={(e) => {
@@ -1038,7 +1338,18 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                         setPage(0);
                       }}
                       label="Status"
-                      sx={{ minWidth: 200 }}
+                      sx={{ 
+                        minWidth: 200,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#4caf50',
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#4caf50',
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#4caf50',
+                        },
+                      }}
                     >
                       <MenuItem value="">All Statuses</MenuItem>
                       <MenuItem value="reported">Reported</MenuItem>
@@ -1051,7 +1362,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                 
                 <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
                   <FormControl fullWidth>
-                    <InputLabel>Approval Status</InputLabel>
+                    <InputLabel sx={{ color: '#1b5e20', '&.Mui-focused': { color: '#1b5e20' } }}>Approval Status</InputLabel>
                     <Select
                       value={approvalFilter}
                       onChange={(e) => {
@@ -1059,7 +1370,18 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                         setPage(0);
                       }}
                       label="Approval Status"
-                      sx={{ minWidth: 200 }}
+                      sx={{ 
+                        minWidth: 200,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#4caf50',
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#4caf50',
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#4caf50',
+                        },
+                      }}
                     >
                       <MenuItem value="">All Approval Statuses</MenuItem>
                       <MenuItem value="pending">Pending</MenuItem>
@@ -1079,6 +1401,25 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       setLocationFilter(e.target.value);
                       setPage(0);
                     }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: '#1b5e20',
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#1b5e20',
+                      },
+                    }}
                   />
                 </Box>
               </Box>
@@ -1095,6 +1436,25 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       setPage(0);
                     }}
                     InputLabelProps={{ shrink: true }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: '#1b5e20',
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#1b5e20',
+                      },
+                    }}
                   />
                 </Box>
                 
@@ -1109,6 +1469,25 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       setPage(0);
                     }}
                     InputLabelProps={{ shrink: true }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#4caf50',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: '#1b5e20',
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#1b5e20',
+                      },
+                    }}
                   />
                 </Box>
               </Box>
@@ -1118,7 +1497,45 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
           {/* Results Summary */}
           <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography variant="body2" color="text.secondary">
-              Showing {filteredRecords.length} of {wildlifeRecords.length} records
+              {(() => {
+                const start = page * rowsPerPage + 1;
+                const end = Math.min(page * rowsPerPage + rowsPerPage, filteredRecords.length);
+                const total = filteredRecords.length;
+                // Calculate approved records count (matching analytics logic)
+                const approvedCount = wildlifeRecords.filter(r => r.approval_status === 'approved' || r.user_id !== null).length;
+                const totalRecords = wildlifeRecords.length;
+                
+                if (total === 0) {
+                  return 'No records found';
+                }
+                
+                // Build the message
+                let message = '';
+                if (start === end) {
+                  message = `Showing record ${start} of ${total}`;
+                } else {
+                  message = `Showing ${start}-${end} of ${total} records`;
+                }
+                
+                // Add context about total and approved counts
+                if (!hasActiveFilters) {
+                  // When no filters, show total vs approved to match analytics
+                  if (totalRecords !== approvedCount) {
+                    message += ` (${approvedCount} approved, ${totalRecords} total)`;
+                  } else {
+                    message += ` (${totalRecords} total)`;
+                  }
+                } else {
+                  // When filters are active, show filtered vs total
+                  message += ` (${totalRecords} total`;
+                  if (totalRecords !== approvedCount) {
+                    message += `, ${approvedCount} approved`;
+                  }
+                  message += ')';
+                }
+                
+                return message;
+              })()}
             </Typography>
             {hasActiveFilters && (
               <Chip
@@ -1214,6 +1631,7 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             {paginatedRecords.map((record, index) => (
               <TableRow 
                 key={record.id}
+                onClick={() => handleViewDetails(record)}
                 sx={{ 
                   bgcolor: index % 2 === 0 
                     ? 'background.paper' 
@@ -1225,11 +1643,12 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                       ? 'rgba(255, 255, 255, 0.05)' 
                       : 'rgba(0, 0, 0, 0.04)' 
                   },
-                  borderBottom: `1px solid ${theme.palette.divider}`
+                  borderBottom: `1px solid ${theme.palette.divider}`,
+                  cursor: 'pointer'
                 }}
               >
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2, fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                  {record.id}
+                  {record.speciespf_id || record.id}
                 </TableCell>
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
                   <Typography variant="body2" sx={{ fontWeight: 500, color: 'text.primary' }}>
@@ -1319,103 +1738,165 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                 </TableCell>
                 <TableCell sx={{ borderBottom: `1px solid ${theme.palette.divider}`, py: 2 }}>
                   <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <Button
-                      variant="text"
-                      size="small"
-                      onClick={() => handleLocationClick(record)}
-                      sx={{ 
-                        color: theme.palette.primary.main,
-                        textTransform: 'none',
-                        fontWeight: 500,
-                        '&:hover': { 
-                          bgcolor: theme.palette.mode === 'dark' 
-                            ? 'rgba(25, 118, 210, 0.1)' 
-                            : 'rgba(25, 118, 210, 0.04)' 
-                        }
-                      }}
-                    >
-                      View Map
-                    </Button>
-                    {resolvedRole === 'enforcement' && (
+                    <Tooltip title="View location">
                       <IconButton
                         size="small"
-                        onClick={() => handleEditRecord(record)}
+                        onClick={(e) => { e.stopPropagation(); handleLocationClick(record); }}
+                        sx={{ 
+                          color: '#4caf50',
+                          '&:hover': { 
+                            bgcolor: theme.palette.mode === 'dark' 
+                              ? 'rgba(76, 175, 80, 0.12)' 
+                              : 'rgba(76, 175, 80, 0.08)'
+                          }
+                        }}
+                      >
+                        <LocationIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    {resolvedRole === 'enforcement' && (
+                      <Tooltip
+                        title={record.approval_status === 'rejected' ? 'Rejected reports cannot be edited' : 'Edit'}
+                      >
+                        <span>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => { e.stopPropagation(); handleEditRecord(record); }}
+                            disabled={record.approval_status === 'rejected'}
+                            sx={{ 
+                              color: 'text.secondary',
+                              opacity: record.approval_status === 'rejected' ? 0.5 : 1,
+                              cursor: record.approval_status === 'rejected' ? 'not-allowed' : 'pointer',
+                              '&:hover': { 
+                                bgcolor: record.approval_status === 'rejected'
+                                  ? 'transparent'
+                                  : (theme.palette.mode === 'dark' 
+                                      ? 'rgba(25, 118, 210, 0.1)' 
+                                      : 'rgba(25, 118, 210, 0.04)'),
+                                color: record.approval_status === 'rejected' ? 'text.secondary' : theme.palette.primary.main
+                              }
+                            }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    )}
+                    <Tooltip title="Print" enterDelay={500}>
+                      <IconButton
+                        size="small"
+                        onClick={(e) => { e.stopPropagation(); handlePrintRecord(record); }}
                         sx={{ 
                           color: 'text.secondary',
                           '&:hover': { 
                             bgcolor: theme.palette.mode === 'dark' 
-                              ? 'rgba(25, 118, 210, 0.1)' 
-                              : 'rgba(25, 118, 210, 0.04)',
-                            color: theme.palette.primary.main
+                              ? 'rgba(76, 175, 80, 0.1)' 
+                              : 'rgba(76, 175, 80, 0.04)',
+                            color: '#4caf50'
                           }
                         }}
                       >
-                        <EditIcon fontSize="small" />
+                        <PrintIcon fontSize="small" />
                       </IconButton>
-                    )}
-                    <IconButton
-                      size="small"
-                      onClick={() => handlePrintRecord(record)}
-                      sx={{ 
-                        color: 'text.secondary',
-                        '&:hover': { 
-                          bgcolor: theme.palette.mode === 'dark' 
-                            ? 'rgba(76, 175, 80, 0.1)' 
-                            : 'rgba(76, 175, 80, 0.04)',
-                          color: '#4caf50'
-                        }
-                      }}
-                    >
-                      <PrintIcon fontSize="small" />
-                    </IconButton>
+                    </Tooltip>
                     {record.approval_status === 'pending' && record.user_id === null && (
                       <>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<CheckCircle fontSize="small" />}
-                          onClick={() => handleApproveRecord(record.id)}
-                          sx={{ 
-                            color: '#4caf50',
-                            borderColor: '#4caf50',
-                            textTransform: 'none',
-                            fontWeight: 500,
-                            '&:hover': { 
-                              bgcolor: theme.palette.mode === 'dark' 
-                                ? 'rgba(76, 175, 80, 0.1)' 
-                                : 'rgba(76, 175, 80, 0.04)',
-                              borderColor: '#4caf50'
-                            }
-                          }}
-                        >
-                          Approved
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<Close fontSize="small" />}
-                          onClick={() => handleRejectRecord(record.id)}
-                          sx={{ 
-                            color: theme.palette.error.main,
-                            borderColor: theme.palette.error.main,
-                            textTransform: 'none',
-                            fontWeight: 500,
-                            '&:hover': { 
-                              bgcolor: theme.palette.mode === 'dark' 
-                                ? 'rgba(239, 68, 68, 0.1)' 
-                                : 'rgba(239, 68, 68, 0.04)',
-                              borderColor: theme.palette.error.main
-                            }
-                          }}
-                        >
-                          Rejected
-                        </Button>
+                        <Tooltip title={resolvedRole === 'cenro' ? 'Only enforcement can approve or reject' : ''}>
+                          <span>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<CheckCircle fontSize="small" />}
+                              onClick={(e) => { e.stopPropagation(); handleApproveClick(record); }}
+                              disabled={resolvedRole === 'cenro'}
+                              sx={{ 
+                                color: '#4caf50',
+                                borderColor: '#4caf50',
+                                textTransform: 'none',
+                                fontWeight: 500,
+                                '&:hover': { 
+                                  bgcolor: theme.palette.mode === 'dark' 
+                                    ? 'rgba(76, 175, 80, 0.1)' 
+                                    : 'rgba(76, 175, 80, 0.04)',
+                                  borderColor: '#4caf50'
+                                },
+                                '&.Mui-disabled': {
+                                  color: 'rgba(0, 0, 0, 0.26)',
+                                  borderColor: 'rgba(0, 0, 0, 0.12)',
+                                }
+                              }}
+                            >
+                              Approve
+                            </Button>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title={resolvedRole === 'cenro' ? 'Only enforcement can approve or reject' : ''}>
+                          <span>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<Close fontSize="small" />}
+                              onClick={(e) => { e.stopPropagation(); handleRejectRecord(record.id); }}
+                              disabled={resolvedRole === 'cenro'}
+                              sx={{ 
+                                color: theme.palette.error.main,
+                                borderColor: theme.palette.error.main,
+                                textTransform: 'none',
+                                fontWeight: 500,
+                                '&:hover': { 
+                                  bgcolor: theme.palette.mode === 'dark' 
+                                    ? 'rgba(239, 68, 68, 0.1)' 
+                                    : 'rgba(239, 68, 68, 0.04)',
+                                  borderColor: theme.palette.error.main
+                                },
+                                '&.Mui-disabled': {
+                                  color: 'rgba(0, 0, 0, 0.26)',
+                                  borderColor: 'rgba(0, 0, 0, 0.12)',
+                                }
+                              }}
+                            >
+                              Reject
+                            </Button>
+                          </span>
+                        </Tooltip>
                       </>
                     )}
+                    {resolvedRole === 'enforcement' && (
+                      <Tooltip title="Delete">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => { e.stopPropagation(); handleOpenDeleteDialog(record); }}
+                          sx={{ 
+                            color: '#ff1744',
+                            '&:hover': { 
+                              bgcolor: 'rgba(255, 23, 68, 0.08)'
+                            }
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    <Tooltip title="View details">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => { e.stopPropagation(); handleViewDetails(record); }}
+                        sx={{ 
+                          color: theme.palette.primary.main,
+                          '&:hover': { 
+                            bgcolor: theme.palette.mode === 'dark' 
+                              ? 'rgba(25, 118, 210, 0.1)' 
+                              : 'rgba(25, 118, 210, 0.04)'
+                          }
+                        }}
+                      >
+                        <InfoOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                     <Button
                       size="small"
                       variant="text"
-                      onClick={() => handleViewForm(record)}
+                      onClick={(e) => { e.stopPropagation(); handleViewForm(record); }}
                       sx={{ 
                         color: theme.palette.primary.main,
                         textTransform: 'none',
@@ -1429,23 +1910,6 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
                     >
                       View Form
                     </Button>
-                    {resolvedRole === 'enforcement' && (
-                      <Button
-                        size="small"
-                        variant="text"
-                        onClick={() => handleDeleteRecord(record.id)}
-                        sx={{ 
-                          color: '#ff1744 !important',
-                          textTransform: 'none',
-                          fontWeight: 700,
-                          '&:hover': { 
-                            bgcolor: 'rgba(255, 23, 68, 0.08)'
-                          }
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    )}
                   </Box>
                 </TableCell>
               </TableRow>
@@ -1465,19 +1929,522 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
         />
       </TableContainer>
 
-      {/* Reject Confirmation Dialog */}
-      <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Create report and reject</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ mb: 1 }}>
-            Opening the printable form in a new tab, then this record will be rejected.
+      {/* Approval Preview Modal */}
+      <Dialog 
+        open={approvalPreviewOpen} 
+        onClose={() => {
+          setApprovalPreviewOpen(false);
+          setRecordToApprove(null);
+          setHasScrolledToBottom(false);
+        }} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: environmentalBg
+              ? (theme.palette.mode === 'light'
+                  ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+                  : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))')
+              : undefined,
+            backgroundRepeat: environmentalBg ? 'no-repeat' : undefined,
+            backgroundSize: environmentalBg ? '100% 100%' : undefined,
+            backgroundAttachment: environmentalBg ? 'fixed' : undefined,
+            height: '85vh',
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 2, textAlign: 'center' }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mb: 2 }}>
+            <Box
+              component="img"
+              src="/images/kinaiyahanlogonobg.png"
+              alt="Kinaiyahan"
+              sx={{ width: 56, height: 56, objectFit: 'contain' }}
+            />
+            <Typography
+              variant="h5"
+              sx={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 800,
+                letterSpacing: '0.3em',
+                color: '#2e7d32 !important',
+                userSelect: 'none',
+                lineHeight: 1,
+              }}
+            >
+              ＫＩＮＡＩＹＡＨＡＮ
+            </Typography>
+          </Stack>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#2e7d32 !important' }}>
+            Review Public Report
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            The site will stay on this page; the print form opens separately.
+          <Typography variant="body2" sx={{ mt: 0.5, color: '#2e7d32 !important' }}>
+            Please review the report details before approving
           </Typography>
+        </DialogTitle>
+        <DialogContent 
+          sx={{ 
+            pt: 3,
+            flex: 1,
+            overflowY: 'auto',
+            position: 'relative',
+            minHeight: 0
+          }}
+          onScroll={handleApprovalScroll}
+          ref={approvalContentRef}
+        >
+          {recordToApprove && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+              {/* Photo Section */}
+              {recordToApprove.photo_url && (
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Photo
+                  </Typography>
+                  <Box
+                    component="img"
+                    src={recordToApprove.photo_url}
+                    alt={recordToApprove.species_name}
+                    sx={{
+                      width: '100%',
+                      maxHeight: 350,
+                      objectFit: 'contain',
+                      borderRadius: 1.5,
+                      border: '1px solid rgba(46, 125, 50, 0.3)',
+                      bgcolor: 'background.default',
+                    }}
+                  />
+                </Card>
+              )}
+
+              {/* Information Grid */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                {/* Species Information */}
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Species Information
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        Species Name
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                        {recordToApprove.species_name}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        Status
+                      </Typography>
+                      <Chip
+                        label={recordToApprove.status}
+                        size="small"
+                        sx={{
+                          borderColor: '#2e7d32',
+                          color: '#2e7d32',
+                          '& .MuiChip-label': {
+                            color: '#2e7d32',
+                          }
+                        }}
+                        variant="outlined"
+                      />
+                    </Box>
+                  </Box>
+                </Card>
+
+                {/* Location Information */}
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Location Information
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    {recordToApprove.barangay && (
+                      <Box>
+                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                          Barangay
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                          {recordToApprove.barangay}
+                        </Typography>
+                      </Box>
+                    )}
+                    {recordToApprove.municipality && (
+                      <Box>
+                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                          Municipality
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                          {recordToApprove.municipality}
+                        </Typography>
+                      </Box>
+                    )}
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        Coordinates
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', color: '#2e7d32 !important' }}>
+                        {recordToApprove.latitude.toFixed(6)}, {recordToApprove.longitude.toFixed(6)}
+                      </Typography>
+                    </Box>
+                    {recordToApprove.has_exif_gps && (
+                      <Chip
+                        label="GPS from Photo EXIF"
+                        size="small"
+                        sx={{
+                          borderColor: '#2e7d32',
+                          color: '#2e7d32',
+                          mt: 0.5,
+                          '& .MuiChip-label': {
+                            color: '#2e7d32',
+                          }
+                        }}
+                        variant="outlined"
+                      />
+                    )}
+                  </Box>
+                </Card>
+              </Box>
+
+              {/* Reporter Information & Date */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                {(recordToApprove.reporter_name || recordToApprove.contact_number) && (
+                  <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                    <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                      Reporter Information
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {recordToApprove.reporter_name && (
+                        <Box>
+                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                            Reporter Name
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                            {recordToApprove.reporter_name}
+                          </Typography>
+                        </Box>
+                      )}
+                      {recordToApprove.contact_number && (
+                        <Box>
+                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                            Contact Number
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                            {recordToApprove.contact_number}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Card>
+                )}
+
+                {/* Report Details */}
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Report Details
+                  </Typography>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                      Date Captured
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                      {new Date(recordToApprove.timestamp_captured).toLocaleString()}
+                    </Typography>
+                  </Box>
+                </Card>
+              </Box>
+            </Box>
+          )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRejectDialogOpen(false)}>Cancel</Button>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 2, flexDirection: 'column', alignItems: 'stretch' }}>
+          {!hasScrolledToBottom && (
+            <Alert 
+              severity="info" 
+              sx={{ 
+                mb: 2, 
+                bgcolor: 'rgba(46, 125, 50, 0.1)',
+                border: '1px solid rgba(46, 125, 50, 0.3)',
+                '& .MuiAlert-icon': {
+                  color: '#2e7d32'
+                },
+                '& .MuiAlert-message': {
+                  color: '#2e7d32'
+                }
+              }}
+            >
+              Please scroll down to review all information before approving.
+            </Alert>
+          )}
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <Button 
+              onClick={() => {
+                setApprovalPreviewOpen(false);
+                setRecordToApprove(null);
+                setHasScrolledToBottom(false);
+              }}
+              variant="outlined"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleFinalApprove} 
+              variant="contained"
+              startIcon={<CheckCircle />}
+              disabled={!hasScrolledToBottom}
+              sx={{
+                bgcolor: hasScrolledToBottom ? '#4caf50' : 'rgba(46, 125, 50, 0.3)',
+                color: hasScrolledToBottom ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                '&:hover': {
+                  bgcolor: hasScrolledToBottom ? '#388e3c' : 'rgba(46, 125, 50, 0.3)'
+                },
+                '&:disabled': {
+                  bgcolor: 'rgba(46, 125, 50, 0.3)',
+                  color: 'rgba(255, 255, 255, 0.5)'
+                }
+              }}
+            >
+              Approve
+            </Button>
+            <Button 
+              onClick={handleApproveAndPrint} 
+              variant="contained"
+              startIcon={<PrintIcon />}
+              disabled={!hasScrolledToBottom}
+              sx={{
+                bgcolor: hasScrolledToBottom ? '#4caf50' : 'rgba(46, 125, 50, 0.3)',
+                color: hasScrolledToBottom ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                '&:hover': {
+                  bgcolor: hasScrolledToBottom ? '#388e3c' : 'rgba(46, 125, 50, 0.3)'
+                },
+                '&:disabled': {
+                  bgcolor: 'rgba(46, 125, 50, 0.3)',
+                  color: 'rgba(255, 255, 255, 0.5)'
+                }
+              }}
+            >
+              Approve and Print Report
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reject Confirmation Dialog */}
+      <Dialog 
+        open={rejectDialogOpen} 
+        onClose={() => setRejectDialogOpen(false)} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: environmentalBg
+              ? (theme.palette.mode === 'light'
+                  ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+                  : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))')
+              : undefined,
+            backgroundRepeat: environmentalBg ? 'no-repeat' : undefined,
+            backgroundSize: environmentalBg ? '100% 100%' : undefined,
+            backgroundAttachment: environmentalBg ? 'fixed' : undefined,
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 2, textAlign: 'center' }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mb: 2 }}>
+            <Box
+              component="img"
+              src="/images/kinaiyahanlogonobg.png"
+              alt="Kinaiyahan"
+              sx={{ width: 56, height: 56, objectFit: 'contain' }}
+            />
+            <Typography
+              variant="h5"
+              sx={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 800,
+                letterSpacing: '0.3em',
+                color: '#2e7d32 !important',
+                userSelect: 'none',
+                lineHeight: 1,
+              }}
+            >
+              ＫＩＮＡＩＹＡＨＡＮ
+            </Typography>
+          </Stack>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#2e7d32 !important' }}>
+            Create Report and Reject
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 0.5, color: '#2e7d32 !important' }}>
+            Opening the printable form in a new tab, then this record will be rejected. The site will stay on this page; the print form opens separately.
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          {recordToReject && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+              {/* Photo Section */}
+              {recordToReject.photo_url && (
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Photo
+                  </Typography>
+                  <Box
+                    component="img"
+                    src={recordToReject.photo_url}
+                    alt={recordToReject.species_name}
+                    sx={{
+                      width: '100%',
+                      maxHeight: 350,
+                      objectFit: 'contain',
+                      borderRadius: 1.5,
+                      border: '1px solid rgba(46, 125, 50, 0.3)',
+                      bgcolor: 'background.default',
+                    }}
+                  />
+                </Card>
+              )}
+
+              {/* Information Grid */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                {/* Species Information */}
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Species Information
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        Species Name
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                        {recordToReject.species_name}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        Status
+                      </Typography>
+                      <Chip
+                        label={recordToReject.status}
+                        size="small"
+                        sx={{
+                          borderColor: '#2e7d32',
+                          color: '#2e7d32',
+                          '& .MuiChip-label': {
+                            color: '#2e7d32',
+                          }
+                        }}
+                        variant="outlined"
+                      />
+                    </Box>
+                  </Box>
+                </Card>
+
+                {/* Location Information */}
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Location Information
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    {recordToReject.barangay && (
+                      <Box>
+                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                          Barangay
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                          {recordToReject.barangay}
+                        </Typography>
+                      </Box>
+                    )}
+                    {recordToReject.municipality && (
+                      <Box>
+                        <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                          Municipality
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                          {recordToReject.municipality}
+                        </Typography>
+                      </Box>
+                    )}
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                        Coordinates
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', color: '#2e7d32 !important' }}>
+                        {recordToReject.latitude.toFixed(6)}, {recordToReject.longitude.toFixed(6)}
+                      </Typography>
+                    </Box>
+                    {recordToReject.has_exif_gps && (
+                      <Chip
+                        label="GPS from Photo EXIF"
+                        size="small"
+                        sx={{
+                          borderColor: '#2e7d32',
+                          color: '#2e7d32',
+                          mt: 0.5,
+                          '& .MuiChip-label': {
+                            color: '#2e7d32',
+                          }
+                        }}
+                        variant="outlined"
+                      />
+                    )}
+                  </Box>
+                </Card>
+              </Box>
+
+              {/* Reporter Information & Date */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                {(recordToReject.reporter_name || recordToReject.contact_number) && (
+                  <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                    <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                      Reporter Information
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {recordToReject.reporter_name && (
+                        <Box>
+                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                            Reporter Name
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                            {recordToReject.reporter_name}
+                          </Typography>
+                        </Box>
+                      )}
+                      {recordToReject.contact_number && (
+                        <Box>
+                          <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                            Contact Number
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                            {recordToReject.contact_number}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Card>
+                )}
+
+                {/* Report Details */}
+                <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>
+                    Report Details
+                  </Typography>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>
+                      Date Captured
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>
+                      {new Date(recordToReject.timestamp_captured).toLocaleString()}
+                    </Typography>
+                  </Box>
+                </Card>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+          <Button onClick={() => setRejectDialogOpen(false)} variant="outlined">Cancel</Button>
           <Button onClick={openPrintAndReject} color="error" variant="contained">Open Print & Reject</Button>
         </DialogActions>
       </Dialog>
@@ -1516,10 +2483,28 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
       </Dialog>
 
       {/* Export Excel Dialog */}
-      <Dialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Export Wildlife Records to Excel</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ mb: 2 }}>
+      <Dialog 
+        open={exportDialogOpen} 
+        onClose={() => setExportDialogOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #a5d6a7 100%)',
+            borderRadius: 2,
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #4caf50 100%)',
+          color: '#1b5e20',
+          fontWeight: 600,
+          borderBottom: '2px solid rgba(76, 175, 80, 0.4)',
+        }}>
+          Export Wildlife Records to Excel
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2, bgcolor: 'rgba(255, 255, 255, 0.7)' }}>
+          <Typography sx={{ mb: 2, color: '#1b5e20', fontWeight: 500 }}>
             This will export wildlife records to a CSV file that can be opened in Excel. 
             You can specify a date range to filter the records.
           </Typography>
@@ -1531,6 +2516,27 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               onChange={(e) => setPrintDateFrom(e.target.value)}
               InputLabelProps={{ shrink: true }}
               fullWidth
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: 'rgba(255, 255, 255, 0.9)',
+                  color: '#1b5e20',
+                  '&:hover fieldset': {
+                    borderColor: '#4caf50',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#4caf50',
+                  },
+                  '& input': {
+                    color: '#1b5e20',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: '#1b5e20',
+                },
+                '& .MuiInputLabel-root.Mui-focused': {
+                  color: '#1b5e20',
+                },
+              }}
             />
             <TextField
               label="To Date"
@@ -1539,28 +2545,96 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               onChange={(e) => setPrintDateTo(e.target.value)}
               InputLabelProps={{ shrink: true }}
               fullWidth
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: 'rgba(255, 255, 255, 0.9)',
+                  color: '#1b5e20',
+                  '&:hover fieldset': {
+                    borderColor: '#4caf50',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#4caf50',
+                  },
+                  '& input': {
+                    color: '#1b5e20',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: '#1b5e20',
+                },
+                '& .MuiInputLabel-root.Mui-focused': {
+                  color: '#1b5e20',
+                },
+              }}
             />
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setExportDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleExcelPreview} variant="contained" color="info">Preview</Button>
+        <DialogActions sx={{ 
+          p: 2, 
+          borderTop: '1px solid rgba(76, 175, 80, 0.2)',
+          bgcolor: 'rgba(255, 255, 255, 0.5)',
+        }}>
+          <Button 
+            onClick={() => setExportDialogOpen(false)}
+            variant="outlined"
+            sx={{ 
+              color: '#1b5e20',
+              borderColor: '#4caf50',
+              fontWeight: 600,
+              '&:hover': { 
+                bgcolor: 'rgba(76, 175, 80, 0.2)',
+                borderColor: '#2e7d32',
+              }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleExcelPreview} 
+            variant="contained"
+            sx={{ 
+              bgcolor: '#4caf50',
+              color: '#fff',
+              fontWeight: 600,
+              '&:hover': { bgcolor: '#2e7d32' }
+            }}
+          >
+            Preview
+          </Button>
         </DialogActions>
       </Dialog>
 
       {/* Preview Dialog */}
-      <Dialog open={previewDialogOpen} onClose={() => setPreviewDialogOpen(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>Preview Excel Export Data</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ mb: 2 }}>
+      <Dialog 
+        open={previewDialogOpen} 
+        onClose={() => setPreviewDialogOpen(false)} 
+        maxWidth="lg" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #a5d6a7 100%)',
+            borderRadius: 2,
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #4caf50 100%)',
+          color: '#1b5e20',
+          fontWeight: 600,
+          borderBottom: '2px solid rgba(76, 175, 80, 0.4)',
+        }}>
+          Preview Excel Export Data
+        </DialogTitle>
+        <DialogContent sx={{ bgcolor: 'rgba(255, 255, 255, 0.7)' }}>
+          <Typography sx={{ mb: 2, color: '#1b5e20', fontWeight: 500 }}>
             Preview of {previewData.length} records that will be exported to Excel:
           </Typography>
-          <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+          <TableContainer component={Paper} sx={{ maxHeight: 400, bgcolor: 'rgba(255, 255, 255, 0.95)' }}>
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
                   {previewData.length > 0 && Object.keys(previewData[0]).map((header) => (
-                    <TableCell key={header} sx={{ fontWeight: 'bold', backgroundColor: 'primary.main', color: 'white' }}>
+                    <TableCell key={header} sx={{ fontWeight: 'bold', backgroundColor: '#4caf50', color: 'white' }}>
                       {header}
                     </TableCell>
                   ))}
@@ -1568,9 +2642,19 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
               </TableHead>
               <TableBody>
                 {previewData.slice(0, 10).map((row, index) => (
-                  <TableRow key={index}>
+                  <TableRow 
+                    key={index}
+                    sx={{
+                      '&:nth-of-type(even)': {
+                        bgcolor: 'rgba(232, 245, 232, 0.5)',
+                      },
+                      '&:hover': {
+                        bgcolor: 'rgba(200, 230, 201, 0.7)',
+                      },
+                    }}
+                  >
                     {Object.values(row).map((value, cellIndex) => (
-                      <TableCell key={cellIndex}>{String(value)}</TableCell>
+                      <TableCell key={cellIndex} sx={{ color: '#1b5e20' }}>{String(value)}</TableCell>
                     ))}
                   </TableRow>
                 ))}
@@ -1578,197 +2662,365 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
             </Table>
           </TableContainer>
           {previewData.length > 10 && (
-            <Typography sx={{ mt: 1, color: 'text.secondary' }}>
+            <Typography sx={{ mt: 1, color: '#1b5e20', fontWeight: 500 }}>
               Showing first 10 records of {previewData.length} total records.
             </Typography>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPreviewDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleExcelExport} variant="contained" color="success">Download</Button>
-        </DialogActions>
-      </Dialog>
-      
-      <Dialog 
-        open={editDialogOpen} 
-        onClose={handleEditDialogClose}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Edit Wildlife Record</DialogTitle>
-        <DialogContent>
-          {editError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {editError}
-            </Alert>
-          )}
-          
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <Box sx={{ position: 'relative' }}>
-              <TextField
-                label="Species Name"
-                value={editFormData.species_name || ''}
-                onChange={(e) => setEditFormData(prev => ({ ...prev, species_name: e.target.value }))}
-                onFocus={() => {
-                  setShowSpeciesDropdown(true);
-                }}
-                onBlur={() => {
-                  // Delay hiding to allow click on dropdown items
-                  setTimeout(() => setShowSpeciesDropdown(false), 200);
-                }}
-                fullWidth
-                required
-              />
-              {showSpeciesDropdown && (
-                <Box sx={{ 
-                  position: 'absolute', 
-                  top: '100%', 
-                  left: 0, 
-                  right: 0, 
-                  zIndex: 1000,
-                  mt: 0.5, 
-                  border: "1px solid", 
-                  borderColor: "divider", 
-                  borderRadius: 1, 
-                  maxHeight: 200, 
-                  overflow: "auto",
-                  bgcolor: 'background.paper',
-                  boxShadow: 2
-                }}>
-                  {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
-                  {!speciesLoading && speciesOptions.length === 0 && editFormData.species_name && editFormData.species_name.length >= 2 && (
-                    <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
-                  )}
-                  {!speciesLoading && speciesOptions.length > 0 && (
-                    <Box>
-                      {speciesOptions.map((opt) => (
-                        <Box
-                          key={`${opt.label}-${opt.common || ""}`}
-                          sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
-                          onMouseDown={(e) => {
-                            e.preventDefault(); // Prevent input blur
-                            setEditFormData(prev => ({ ...prev, species_name: opt.label }));
-                            setShowSpeciesDropdown(false);
-                            setSpeciesOptions([]);
-                          }}
-                        >
-                          {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
-                          <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-                </Box>
-              )}
-            </Box>
-            
-            <FormControl fullWidth>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={editFormData.status || ''}
-                onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value as any }))}
-                label="Status"
-              >
-                <MenuItem value="reported">Reported</MenuItem>
-                <MenuItem value="rescued">Rescued</MenuItem>
-                <MenuItem value="turned over">Turned Over</MenuItem>
-                <MenuItem value="released">Dispersed</MenuItem>
-              </Select>
-            </FormControl>
-            
-            <TextField
-              label="Barangay"
-              value={editFormData.barangay || ''}
-              onChange={(e) => setEditFormData(prev => ({ ...prev, barangay: e.target.value }))}
-              fullWidth
-            />
-            
-            <TextField
-              label="Municipality"
-              value={editFormData.municipality || ''}
-              onChange={(e) => setEditFormData(prev => ({ ...prev, municipality: e.target.value }))}
-              fullWidth
-            />
-            
-            <TextField
-              label="Reporter Name"
-              value={editFormData.reporter_name || ''}
-              onChange={(e) => setEditFormData(prev => ({ ...prev, reporter_name: e.target.value }))}
-              fullWidth
-            />
-            
-            <TextField
-              label="Phone Number"
-              value={editFormData.phone_number || ''}
-              onChange={(e) => {
-                const phoneNumber = e.target.value;
-                const countryCode = editFormData.country_code || '+63';
-                const fullNumber = countryCode + phoneNumber;
-                setEditFormData(prev => ({ 
-                  ...prev, 
-                  phone_number: phoneNumber,
-                  contact_number: fullNumber 
-                }));
-              }}
-              fullWidth
-              InputProps={{
-                startAdornment: (
-                  <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
-                    <FormControl sx={{ minWidth: 80 }}>
-                      <Select
-                        value={editFormData.country_code || '+63'}
-                        onChange={(e) => {
-                          const countryCode = e.target.value;
-                          const phoneNumber = editFormData.phone_number || '';
-                          const fullNumber = countryCode + phoneNumber;
-                          setEditFormData(prev => ({ 
-                            ...prev, 
-                            country_code: countryCode,
-                            contact_number: fullNumber 
-                          }));
-                        }}
-                        variant="standard"
-                        sx={{ 
-                          '&:before': { borderBottom: 'none' },
-                          '&:after': { borderBottom: 'none' },
-                          '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
-                          '& .MuiSelect-select': { 
-                            padding: '0',
-                            fontSize: '14px',
-                            fontWeight: 500,
-                            minHeight: 'auto'
-                          }
-                        }}
-                      >
-                        <MenuItem value="+63">🇵🇭 +63</MenuItem>
-                        <MenuItem value="+1">🇺🇸 +1</MenuItem>
-                        <MenuItem value="+44">🇬🇧 +44</MenuItem>
-                        <MenuItem value="+81">🇯🇵 +81</MenuItem>
-                        <MenuItem value="+86">🇨🇳 +86</MenuItem>
-                        <MenuItem value="+82">🇰🇷 +82</MenuItem>
-                        <MenuItem value="+65">🇸🇬 +65</MenuItem>
-                        <MenuItem value="+60">🇲🇾 +60</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Box>
-                )
-              }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleEditDialogClose} disabled={editLoading}>
+        <DialogActions sx={{ 
+          p: 2, 
+          borderTop: '1px solid rgba(76, 175, 80, 0.2)',
+          bgcolor: 'rgba(255, 255, 255, 0.5)',
+        }}>
+          <Button 
+            onClick={() => setPreviewDialogOpen(false)}
+            sx={{ 
+              color: '#1b5e20',
+              fontWeight: 600,
+              '&:hover': { bgcolor: 'rgba(76, 175, 80, 0.2)' }
+            }}
+          >
             Cancel
           </Button>
           <Button 
-            onClick={handleEditSubmit} 
-            variant="contained" 
-            disabled={editLoading || !editFormData.species_name?.trim()}
+            onClick={handleExcelExport} 
+            variant="contained"
+            sx={{ 
+              bgcolor: '#4caf50',
+              color: '#fff',
+              fontWeight: 600,
+              '&:hover': { bgcolor: '#2e7d32' }
+            }}
           >
-            {editLoading ? 'Updating...' : 'Update Record'}
+            Download
           </Button>
-         </DialogActions>
-       </Dialog>
+        </DialogActions>
+      </Dialog>
+      
+      {editingRecord && (() => {
+        const countryCode = editFormData.country_code || '+63';
+        const phoneNumber = editFormData.phone_number || '';
+
+        return (
+          <Dialog 
+            open={editDialogOpen} 
+            onClose={handleEditDialogClose}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{
+              sx: {
+                marginRight: 'auto',
+                marginLeft: environmentalBg ? '35%' : '39%',
+                marginTop: '10%',
+                transform: 'translateX(0)',
+                background: environmentalBg
+                  ? (theme.palette.mode === 'light'
+                      ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+                      : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))')
+                  : undefined,
+                backgroundRepeat: environmentalBg ? 'no-repeat' : undefined,
+                backgroundSize: environmentalBg ? '100% 100%' : undefined,
+                maxHeight: '80vh',
+              }
+            }}
+          >
+            <DialogTitle>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                <Box
+                  component="img"
+                  src="/images/kinaiyahanlogonobg.png"
+                  alt="Kinaiyahan"
+                  sx={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }}
+                />
+                <Typography component="span" variant="h6" sx={{ color: '#2e7d32 !important' }}>
+                  Edit Marker Details
+                </Typography>
+              </Box>
+            </DialogTitle>
+            <DialogContent sx={{ overflowY: 'auto', maxHeight: 'calc(80vh - 140px)' }}>
+              {editError && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {editError}
+                </Alert>
+              )}
+              
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+                <TextField
+                  placeholder="Species name"
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  margin="dense"
+                  value={editSpeciesInput}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditSpeciesInput(val);
+                    setEditFormData(prev => ({ ...prev, species_name: val }));
+                  }}
+                  required
+                  onFocus={() => {
+                    if (editSpeciesOptions.length > 0) setShowEditSpeciesDropdown(true);
+                  }}
+                  onBlur={() => {
+                    // slight delay so click on option still registers
+                    setTimeout(() => setShowEditSpeciesDropdown(false), 200);
+                  }}
+                />
+                {showEditSpeciesDropdown && (
+                  <Box sx={{ mt: 0.5, border: '1px solid', borderColor: 'divider', borderRadius: 1, maxHeight: 128, overflow: 'auto' }}>
+                    {editSpeciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1, color: '#2e7d32 !important' }}>Searching…</Box>}
+                    {!editSpeciesLoading && editSpeciesOptions.length === 0 && (
+                      <Box sx={{ fontSize: 12, opacity: 0.5, p: 1, color: '#2e7d32 !important' }}>No suggestions</Box>
+                    )}
+                    {!editSpeciesLoading && editSpeciesOptions.length > 0 && (
+                      <Box sx={{ color: '#2e7d32 !important' }}>
+                        {editSpeciesOptions.map((opt) => (
+                          <Box
+                            key={`${opt.label}-${opt.common || ''}`}
+                            sx={{ px: 1, py: 0.5, cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              // Set both fields and the visible input to "sci / common"
+                              const nextScientific = opt.label;
+                              const nextCommon = opt.common || opt.label;
+                              setEditFormData(prev => ({
+                                ...prev,
+                                scientific_name: nextScientific,
+                                species_name: nextCommon,
+                              }));
+                              setEditSpeciesInput([nextScientific, nextCommon].filter(Boolean).join(' / '));
+                              setTimeout(() => setShowEditSpeciesDropdown(false), 120);
+                            }}
+                          >
+                            {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold', color: '#2e7d32 !important' }}>{opt.common}</Box>}
+                            <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.9, color: '#2e7d32 !important' }}>{opt.label}</Box>
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                )}
+                
+                <TextField
+                  select
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  margin="dense"
+                  value={editFormData.status || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value as any }))}
+                  SelectProps={{
+                    displayEmpty: true,
+                    renderValue: (value: unknown) => {
+                      const v = String(value || "");
+                      return v !== "" ? v : "Status";
+                    },
+                  }}
+                >
+                  <MenuItem value="" disabled>
+                    Status
+                  </MenuItem>
+                  <MenuItem value="reported">Reported</MenuItem>
+                  <MenuItem value="rescued">Rescued</MenuItem>
+                  <MenuItem value="turned over">Turned over</MenuItem>
+                  <MenuItem value="released">Released</MenuItem>
+                </TextField>
+                
+                <TextField
+                  placeholder="Barangay"
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  margin="dense"
+                  value={editFormData.barangay || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, barangay: e.target.value }))}
+                />
+                
+                <TextField
+                  placeholder="Municipality"
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  margin="dense"
+                  value={editFormData.municipality || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, municipality: e.target.value }))}
+                />
+                
+                <TextField
+                  placeholder="Name of who sighted"
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  margin="dense"
+                  value={editFormData.reporter_name || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, reporter_name: e.target.value }))}
+                />
+                
+                <TextField
+                  placeholder="Phone number"
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  margin="dense"
+                  value={phoneNumber}
+                  onChange={(e) => {
+                    const phoneNumberValue = e.target.value;
+                    setEditFormData(prev => {
+                      const currentCountryCode = prev.country_code || '+63';
+                      const fullNumber = currentCountryCode + phoneNumberValue;
+                      return {
+                        ...prev, 
+                        phone_number: phoneNumberValue,
+                        contact_number: fullNumber 
+                      };
+                    });
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                        <FormControl size="small" sx={{ minWidth: 80 }}>
+                          <Select
+                            value={countryCode}
+                            onChange={(e) => {
+                              const countryCodeValue = e.target.value;
+                              setEditFormData(prev => {
+                                const phoneNumberValue = prev.phone_number || '';
+                                const fullNumber = countryCodeValue + phoneNumberValue;
+                                return {
+                                  ...prev,
+                                  country_code: countryCodeValue,
+                                  contact_number: fullNumber 
+                                };
+                              });
+                            }}
+                            variant="standard"
+                            sx={{ 
+                              '&:before': { borderBottom: 'none' },
+                              '&:after': { borderBottom: 'none' },
+                              '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                              '& .MuiSelect-select': { 
+                                padding: '0',
+                                fontSize: '14px',
+                                fontWeight: 500,
+                                minHeight: 'auto'
+                              }
+                            }}
+                          >
+                            <MenuItem value="+63">🇵🇭 +63</MenuItem>
+                            <MenuItem value="+1">🇺🇸 +1</MenuItem>
+                            <MenuItem value="+44">🇬🇧 +44</MenuItem>
+                            <MenuItem value="+81">🇯🇵 +81</MenuItem>
+                            <MenuItem value="+86">🇨🇳 +86</MenuItem>
+                            <MenuItem value="+82">🇰🇷 +82</MenuItem>
+                            <MenuItem value="+65">🇸🇬 +65</MenuItem>
+                            <MenuItem value="+60">🇲🇾 +60</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    )
+                  }}
+                />
+
+                {/* Photo Upload Section */}
+                <Box sx={{ mt: 1 }}>
+                  <Button variant="outlined" color="primary" size="small" component="label" sx={{ mb: 1 }}>
+                    {editPhotoPreview && !editPhotoFile ? 'Change Photo' : 'Upload Photo'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          // Clean up previous blob URL if it exists
+                          if (editPhotoPreview && editPhotoPreview.startsWith('blob:')) {
+                            URL.revokeObjectURL(editPhotoPreview);
+                          }
+                          setEditPhotoFile(file);
+                          const url = URL.createObjectURL(file);
+                          setEditPhotoPreview(url);
+                        }
+                      }}
+                    />
+                  </Button>
+                  {editPhotoPreview && (
+                    <Box sx={{ mt: 1 }}>
+                      <Box
+                        component="img"
+                        src={editPhotoPreview}
+                        alt="preview"
+                        sx={{
+                          width: "100%",
+                          maxHeight: "280px",
+                          objectFit: "contain",
+                          borderRadius: 2,
+                          border: '1px solid',
+                          borderColor: 'divider'
+                        }}
+                      />
+                      <Button 
+                        size="small" 
+                        color="error"
+                        onClick={() => {
+                          // Clean up blob URL if it exists
+                          if (editPhotoPreview && editPhotoPreview.startsWith('blob:')) {
+                            URL.revokeObjectURL(editPhotoPreview);
+                          }
+                          if (editPhotoFile) {
+                            // If a new photo was selected, remove it and go back to original
+                            setEditPhotoFile(null);
+                            setEditPhotoPreview(editingRecord?.photo_url || null);
+                          } else {
+                            // If removing the original photo, set to null
+                            setEditPhotoFile(null);
+                            setEditPhotoPreview(null);
+                          }
+                        }}
+                        sx={{ mt: 1 }}
+                      >
+                        Remove
+                      </Button>
+                    </Box>
+                  )}
+                </Box>
+
+                {editingRecord.timestamp_captured && (
+                  <Box>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      <strong style={{ color: '#2e7d32' }}>Date & Time Captured:</strong> <span style={{ color: '#2e7d32' }}>{new Date(editingRecord.timestamp_captured).toLocaleString()}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Latitude:</strong> <span style={{ color: '#2e7d32' }}>{editingRecord.latitude.toFixed(5)}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Longitude:</strong> <span style={{ color: '#2e7d32' }}>{editingRecord.longitude.toFixed(5)}</span>
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleEditSubmit}
+                disabled={editLoading || !(editSpeciesInput?.trim())}
+              >
+                {editLoading ? 'Updating...' : 'Save'}
+              </Button>
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={handleEditDialogClose}
+                disabled={editLoading}
+              >
+                Cancel
+              </Button>
+            </DialogActions>
+          </Dialog>
+        );
+      })()}
 
        {/* Success Snackbar */}
        <Snackbar
@@ -1803,6 +3055,301 @@ const WildlifeRescueStatistics: React.FC<WildlifeRescueStatisticsProps> = ({ sho
            {errorSnackbar.message}
          </Alert>
        </Snackbar>
+
+       {/* View Details Dialog */}
+       <Dialog 
+         open={detailsDialogOpen} 
+         onClose={() => { setDetailsDialogOpen(false); setRecordToView(null); }}
+         maxWidth="md" 
+         fullWidth
+         PaperProps={{
+           sx: {
+             background: environmentalBg
+               ? (theme.palette.mode === 'light'
+                   ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+                   : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))')
+               : undefined,
+             backgroundRepeat: environmentalBg ? 'no-repeat' : undefined,
+             backgroundSize: environmentalBg ? '100% 100%' : undefined,
+             backgroundAttachment: environmentalBg ? 'fixed' : undefined,
+           }
+         }}
+       >
+         <DialogTitle sx={{ pb: 2, textAlign: 'center' }}>
+           <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mb: 2 }}>
+             <Box component="img" src="/images/kinaiyahanlogonobg.png" alt="Kinaiyahan" sx={{ width: 56, height: 56, objectFit: 'contain' }} />
+             <Typography variant="h5" sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, letterSpacing: '0.3em', color: '#2e7d32 !important', userSelect: 'none', lineHeight: 1 }}>
+               ＫＩＮＡＩＹＡＨＡＮ
+             </Typography>
+           </Stack>
+           <Typography variant="h6" sx={{ fontWeight: 600, color: '#2e7d32 !important' }}>
+             Record Details
+           </Typography>
+         </DialogTitle>
+         <DialogContent sx={{ pt: 3 }}>
+           {recordToView && (
+             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+               {recordToView.photo_url && (
+                 <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                   <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>Photo</Typography>
+                   <Box component="img" src={recordToView.photo_url} alt={recordToView.species_name} sx={{ width: '100%', maxHeight: 350, objectFit: 'contain', borderRadius: 1.5, border: '1px solid rgba(46, 125, 50, 0.3)', bgcolor: 'background.default' }} />
+                 </Card>
+               )}
+
+               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                 <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                   <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>Species Information</Typography>
+                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                     <Box>
+                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Species Name</Typography>
+                       <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.species_name}</Typography>
+                     </Box>
+                     <Box>
+                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Status</Typography>
+                       <Chip label={recordToView.status} size="small" sx={{ borderColor: '#2e7d32', color: '#2e7d32', '& .MuiChip-label': { color: '#2e7d32' } }} variant="outlined" />
+                     </Box>
+                   </Box>
+                 </Card>
+
+                 <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                   <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>Location Information</Typography>
+                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                     {recordToView.barangay && (
+                       <Box>
+                         <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Barangay</Typography>
+                         <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.barangay}</Typography>
+                       </Box>
+                     )}
+                     {recordToView.municipality && (
+                       <Box>
+                         <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Municipality</Typography>
+                         <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.municipality}</Typography>
+                       </Box>
+                     )}
+                     <Box>
+                       <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Coordinates</Typography>
+                       <Typography variant="body2" sx={{ fontFamily: 'monospace', color: '#2e7d32 !important' }}>{recordToView.latitude.toFixed(6)}, {recordToView.longitude.toFixed(6)}</Typography>
+                     </Box>
+                   </Box>
+                 </Card>
+               </Box>
+
+               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                 {(recordToView.reporter_name || recordToView.contact_number) && (
+                   <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                     <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>Reporter Information</Typography>
+                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                       {recordToView.reporter_name && (
+                         <Box>
+                           <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Reporter Name</Typography>
+                           <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.reporter_name}</Typography>
+                         </Box>
+                       )}
+                       {recordToView.contact_number && (
+                         <Box>
+                           <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Contact Number</Typography>
+                           <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{recordToView.contact_number}</Typography>
+                         </Box>
+                       )}
+                     </Box>
+                   </Card>
+                 )}
+
+                 <Card sx={{ p: 2, bgcolor: 'rgba(46, 125, 50, 0.05)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+                   <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#2e7d32 !important' }}>Report Details</Typography>
+                   <Box>
+                     <Typography variant="caption" sx={{ color: '#2e7d32 !important', opacity: 0.8, display: 'block', mb: 0.5 }}>Date Captured</Typography>
+                     <Typography variant="body1" sx={{ fontWeight: 500, color: '#2e7d32 !important' }}>{new Date(recordToView.timestamp_captured).toLocaleString()}</Typography>
+                   </Box>
+                 </Card>
+               </Box>
+             </Box>
+           )}
+         </DialogContent>
+         <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+           <Button onClick={() => { setDetailsDialogOpen(false); setRecordToView(null); }} variant="outlined">Close</Button>
+         </DialogActions>
+       </Dialog>
+
+       {/* Delete Confirmation Dialog */}
+       <Dialog
+         open={deleteDialogOpen}
+         onClose={handleCloseDeleteDialog}
+         maxWidth="sm"
+         fullWidth
+         PaperProps={{
+           sx: {
+             borderRadius: 3,
+             background: environmentalBg
+               ? (theme.palette.mode === 'light'
+                   ? '#f0f8f0'
+                   : '#1b5e20')
+               : '#ffffff',
+             border: '1px solid rgba(46, 125, 50, 0.45)',
+             boxShadow: '0 24px 48px rgba(46, 125, 50, 0.3)',
+           },
+         }}
+       >
+         <DialogTitle sx={{ pb: 1.5 }}>
+           <Stack direction="row" spacing={1.5} alignItems="center">
+             <Box
+               component="img"
+               src="/images/kinaiyahanlogonobg.png"
+               alt="Kinaiyahan"
+               sx={{ width: 48, height: 48, objectFit: 'contain' }}
+             />
+             <Typography variant="h6" sx={{ fontWeight: 700, color: '#2e7d32 !important' }}>
+               Confirm Record Deletion
+             </Typography>
+           </Stack>
+           <Typography variant="body2" sx={{ mt: 1, color: '#2e7d32 !important', textAlign: 'center' }}>
+             This action will archive the record and remove it from the active list.
+           </Typography>
+         </DialogTitle>
+         <DialogContent sx={{ pt: 1.5 }}>
+           <Alert
+             severity="warning"
+             sx={{
+               mb: 2,
+               color: '#2e7d32 !important',
+               '& .MuiAlert-icon': { color: '#2e7d32 !important' },
+               '& .MuiAlert-message': { color: '#2e7d32 !important' },
+             }}
+           >
+             Deleting cannot be undone. You can still find the archived record in the history section.
+           </Alert>
+           {recordToDelete && (
+             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                 <Typography variant="subtitle2" sx={{ color: '#2e7d32 !important', fontWeight: 600 }}>
+                   Species
+                 </Typography>
+                 <Typography variant="body1" sx={{ fontWeight: 600, color: '#2e7d32 !important' }}>
+                   {recordToDelete.species_name || 'Unknown species'}
+                 </Typography>
+               </Box>
+               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                 <Typography variant="subtitle2" sx={{ color: '#2e7d32 !important', fontWeight: 600 }}>
+                   Location
+                 </Typography>
+                 <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>
+                   {[recordToDelete.barangay, recordToDelete.municipality]
+                     .filter(Boolean)
+                     .join(', ') || 'No location specified'}
+                 </Typography>
+                 <Typography variant="caption" sx={{ fontFamily: 'monospace', color: '#2e7d32 !important' }}>
+                   {recordToDelete.latitude.toFixed(6)}, {recordToDelete.longitude.toFixed(6)}
+                 </Typography>
+               </Box>
+             </Box>
+           )}
+         </DialogContent>
+         <DialogActions sx={{ px: 3, pb: 3 }}>
+           <Button
+             onClick={handleCloseDeleteDialog}
+             variant="outlined"
+             sx={{
+               textTransform: 'none',
+               fontWeight: 600,
+               borderColor: '#2e7d32',
+               color: '#2e7d32 !important',
+               backgroundColor: '#ffffff !important',
+               borderWidth: 2,
+               boxShadow: 'none',
+               '&:hover': {
+                 borderColor: '#1b5e20',
+                 color: '#1b5e20 !important',
+                 backgroundColor: 'rgba(46, 125, 50, 0.1) !important',
+               },
+             }}
+           >
+             Cancel
+           </Button>
+           <Button
+             onClick={handleDeleteRecord}
+             variant="outlined"
+             sx={{
+               textTransform: 'none',
+               fontWeight: 600,
+               borderColor: '#2e7d32',
+               color: '#2e7d32 !important',
+               backgroundColor: '#ffffff !important',
+               borderWidth: 2,
+               boxShadow: 'none',
+               '&:hover': {
+                 borderColor: '#1b5e20',
+                 color: '#1b5e20 !important',
+                 backgroundColor: 'rgba(46, 125, 50, 0.1) !important',
+               },
+             }}
+           >
+             Delete Record
+           </Button>
+         </DialogActions>
+       </Dialog>
+
+       {/* No Saved Form Dialog */}
+       <Dialog
+         open={noFormDialogOpen}
+         onClose={() => { setNoFormDialogOpen(false); setRecordForNoForm(null); }}
+         maxWidth="sm"
+         fullWidth
+         PaperProps={{
+           sx: {
+             borderRadius: 3,
+             background: environmentalBg
+               ? (theme.palette.mode === 'light' ? '#f0f8f0' : '#1b5e20')
+               : '#ffffff',
+             border: '1px solid rgba(46, 125, 50, 0.45)',
+             boxShadow: '0 24px 48px rgba(46, 125, 50, 0.3)'
+           }
+         }}
+       >
+         <DialogTitle sx={{ pb: 0.5, textAlign: 'center' }}>
+           <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
+             <Box
+               component="img"
+               src="/images/kinaiyahanlogonobg.png"
+               alt="Kinaiyahan"
+               sx={{ width: 48, height: 48, objectFit: 'contain' }}
+             />
+             <Box sx={{ textAlign: 'center' }}>
+               <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: '0.02em', color: '#2e7d32 !important' }}>
+                 No Saved Form Found
+               </Typography>
+             </Box>
+           </Stack>
+         </DialogTitle>
+         <DialogContent sx={{ pt: 1.5 }}>
+           <Box sx={{ textAlign: 'center' }}>
+             <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>
+               You can fill and save from the form page by using the print button on the specific record.
+             </Typography>
+           </Box>
+         </DialogContent>
+         <DialogActions sx={{ px: 3, pb: 3 }}>
+           <Button
+             onClick={() => { setNoFormDialogOpen(false); setRecordForNoForm(null); }}
+             variant="outlined"
+             sx={{
+               textTransform: 'none',
+               fontWeight: 600,
+               borderColor: '#2e7d32',
+               color: '#2e7d32 !important',
+               backgroundColor: '#ffffff !important',
+               borderWidth: 2,
+               boxShadow: 'none',
+               '&:hover': {
+                 borderColor: '#1b5e20',
+                 color: '#1b5e20 !important',
+                 backgroundColor: 'rgba(46, 125, 50, 0.1) !important',
+               },
+             }}
+           >
+             Close
+           </Button>
+         </DialogActions>
+       </Dialog>
      </Box>
    );
  };

@@ -26,6 +26,51 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  /* Prevent zooming */
+  touch-action: pan-x pan-y;
+  -ms-touch-action: pan-x pan-y;
+  overflow-x: hidden;
+}
+
+/* Zoom status banner */
+#zoom-banner {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(76, 175, 80, 0.95);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 0 0 12px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: none;
+  max-width: 90%;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  #zoom-banner {
+    font-size: 0.75rem;
+    padding: 6px 12px;
+  }
+}
+
+/* Prevent zoom on double tap and pinch */
+html {
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
+}
+
+/* Prevent text size adjustment on iOS */
+* {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 #root {
@@ -169,4 +214,48 @@ button:focus-visible {
   70% { transform: translate(-8vw, 9vh) scale(1.0) rotate(-1deg); }
   85% { transform: translate(5vw, -4vh) scale(0.98) rotate(1deg); }
   100% { transform: translate(0, 0) scale(0.9) rotate(0deg); opacity: 0; }
+}
+
+/* Cluster icon animations */
+.cluster-icon-animated {
+  animation: clusterPulse 2s ease-in-out infinite;
+  position: relative;
+}
+
+.cluster-glow-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid #4caf50;
+  animation: clusterGlow 2s ease-in-out infinite;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+@keyframes clusterPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.3), 0 0 0 0 rgba(76, 175, 80, 0.7);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.3), 0 0 0 8px rgba(76, 175, 80, 0.4);
+  }
+}
+
+@keyframes clusterGlow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.6);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1.15);
+    box-shadow: 0 0 0 6px rgba(76, 175, 80, 0.3);
+  }
 }

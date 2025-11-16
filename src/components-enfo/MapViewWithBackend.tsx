@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, GeoJSON, 
 import { Icon, LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { Box, Button, TextField, Alert, CircularProgress, Typography, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Chip, Tooltip, IconButton, ToggleButtonGroup, ToggleButton } from '@mui/material';
+import { Box, Button, TextField, Alert, CircularProgress, Typography, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, MenuItem, Chip, Tooltip, IconButton, ToggleButtonGroup, ToggleButton, useTheme } from '@mui/material';
 import SuccessModal from './SuccessModal';
 import FetchingModal from './FetchingModal';
 import { alpha } from '@mui/material/styles';
@@ -256,7 +256,7 @@ function BoundaryGuide() {
       data={geojsonData as any}
       pane="boundary-guide"
       style={{
-        color: "#ff0000",
+        color: "#2e7d32",
         weight: 4,
         dashArray: "6 6",
         fill: false,
@@ -267,6 +267,10 @@ function BoundaryGuide() {
 
 interface MapViewWithBackendProps {
   skin: 'streets' | 'dark' | 'satellite';
+  onModalOpenChange?: (isOpen: boolean) => void;
+  environmentalBg?: boolean;
+  onDispersalModeChange?: (isActive: boolean) => void;
+  onRelocationModeChange?: (isActive: boolean) => void;
 }
 
 interface PendingMarker {
@@ -321,7 +325,8 @@ const statusColors: Record<string, string> = {
   'dispersed': '#ff9800' // Orange
 };
 
-export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
+export default function MapViewWithBackend({ skin, onModalOpenChange, environmentalBg = false, onDispersalModeChange, onRelocationModeChange }: MapViewWithBackendProps) {
+  const theme = useTheme();
   const { user } = useAuth();
   const { targetRecordId, clearTarget, triggerRecordsRefresh } = useMapNavigation();
   const [wildlifeRecords, setWildlifeRecords] = useState<WildlifeRecord[]>([]);
@@ -330,6 +335,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [isAddingMarker, setIsAddingMarker] = useState(false);
   const [pendingMarker, setPendingMarker] = useState<PendingMarker | null>(null);
   const [editingMarkerId, setEditingMarkerId] = useState<string | null>(null);
+  const [viewingMarkerId, setViewingMarkerId] = useState<string | null>(null);
   const [editDrafts, setEditDrafts] = useState<Record<string, any>>({});
   const [relocatingMarkerId, setRelocatingMarkerId] = useState<string | null>(null);
   const [dispersingMarkerId, setDispersingMarkerId] = useState<string | null>(null);
@@ -338,6 +344,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [relocationOriginalLocation, setRelocationOriginalLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [dispersalTraces, setDispersalTraces] = useState<Array<{
     id: string;
+    originalMarkerId: string;
+    originalStatus: string;
     originalLat: number;
     originalLng: number;
     originalBarangay?: string;
@@ -361,6 +369,27 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const [speciesSelectedFromDropdown, setSpeciesSelectedFromDropdown] = useState(false);
   const [hasLoadedRecords, setHasLoadedRecords] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  // Inline input validations for Add Marker modal
+  const [nameHasDigits, setNameHasDigits] = useState(false);
+  const [speciesHasDigits, setSpeciesHasDigits] = useState(false);
+
+  // Validate and clean up traces when records are loaded
+  useEffect(() => {
+    if (wildlifeRecords.length > 0 && dispersalTraces.length > 0) {
+      const validTraces = dispersalTraces.filter(trace => {
+        // Check if both the original marker and dispersed marker still exist
+        const originalExists = wildlifeRecords.some(r => r.id === trace.originalMarkerId);
+        const dispersedExists = wildlifeRecords.some(r => r.id === trace.id);
+        return originalExists && dispersedExists;
+      });
+      
+      // Only update if we removed some invalid traces
+      if (validTraces.length !== dispersalTraces.length) {
+        setDispersalTraces(validTraces);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wildlifeRecords]);
 
   // Save dispersal traces to localStorage whenever they change
   useEffect(() => {
@@ -414,13 +443,6 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
   const ALL_STATUSES = ["reported", "rescued", "turned over", "released", "dispersed"] as const;
   const [enabledStatuses, setEnabledStatuses] = useState<string[]>([...ALL_STATUSES]);
 
-  // Debug logging for initial state
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Component mounted - enabledStatuses:', enabledStatuses);
-      console.log('Component mounted - wildlifeRecords length:', wildlifeRecords.length);
-    }
-  }, [enabledStatuses, wildlifeRecords.length]);
 
   // Species autocomplete
   const [speciesOptions, setSpeciesOptions] = useState<Array<{ label: string; common?: string }>>([]);
@@ -454,9 +476,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     try {
       setLoading(true);
         setError(null);
-      console.log('Loading wildlife records...');
       const records = await withTimeout(getWildlifeRecords(), 10000);
-      console.log('Loaded wildlife records:', records);
       setWildlifeRecords(records);
           setHasLoadedRecords(true);
     } catch (err) {
@@ -479,16 +499,18 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       });
       
       setError(null); // Clear any previous errors
-      console.log('Refreshing wildlife records...');
       const records = await withTimeout(getWildlifeRecords(), 10000);
-      console.log('Refreshed wildlife records:', records);
-      console.log('Records count:', records.length);
-      console.log('Current enabled statuses:', enabledStatuses);
       setWildlifeRecords(records);
       setHasLoadedRecords(true);
       
-      // Force map re-render to ensure markers are displayed
-      setVisibilityBump(prev => prev + 1);
+      // Ensure map layout recalculates without remounting
+      try {
+        if (mapInstance && typeof (mapInstance as any).invalidateSize === 'function') {
+          setTimeout(() => {
+            (mapInstance as any).invalidateSize(true);
+          }, 200);
+        }
+      } catch {}
       
       // Close fetching modal after a short delay to show it was successful
       setTimeout(() => {
@@ -506,9 +528,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     if (!user) return;
     
     try {
-      console.log('Loading user role...');
       const userRole = await getUserRole();
-      console.log('Loaded user role:', userRole);
       setRole(userRole);
     } catch (err) {
       console.error('Error loading user role:', err);
@@ -524,13 +544,27 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     }
   }, [user, loadUserRole, loadWildlifeRecords]);
 
+  // Invalidate map size when tab becomes visible (prevents layout issues without remounting)
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && mapInstance && typeof (mapInstance as any).invalidateSize === 'function') {
+        try { (mapInstance as any).invalidateSize(true); } catch {}
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [mapInstance]);
+
   // Handle navigation to specific record
   useEffect(() => {
     if (targetRecordId && mapInstance && wildlifeRecords.length > 0) {
       const targetRecord = wildlifeRecords.find(record => record.id === targetRecordId);
       if (targetRecord) {
         // Navigate to the location
-        mapInstance.setView([targetRecord.latitude, targetRecord.longitude], 16, { animate: true });
+        const maxZoom = mapInstance.getMaxZoom() ?? 18;
+        const currentZoom = mapInstance.getZoom();
+        const desiredZoom = Math.min(maxZoom, Math.max(currentZoom, 18));
+        mapInstance.setView([targetRecord.latitude, targetRecord.longitude], desiredZoom, { animate: true });
         
         // Open the popup after a short delay to ensure the marker is visible
         setTimeout(() => {
@@ -549,6 +583,59 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       }
     }
   }, [targetRecordId, mapInstance, wildlifeRecords, clearTarget]);
+
+  // Notify parent when dispersal mode changes
+  useEffect(() => {
+    if (onDispersalModeChange) {
+      onDispersalModeChange(!!dispersingMarkerId);
+    }
+  }, [dispersingMarkerId, onDispersalModeChange]);
+
+  // Notify parent when relocation mode changes
+  useEffect(() => {
+    if (onRelocationModeChange) {
+      onRelocationModeChange(!!relocatingMarkerId);
+    }
+  }, [relocatingMarkerId, onRelocationModeChange]);
+
+  // Warn user before refresh/close when in relocation mode
+  useEffect(() => {
+    if (relocatingMarkerId) {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = 'You are relocating a pin. If you refresh or close this page, your changes will not be saved. Are you sure you want to leave?';
+        return e.returnValue;
+      };
+
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
+  }, [relocatingMarkerId]);
+
+  // Warn user before refresh/close when in release/dispersal mode
+  useEffect(() => {
+    if (dispersingMarkerId) {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = 'You are releasing a wildlife record. If you refresh or close this page, your changes will not be saved. Are you sure you want to leave?';
+        return e.returnValue;
+      };
+
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
+  }, [dispersingMarkerId]);
+
+  // Notify parent when modal opens/closes
+  useEffect(() => {
+    if (onModalOpenChange) {
+      onModalOpenChange(!!pendingMarker);
+    }
+  }, [pendingMarker, onModalOpenChange]);
 
   // Set loading timeout
   useEffect(() => {
@@ -715,6 +802,31 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     };
   }, [pendingMarker?.speciesName]);
 
+  // Load initial species suggestions when opening Edit Marker (mirror Add Marker)
+  useEffect(() => {
+    if (!editingMarkerId) return;
+    const loadInitialEditSpecies = async () => {
+      setEditSpeciesLoading(true);
+      try {
+        const url = `https://api.inaturalist.org/v1/taxa/autocomplete?q=wildlife&per_page=12`;
+        const res = await fetch(url, { headers: { Accept: "application/json" } });
+        if (res.ok) {
+          const data = await res.json();
+          const options = (data?.results || [])
+            .map((r: any) => ({ label: r?.name || "", common: r?.preferred_common_name || undefined }))
+            .filter((o: any) => o.label);
+          setEditSpeciesOptions(options);
+          setShowEditSpeciesDropdown(true);
+        }
+      } catch {
+      } finally {
+        setEditSpeciesLoading(false);
+      }
+    };
+    const t = setTimeout(loadInitialEditSpecies, 400);
+    return () => clearTimeout(t);
+  }, [editingMarkerId]);
+
   // Species autocomplete for edit mode
   useEffect(() => {
     const currentDraft = editingMarkerId ? editDrafts[editingMarkerId] : null;
@@ -876,8 +988,14 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         photoUrl = pendingMarker.photo;
       }
 
+      const rawSpecies = (pendingMarker.speciesName || '').trim();
+      const parts = rawSpecies.split('/');
+      const sci = parts.length > 1 ? parts[0].trim() : undefined;
+      const common = parts.length > 1 ? parts.slice(1).join('/').trim() : rawSpecies;
+
       const newRecord: CreateWildlifeRecord = {
-        species_name: pendingMarker.speciesName,
+        species_name: common,
+        scientific_name: sci,
         status: pendingMarker.status as any,
         latitude: pendingMarker.pos[0],
         longitude: pendingMarker.pos[1],
@@ -919,7 +1037,24 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     if (!updates) return;
 
     try {
-      const updatedRecord = await updateWildlifeRecord(id, updates);
+      // Derive species_name and scientific_name similar to Add Marker flow
+      const rawSpecies = (updates.species_name ?? editingMarker?.species_name ?? '').trim();
+      let nextSpeciesName = updates.species_name;
+      let nextScientificName = (updates as any).scientific_name as string | undefined;
+      if (!nextScientificName) {
+        const parts = rawSpecies.split('/');
+        if (parts.length > 1) {
+          nextScientificName = parts[0].trim();
+          nextSpeciesName = parts.slice(1).join('/').trim();
+        }
+      }
+      const payload = {
+        ...updates,
+        species_name: nextSpeciesName ?? rawSpecies,
+        scientific_name: nextScientificName,
+      };
+
+      const updatedRecord = await updateWildlifeRecord(id, payload);
       setWildlifeRecords(prev => 
         prev.map(record => record.id === id ? updatedRecord : record)
       );
@@ -953,9 +1088,20 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     if (!window.confirm('Are you sure you want to delete this wildlife record?')) return;
 
     try {
+      // Check if this is a dispersed marker (has a trace)
+      const trace = dispersalTraces.find(t => t.id === id);
+      
       await deleteWildlifeRecord(id);
       setWildlifeRecords(prev => prev.filter(record => record.id !== id));
       setEditingMarkerId(null);
+      
+      // Remove the trace line if this was a dispersed marker
+      if (trace) {
+        setDispersalTraces(prev => prev.filter(t => t.id !== id));
+      }
+      
+      // Refresh records
+      try { triggerRecordsRefresh(); } catch {}
     } catch (err) {
       console.error('Error deleting wildlife record:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete wildlife record');
@@ -1198,16 +1344,17 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         throw new Error('Dispersal trace not found');
       }
       
-      // Find the original marker
-      const originalMarker = wildlifeRecords.find(m => 
-        m.latitude === trace.originalLat && 
-        m.longitude === trace.originalLng &&
-        m.species_name === trace.speciesName
-      );
+      // Find the original marker by ID
+      const originalMarker = wildlifeRecords.find(m => m.id === trace.originalMarkerId);
       
       if (!originalMarker) {
         throw new Error('Original marker not found');
       }
+      
+      // Restore the original marker's status
+      await updateWildlifeRecord(trace.originalMarkerId, {
+        status: trace.originalStatus as any
+      });
       
       // Delete the dispersed record
       await deleteWildlifeRecord(dispersedRecordId);
@@ -1222,7 +1369,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       setSuccessModal({
         open: true,
         title: 'Success!',
-        message: `Dispersal has been undone. Wildlife record restored to original location.`,
+        message: `Release has been undone. Wildlife record restored to original status (${formatStatusLabel(trace.originalStatus)}).`,
       });
       
       // Refresh map data
@@ -1274,6 +1421,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       // Store dispersal trace information in state
       const traceInfo: {
         id: string;
+        originalMarkerId: string;
+        originalStatus: string;
         originalLat: number;
         originalLng: number;
         originalBarangay?: string;
@@ -1283,6 +1432,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         speciesName: string;
       } = {
         id: createdRecord.id,
+        originalMarkerId: originalMarker.id,
+        originalStatus: originalMarker.status,
         originalLat: originalMarker.latitude,
         originalLng: originalMarker.longitude,
         originalBarangay: originalMarker.barangay || undefined,
@@ -1301,7 +1452,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       setSuccessModal({
         open: true,
         title: 'Success!',
-        message: `Wildlife record has been dispersed to new location. Original location preserved with trace line.${locationData?.barangay ? ` New location: ${locationData.barangay}, ${locationData.municipality}` : ''}`,
+        message: `Wildlife record has been released to new location. Original location preserved with trace line.${locationData?.barangay ? ` New location: ${locationData.barangay}, ${locationData.municipality}` : ''}`,
       });
       
       // Refresh map data after successful creation
@@ -1347,21 +1498,78 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         if (!enabled) return;
         const lat = Number(e.latlng.lat);
         const lng = Number(e.latlng.lng);
-        setPendingMarker({
-          pos: [lat, lng],
-          speciesName: "",
-          status: "reported",
-          timestampIso: new Date().toISOString(),
-          addressLoading: true,
-          photo: null,
-          reporterName: "",
-          contactNumber: "",
-          phoneNumber: "",
-          countryCode: "+63",
-          barangay: "",
-          municipality: "",
-        });
-        setIsAddingMarker(true);
+        
+        // Get the pixel coordinates for the animation
+        const point = map.latLngToContainerPoint(e.latlng);
+        
+        // Create and show click animation
+        const container = map.getContainer();
+        const ripple = document.createElement('div');
+        ripple.style.position = 'absolute';
+        ripple.style.left = `${point.x}px`;
+        ripple.style.top = `${point.y}px`;
+        ripple.style.width = '20px';
+        ripple.style.height = '20px';
+        ripple.style.borderRadius = '50%';
+        ripple.style.background = 'rgba(76, 175, 80, 0.6)';
+        ripple.style.transform = 'translate(-50%, -50%)';
+        ripple.style.pointerEvents = 'none';
+        ripple.style.zIndex = '10000';
+        ripple.style.animation = 'ripple 0.6s ease-out';
+        ripple.style.boxShadow = '0 0 0 0 rgba(76, 175, 80, 0.7)';
+        
+        container.appendChild(ripple);
+        
+        // Add animation keyframes if not already added
+        if (!document.getElementById('ripple-animation-style')) {
+          const style = document.createElement('style');
+          style.id = 'ripple-animation-style';
+          style.textContent = `
+            @keyframes ripple {
+              0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+              }
+              50% {
+                opacity: 0.8;
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0.4);
+              }
+              100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+                box-shadow: 0 0 0 20px rgba(76, 175, 80, 0);
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        // Remove animation element after animation completes
+        setTimeout(() => {
+          if (ripple.parentNode) {
+            ripple.parentNode.removeChild(ripple);
+          }
+        }, 600);
+        
+        // Add delay before setting pending marker
+        setTimeout(() => {
+          setPendingMarker({
+            pos: [lat, lng],
+            speciesName: "",
+            status: "reported",
+            timestampIso: new Date().toISOString(),
+            addressLoading: true,
+            photo: null,
+            reporterName: "",
+            contactNumber: "",
+            phoneNumber: "",
+            countryCode: "+63",
+            barangay: "",
+            municipality: "",
+          });
+          setIsAddingMarker(true);
+        }, 300); // 300ms delay
       }
     });
 
@@ -1388,7 +1596,64 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         if (!enabled || !markerId) return;
         const lat = Number(e.latlng.lat);
         const lng = Number(e.latlng.lng);
-        handleRelocateMarker(markerId, lat, lng);
+        
+        // Get the pixel coordinates for the animation
+        const point = map.latLngToContainerPoint(e.latlng);
+        
+        // Create and show click animation
+        const container = map.getContainer();
+        const ripple = document.createElement('div');
+        ripple.style.position = 'absolute';
+        ripple.style.left = `${point.x}px`;
+        ripple.style.top = `${point.y}px`;
+        ripple.style.width = '20px';
+        ripple.style.height = '20px';
+        ripple.style.borderRadius = '50%';
+        ripple.style.background = 'rgba(76, 175, 80, 0.6)';
+        ripple.style.transform = 'translate(-50%, -50%)';
+        ripple.style.pointerEvents = 'none';
+        ripple.style.zIndex = '10000';
+        ripple.style.animation = 'ripple 0.6s ease-out';
+        ripple.style.boxShadow = '0 0 0 0 rgba(76, 175, 80, 0.7)';
+        
+        container.appendChild(ripple);
+        
+        // Add animation keyframes if not already added (reuse the same style from AddMarkerOnClick)
+        if (!document.getElementById('ripple-animation-style')) {
+          const style = document.createElement('style');
+          style.id = 'ripple-animation-style';
+          style.textContent = `
+            @keyframes ripple {
+              0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+              }
+              50% {
+                opacity: 0.8;
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0.4);
+              }
+              100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+                box-shadow: 0 0 0 20px rgba(76, 175, 80, 0);
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        // Remove animation element after animation completes
+        setTimeout(() => {
+          if (ripple.parentNode) {
+            ripple.parentNode.removeChild(ripple);
+          }
+        }, 600);
+        
+        // Add delay before relocating marker
+        setTimeout(() => {
+          handleRelocateMarker(markerId, lat, lng);
+        }, 300); // 300ms delay
       },
       mousemove(e) {
         if (!enabled) return;
@@ -1425,7 +1690,64 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         if (!enabled || !markerId) return;
         const lat = Number(e.latlng.lat);
         const lng = Number(e.latlng.lng);
-        handleDispersalMarker(markerId, lat, lng);
+        
+        // Get the pixel coordinates for the animation
+        const point = map.latLngToContainerPoint(e.latlng);
+        
+        // Create and show click animation
+        const container = map.getContainer();
+        const ripple = document.createElement('div');
+        ripple.style.position = 'absolute';
+        ripple.style.left = `${point.x}px`;
+        ripple.style.top = `${point.y}px`;
+        ripple.style.width = '20px';
+        ripple.style.height = '20px';
+        ripple.style.borderRadius = '50%';
+        ripple.style.background = 'rgba(76, 175, 80, 0.6)';
+        ripple.style.transform = 'translate(-50%, -50%)';
+        ripple.style.pointerEvents = 'none';
+        ripple.style.zIndex = '10000';
+        ripple.style.animation = 'ripple 0.6s ease-out';
+        ripple.style.boxShadow = '0 0 0 0 rgba(76, 175, 80, 0.7)';
+        
+        container.appendChild(ripple);
+        
+        // Add animation keyframes if not already added (reuse the same style from AddMarkerOnClick)
+        if (!document.getElementById('ripple-animation-style')) {
+          const style = document.createElement('style');
+          style.id = 'ripple-animation-style';
+          style.textContent = `
+            @keyframes ripple {
+              0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+              }
+              50% {
+                opacity: 0.8;
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0.4);
+              }
+              100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+                box-shadow: 0 0 0 20px rgba(76, 175, 80, 0);
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        // Remove animation element after animation completes
+        setTimeout(() => {
+          if (ripple.parentNode) {
+            ripple.parentNode.removeChild(ripple);
+          }
+        }, 600);
+        
+        // Add delay before releasing marker
+        setTimeout(() => {
+          handleDispersalMarker(markerId, lat, lng);
+        }, 300); // 300ms delay
       },
       mousemove(e) {
         if (!enabled) return;
@@ -1443,8 +1765,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     // Change cursor when in dispersal mode
     useEffect(() => {
       if (enabled) {
-        // Use a custom cursor with location pin icon
-        map.getContainer().style.cursor = 'url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyUzYuNDggMjIgMTIgMjJTMjIgMTcuNTIgMjIgMTJTMTcuNTIgMiAxMiAyWk0xMiAxM0MxMC4zNCAxMyA5IDExLjY2IDkgMTBTMTAuMzQgNyAxMiA3UzE1IDguMzQgMTUgMTBTMTMuNjYgMTMgMTIgMTNaIiBmaWxsPSIjRkY2MDAwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjMiIGZpbGw9IiNGRkZGRkYiLz4KPC9zdmc+") 12 12, pointer';
+        // Use a custom cursor with location pin icon (green)
+        map.getContainer().style.cursor = 'url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyUzYuNDggMjIgMTIgMjJTMjIgMTcuNTIgMjIgMTJTMTcuNTIgMiAxMiAyWk0xMiAxM0MxMC4zNCAxMyA5IDExLjY2IDkgMTBTMTAuMzQgNyAxMiA3UzE1IDguMzQgMTUgMTBTMTMuNjYgMTMgMTIgMTNaIiBmaWxsPSIjNENBRjUwIi8+CjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjMiIGZpbGw9IiNGRkZGRkYiLz4KPC9zdmc+") 12 12, pointer';
         return () => {
           map.getContainer().style.cursor = '';
         };
@@ -1469,12 +1791,6 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
     const isIncluded = showAllBecauseReported || enabledStatuses.includes(normalizedStatus);
     // Show approved records OR records created by authenticated users (no approval needed)
     const isApproved = m.approval_status === 'approved' || m.user_id !== null;
-    // Debug logging (remove in production)
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`Marker ${m.id}: status="${m.status}" -> normalized="${normalizedStatus}" -> included=${isIncluded}, approved=${isApproved}`);
-      console.log('Enabled statuses:', enabledStatuses);
-      console.log('Total wildlife records:', wildlifeRecords.length);
-    }
     return isIncluded && isApproved;
   });
 
@@ -1578,7 +1894,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         top: 10, 
         right: 10, 
         zIndex: 1500,
-        display: 'flex',
+        display: (pendingMarker || viewingMarkerId || editingMarkerId) ? 'none' : 'flex',
         flexDirection: 'column',
         gap: 1,
         maxWidth: { xs: 'calc(100vw - 20px)', sm: 'auto' },
@@ -1603,21 +1919,21 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
               { 
                 value: 'rescued', 
                 label: 'Rescued', 
-                color: '#1e88e5',
+                color: '#2196f3',
                 icon: '🤝',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'rescued' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
               { 
                 value: 'turned over', 
                 label: 'Turned Over', 
-                color: '#fdd835',
+                color: '#ffc107',
                 icon: '🔄',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'turned over' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
               { 
                 value: 'released', 
                 label: 'Released', 
-                color: '#43a047',
+                color: '#4caf50',
                 icon: '🌀',
                 count: wildlifeRecords.filter(r => normalizeStatus(r.status) === 'released' && (r.approval_status === 'approved' || r.user_id !== null)).length
               },
@@ -1637,11 +1953,19 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                     color="inherit"
                     size="small"
                     onClick={() => {
-                      if (isSelected) {
-                        setEnabledStatuses(prev => prev.filter(s => s !== status.value));
-                      } else {
-                        setEnabledStatuses(prev => [...prev, status.value]);
-                      }
+                      setEnabledStatuses(prev => {
+                        let next: string[];
+                        if (isSelected) {
+                          next = prev.filter(s => s !== status.value);
+                        } else {
+                          next = [...prev, status.value];
+                        }
+                        // If toggling any non-'reported' status, automatically disable 'reported'
+                        if (status.value !== 'reported') {
+                          next = next.filter(s => s !== 'reported');
+                        }
+                        return Array.from(new Set(next));
+                      });
                     }}
                     sx={{
                       textTransform: 'none',
@@ -1832,35 +2156,37 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       {/* Map control buttons */}
       <Box sx={{ position: "absolute", top: 60, left: 10, zIndex: 1000, display: "flex", flexDirection: "column", gap: 1 }}>
           <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
-          <Button
-            variant={isAddingMarker ? "contained" : "outlined"}
-            color={isAddingMarker ? "primary" : "inherit"}
-              size="small"
-              onClick={() => { if (role === 'enforcement') setIsAddingMarker((v) => !v); }}
-              disabled={role !== 'enforcement'}
-            sx={{ 
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 'auto',
-              px: 2,
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'flex-start',
-              gap: 1,
-              border: '1px solid black',
-              transition: 'all 0.2s ease-in-out',
-              '&:hover': {
-                backgroundColor: isAddingMarker ? 'primary.dark' : 'action.hover',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                borderColor: isAddingMarker ? 'primary.dark' : 'primary.main',
-                color: 'primary.main'
-              }
-            }}
-          >
-            <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
-            {isAddingMarker ? "Adding Marker" : "Add Marker"}
-          </Button>
+            <span>
+              <Button
+                variant={isAddingMarker ? "contained" : "outlined"}
+                color={isAddingMarker ? "primary" : "inherit"}
+                size="small"
+                onClick={() => { if (role === 'enforcement') setIsAddingMarker((v) => !v); }}
+                disabled={role !== 'enforcement'}
+                sx={{ 
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  minWidth: 'auto',
+                  px: 2,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'flex-start',
+                  gap: 1,
+                  border: '1px solid black',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    backgroundColor: isAddingMarker ? 'primary.dark' : 'action.hover',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                    borderColor: isAddingMarker ? 'primary.dark' : 'primary.main',
+                    color: 'primary.main'
+                  }
+                }}
+              >
+                <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
+                {isAddingMarker ? "Adding Marker" : "Add Marker"}
+              </Button>
+            </span>
           </Tooltip>
           
           <Tooltip title="Refresh map data" enterDelay={500}>
@@ -1979,7 +2305,6 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
       )}
 
       <MapContainer
-        key={`map-${visibilityBump}`}
         center={[8.371964645263802, 124.85604137091526]}
         zoom={15}
         style={{
@@ -2027,11 +2352,49 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             key={"pending"}
             position={pendingMarker.pos as [number, number]}
             icon={createStatusIcon(pendingMarker.status)}
-            eventHandlers={{ add: (e: any) => e.target.openPopup() }}
-          >
-            <Popup className="themed-popup" autoPan autoPanPadding={[16,16]}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 300 }}>
-                <strong>Add marker here</strong>
+          />
+        )}
+
+         {/* Add Marker Modal */}
+         <Dialog
+           open={!!pendingMarker}
+           onClose={() => { setPendingMarker(null); setIsAddingMarker(false); }}
+           maxWidth="sm"
+           fullWidth
+           PaperProps={{
+             sx: {
+               marginRight: 'auto',
+               marginLeft: environmentalBg ? '35%' : '39%',
+               marginTop: '10%',
+               transform: 'translateX(0)',
+               maxHeight: '80vh',
+               display: 'flex',
+               flexDirection: 'column',
+               background: environmentalBg
+                 ? (theme.palette.mode === 'light'
+                     ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+                     : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))')
+                 : undefined,
+               backgroundRepeat: environmentalBg ? 'no-repeat' : undefined,
+               backgroundSize: environmentalBg ? '100% 100%' : undefined,
+             }
+           }}
+         >
+           <DialogTitle>
+             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+               <Box
+                 component="img"
+                 src="/images/kinaiyahanlogonobg.png"
+                 alt="Kinaiyahan"
+                 sx={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }}
+               />
+               <Typography component="span" variant="h6" sx={{ color: '#2e7d32 !important' }}>
+                 Add Marker Here
+               </Typography>
+             </Box>
+           </DialogTitle>
+          <DialogContent sx={{ overflowY: 'auto', maxHeight: 'calc(80vh - 140px)' }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
                 {pendingWarning && (
                   <Alert severity="warning" sx={{ my: 0.5 }}>
                     {pendingWarning}
@@ -2043,9 +2406,10 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   variant="outlined"
                   fullWidth
                   margin="dense"
-                  value={pendingMarker.speciesName}
+                  value={pendingMarker?.speciesName || ''}
                   onChange={(e) =>
                     setPendingMarker((p) => {
+                      setSpeciesHasDigits(/\d/.test(e.target.value));
                       const next = p ? { ...p, speciesName: e.target.value } : p;
                       if (next && isPendingComplete(next)) setPendingWarning(null);
                       return next as PendingMarker;
@@ -2061,14 +2425,15 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                     setTimeout(() => setShowSpeciesDropdown(false), 200);
                   }}
                   required
-                  error={Boolean(pendingWarning) && !(pendingMarker.speciesName || '').trim()}
+                  error={speciesHasDigits || (Boolean(pendingWarning) && !(pendingMarker?.speciesName || '').trim())}
+                  helperText={speciesHasDigits ? 'Numbers are not allowed in species.' : undefined}
                   inputRef={(el) => { pendingSpeciesRef.current = el; }}
                 />
                 {showSpeciesDropdown && (
                   <Box sx={{ mt: 0.5, border: "1px solid", borderColor: "divider", borderRadius: 1, height: 128, overflow: "auto" }}>
-                    {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1 }}>Searching…</Box>}
+                    {speciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1, color: '#2e7d32 !important' }}>Searching…</Box>}
                     {!speciesLoading && speciesOptions.length === 0 && (
-                      <Box sx={{ fontSize: 12, opacity: 0.5, p: 1 }}>No suggestions</Box>
+                      <Box sx={{ fontSize: 12, opacity: 0.5, p: 1, color: '#2e7d32 !important' }}>No suggestions</Box>
                     )}
                     {!speciesLoading && speciesOptions.length > 0 && (
                       <Box>
@@ -2079,12 +2444,15 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                             onMouseDown={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              setPendingMarker((p) => (p ? { ...p, speciesName: opt.label } : p));
+                              const common = opt.common?.trim();
+                              const scientific = opt.label.trim();
+                              const combined = common ? `${scientific} / ${common}` : scientific;
+                              setPendingMarker((p) => (p ? { ...p, speciesName: combined } : p));
                               setShowSpeciesDropdown(false);
                             }}
                           >
-                            {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold' }}>{opt.common}</Box>}
-                            <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7 }}>{opt.label}</Box>
+                            {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold', color: '#2e7d32 !important' }}>{opt.common}</Box>}
+                            <Box sx={{ fontSize: 12, fontStyle: 'italic', color: '#2e7d32 !important' }}>{opt.label}</Box>
                           </Box>
                         ))}
                       </Box>
@@ -2097,7 +2465,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   variant="outlined"
                   fullWidth
                   margin="dense"
-                  value={pendingMarker.status}
+                  value={pendingMarker?.status || 'reported'}
                   onChange={(e) =>
                     setPendingMarker((p) => (p ? { ...p, status: e.target.value } : p))
                   }
@@ -2125,14 +2493,19 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   variant="outlined"
                   fullWidth
                   margin="dense"
-                  value={pendingMarker.reporterName || ""}
+                  value={pendingMarker?.reporterName || ""}
                   onChange={(e) => setPendingMarker((p) => {
-                    const next = p ? { ...p, reporterName: e.target.value } : p;
+                    // Allow only letters, spaces, dots and hyphens
+                    const hasDigits = /\d/.test(e.target.value);
+                    setNameHasDigits(hasDigits);
+                    const cleaned = e.target.value.replace(/[^A-Za-z .-]/g, '');
+                    const next = p ? { ...p, reporterName: cleaned } : p;
                     if (next && isPendingComplete(next)) setPendingWarning(null);
                     return next as PendingMarker;
                   })}
                   required
-                  error={Boolean(pendingWarning) && !(pendingMarker.reporterName || '').trim()}
+                  error={nameHasDigits || (Boolean(pendingWarning) && !(pendingMarker?.reporterName || '').trim())}
+                  helperText={nameHasDigits ? 'Numbers are not allowed in name.' : 'Letters only'}
                   inputRef={(el) => { pendingReporterRef.current = el; }}
                 />
                 <TextField
@@ -2141,10 +2514,11 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   variant="outlined"
                   fullWidth
                   margin="dense"
-                  value={pendingMarker.phoneNumber || ""}
+                  value={pendingMarker?.phoneNumber || ""}
                   onChange={(e) => {
-                    const phoneNumber = e.target.value;
-                    const countryCode = pendingMarker.countryCode || '+63';
+                    // Digits only, max length 10
+                    const phoneNumber = e.target.value.replace(/\\D/g, '').slice(0, 10);
+                    const countryCode = pendingMarker?.countryCode || '+63';
                     const fullNumber = countryCode + phoneNumber;
                     setPendingMarker((p) => {
                       const next = p ? { ...p, phoneNumber, contactNumber: fullNumber } : p;
@@ -2153,14 +2527,15 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                     });
                   }}
                   required
-                  error={Boolean(pendingWarning) && !(pendingMarker.phoneNumber || '').trim()}
+                  error={(pendingMarker?.phoneNumber ? pendingMarker.phoneNumber.length !== 10 : false) || (Boolean(pendingWarning) && !(pendingMarker?.phoneNumber || '').trim())}
+                  helperText="Enter 10 digits"
                   inputRef={(el) => { pendingContactRef.current = el; }}
                   InputProps={{
                     startAdornment: (
                       <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
                         <FormControl size="small" sx={{ minWidth: 80 }}>
                           <Select
-                            value={pendingMarker.countryCode || '+63'}
+                            value={pendingMarker?.countryCode || '+63'}
                             onChange={(e) => setPendingMarker((p) => p ? { ...p, countryCode: e.target.value } : p)}
                             variant="standard"
                             sx={{ 
@@ -2188,6 +2563,11 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                       </Box>
                     )
                   }}
+                  inputProps={{
+                    inputMode: 'numeric',
+                    pattern: '\\d*',
+                    maxLength: 10
+                  }}
                 />
 
                 {/* Upload photo */}
@@ -2207,41 +2587,39 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                       }}
                     />
                   </Button>
-                  {pendingMarker.photo && (
+                  {pendingMarker?.photo && (
                     <Box sx={{ mt: 1 }}>
-                      <img src={pendingMarker.photo ?? undefined} alt="preview" style={{ width: "100%", borderRadius: 8 }} />
+                      <img src={pendingMarker?.photo ?? undefined} alt="preview" style={{ width: "100%", borderRadius: 8 }} />
                       <Button size="small" onClick={() => setPendingMarker((p) => (p ? { ...p, photo: null } : p))}>Remove</Button>
                     </Box>
                   )}
                 </Box>
 
                 <Box>
-                  <div>Date & Time Captured: {new Date(pendingMarker.timestampIso).toLocaleString()}</div>
-                  <div>Latitude: {pendingMarker.pos[0].toFixed(5)}</div>
-                  <div>Longitude: {pendingMarker.pos[1].toFixed(5)}</div>
-                  <div>Barangay: {pendingMarker.addressLoading ? "Loading..." : (pendingMarker.address?.barangay || "N/A")}</div>
-                  <div>Municipality: {pendingMarker.addressLoading ? "Loading..." : (pendingMarker.address?.municipality || "N/A")}</div>
+                   <Typography variant="body2" sx={{ mt: 1 }}>
+                     <strong style={{ color: '#2e7d32' }}>Date & Time Captured:</strong> <span style={{ color: '#2e7d32' }}>{pendingMarker && new Date(pendingMarker.timestampIso).toLocaleString()}</span>
+                   </Typography>
+                   <Typography variant="body2">
+                     <strong style={{ color: '#2e7d32' }}>Latitude:</strong> <span style={{ color: '#2e7d32' }}>{pendingMarker && pendingMarker.pos[0].toFixed(5)}</span>
+                   </Typography>
+                   <Typography variant="body2">
+                     <strong style={{ color: '#2e7d32' }}>Longitude:</strong> <span style={{ color: '#2e7d32' }}>{pendingMarker && pendingMarker.pos[1].toFixed(5)}</span>
+                   </Typography>
+                   <Typography variant="body2">
+                     <strong style={{ color: '#2e7d32' }}>Barangay:</strong> <span style={{ color: '#2e7d32' }}>{pendingMarker && (pendingMarker.addressLoading ? "Loading..." : (pendingMarker.address?.barangay || "N/A"))}</span>
+                   </Typography>
+                   <Typography variant="body2">
+                     <strong style={{ color: '#2e7d32' }}>Municipality:</strong> <span style={{ color: '#2e7d32' }}>{pendingMarker && (pendingMarker.addressLoading ? "Loading..." : (pendingMarker.address?.municipality || "N/A"))}</span>
+                   </Typography>
                 </Box>
-
-                <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
+            </Box>
+          </DialogContent>
+          <DialogActions>
                   <Button
                     variant="contained"
                     color="primary"
-                    size="small"
-                      sx={(theme) => ({
-                        bgcolor: theme.palette.primary.main,
-                        color: theme.palette.mode === 'light' ? '#fff' : '#000',
-                        '&:hover': { bgcolor: theme.palette.primary.dark },
-                        '&.Mui-disabled': {
-                          opacity: 1,
-                          bgcolor: theme.palette.action.disabledBackground,
-                          color: theme.palette.mode === 'light' ? '#fff' : '#000',
-                        },
-                      })}
-                      className="confirm-btn"
-                      type="button"
                       onClick={() => {
-                        if (!isPendingComplete(pendingMarker)) {
+                if (!pendingMarker || !isPendingComplete(pendingMarker)) {
                           setPendingWarning('Please provide Species, Reporter Name, and Contact number before confirming.');
                           // Focus the first missing field for convenience
                           const missing = [
@@ -2255,71 +2633,432 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                         }
                         handleAddMarker();
                       }}
-                    // Keep button enabled to allow warning popup UX, but gate in handler
                   >
                     Confirm
                   </Button>
-                  <Button variant="outlined" color="primary" size="small" type="button" onClick={() => { setPendingMarker(null); setIsAddingMarker(false); }}>
+            <Button variant="outlined" color="primary" onClick={() => { setPendingMarker(null); setIsAddingMarker(false); }}>
                     Cancel
                   </Button>
-                </Box>
-              </Box>
-            </Popup>
-          </Marker>
-        )}
+          </DialogActions>
+        </Dialog>
 
-        {/* When editing, render that marker outside the cluster to avoid recluster animations hiding its popup */}
-        {editingMarker && (
-          <Marker
-            key={`editing-${editingMarker.id}`}
-            position={[editingMarker.latitude, editingMarker.longitude]}
-            icon={createStatusIcon(editingMarker.status)}
-            ref={(ref) => { if (ref) markerRefs.current[editingMarker.id] = ref; }}
-          >
-            <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
+        {/* View Marker Modal */}
+        {(() => {
+          const viewingMarker = viewingMarkerId ? finalFilteredMarkers.find(m => m.id === viewingMarkerId) : null;
+          if (!viewingMarker) return null;
+          
+          const trace = dispersalTraces.find(t => t.id === viewingMarker.id);
+          
+          return (
+            <Dialog
+              open={!!viewingMarkerId}
+              onClose={() => setViewingMarkerId(null)}
+              maxWidth="sm"
+              fullWidth
+              PaperProps={{
+                sx: {
+                  marginRight: 'auto',
+                  marginLeft: environmentalBg ? '35%' : '39%',
+                  marginTop: '10%',
+                  transform: 'translateX(0)',
+                  background: environmentalBg
+                    ? (theme.palette.mode === 'light'
+                        ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+                        : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))')
+                    : undefined,
+                  backgroundRepeat: environmentalBg ? 'no-repeat' : undefined,
+                  backgroundSize: environmentalBg ? '100% 100%' : undefined,
+                  maxHeight: '80vh',
+                }
+              }}
+            >
+              <DialogTitle>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                  <Box
+                    component="img"
+                    src="/images/kinaiyahanlogonobg.png"
+                    alt="Kinaiyahan"
+                    sx={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }}
+                  />
+                  <Typography component="span" variant="h6" sx={{ color: '#2e7d32 !important' }}>
+                    Species: {viewingMarker.species_name}
+                  </Typography>
+                </Box>
+              </DialogTitle>
+              <DialogContent sx={{ overflowY: 'auto', maxHeight: 'calc(80vh - 140px)' }}>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
+                  {/* Dispersal information */}
+                  {trace && (
+                    <Box sx={{ 
+                      bgcolor: '#e8f5e8', 
+                      color: '#2e7d32', 
+                      p: 1, 
+                      borderRadius: 1, 
+                      fontSize: '0.875rem',
+                      border: '1px solid',
+                      borderColor: '#4caf50'
+                    }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>📍 Released Location</Typography>
+                      <Typography variant="body2">Original: {trace.originalBarangay || 'Unknown'} ({trace.originalLat.toFixed(5)}, {trace.originalLng.toFixed(5)})</Typography>
+                      <Typography variant="body2">Current: {trace.dispersedBarangay || 'Unknown'} ({trace.dispersedLat.toFixed(5)}, {trace.dispersedLng.toFixed(5)})</Typography>
+                      {role === 'enforcement' && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="error"
+                          sx={{ 
+                            mt: 1,
+                            minWidth: 'fit-content',
+                            whiteSpace: 'nowrap',
+                            fontSize: '0.75rem',
+                            py: 0.5,
+                            px: 1,
+                            borderColor: '#d32f2f',
+                            color: '#d32f2f',
+                            '&:hover': {
+                              borderColor: '#b71c1c',
+                              color: '#b71c1c',
+                              bgcolor: 'rgba(211, 47, 47, 0.04)'
+                            }
+                          }}
+                          onClick={() => {
+                            if (role === 'enforcement') {
+                              handleUndispersed(viewingMarker.id);
+                              setViewingMarkerId(null);
+                            }
+                          }}
+                          disabled={role !== 'enforcement'}
+                        >
+                          Unrelease
+                        </Button>
+                      )}
+              </Box>
+                  )}
+                  
+                  {viewingMarker.photo_url && (
+                    <Box sx={{ mt: 1 }}>
+                      <Tooltip title="Click to view the whole photo size" arrow>
+                        <Box
+                          component="img"
+                          src={viewingMarker.photo_url}
+                          alt="marker"
+                          onClick={() => window.open(viewingMarker.photo_url, '_blank')}
+                          sx={{
+                            width: "100%",
+                            maxHeight: "280px",
+                            objectFit: "contain",
+                            borderRadius: 8,
+                            cursor: "pointer",
+                            transition: "opacity 0.2s ease-in-out",
+                            "&:hover": {
+                              opacity: 0.8
+                            }
+                          }}
+                        />
+                      </Tooltip>
+                    </Box>
+                  )}
+                  
                 <Box>
-                <TextField
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      <strong style={{ color: '#2e7d32' }}>Status:</strong> <span style={{ color: '#2e7d32' }}>{formatStatusLabel(viewingMarker.status)}</span>
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      <strong style={{ color: '#2e7d32' }}>Date & Time Captured:</strong> <span style={{ color: '#2e7d32' }}>{new Date(viewingMarker.timestamp_captured).toLocaleString()}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Latitude:</strong> <span style={{ color: '#2e7d32' }}>{viewingMarker.latitude.toFixed(5)}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Longitude:</strong> <span style={{ color: '#2e7d32' }}>{viewingMarker.longitude.toFixed(5)}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Barangay:</strong> <span style={{ color: '#2e7d32' }}>{viewingMarker.barangay || "N/A"}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Municipality:</strong> <span style={{ color: '#2e7d32' }}>{viewingMarker.municipality || "N/A"}</span>
+                    </Typography>
+                    {viewingMarker.reporter_name && (
+                      <Typography variant="body2">
+                        <strong style={{ color: '#2e7d32' }}>Reported by:</strong> <span style={{ color: '#2e7d32' }}>{viewingMarker.reporter_name}</span>
+                      </Typography>
+                    )}
+                    {viewingMarker.contact_number && (
+                      <Typography variant="body2">
+                        <strong style={{ color: '#2e7d32' }}>Contact:</strong> <span style={{ color: '#2e7d32' }}>{viewingMarker.contact_number}</span>
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              </DialogContent>
+              <DialogActions>
+                {role === 'enforcement' && (
+                  <>
+                    <Button
                   variant="outlined"
-                  margin="dense"
-                  fullWidth
                   size="small"
-                  value={
-                    editDrafts[editingMarker.id]?.species_name !== undefined
-                      ? editDrafts[editingMarker.id]?.species_name
-                      : editingMarker.species_name
-                  }
-                  onChange={(e) => {
-                    const nextValue = e.target.value;
+                      onClick={() => {
                     setEditDrafts((prev) => ({
                       ...prev,
-                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), species_name: nextValue, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
-                    }));
-                    // Suggestions disabled - no dropdown functionality
-                  }}
-                  onFocus={() => {
-                    // Suggestions disabled - no dropdown functionality
-                  }}
-                  onBlur={() => {
-                    // Suggestions disabled - no dropdown functionality
-                  }}
-                  inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
-                />
-                  {/* Species suggestions disabled - entire dropdown section commented out */}
+                          [viewingMarker.id]: {
+                            species_name: viewingMarker.species_name,
+                            status: viewingMarker.status,
+                            photo_url: viewingMarker.photo_url ?? null,
+                            barangay: viewingMarker.barangay ?? null,
+                            municipality: viewingMarker.municipality ?? null,
+                          },
+                        }));
+                        setEditingMarkerId(viewingMarker.id);
+                        setViewingMarkerId(null);
+                        setTimeout(() => {
+                          try { markerRefs.current[viewingMarker.id]?.openPopup?.(); } catch {}
+                        }, 0);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => {
+                        if (role === 'enforcement') {
+                          setRelocationOriginalLocation({ lat: viewingMarker.latitude, lng: viewingMarker.longitude });
+                          setRelocatingMarkerId(viewingMarker.id);
+                          setViewingMarkerId(null);
+                        }
+                      }}
+                      disabled={role !== 'enforcement'}
+                    >
+                      Relocate Pin
+                    </Button>
+                    {normalizeStatus(viewingMarker.status) !== 'released' && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="warning"
+                        onClick={() => {
+                          if (role === 'enforcement') {
+                            setOriginalLocation({ lat: viewingMarker.latitude, lng: viewingMarker.longitude });
+                            setDispersingMarkerId(viewingMarker.id);
+                            setViewingMarkerId(null);
+                          }
+                        }}
+                        disabled={role !== 'enforcement'}
+                      >
+                        Release
+                      </Button>
+                    )}
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="error"
+                      onClick={() => {
+                        if (role === 'enforcement') {
+                          handleDeleteMarker(viewingMarker.id);
+                          setViewingMarkerId(null);
+                        }
+                      }}
+                      disabled={role !== 'enforcement'}
+                    >
+                      Delete
+                    </Button>
+                  </>
+                )}
+                <Button variant="outlined" color="primary" onClick={() => setViewingMarkerId(null)}>
+                  Close
+                </Button>
+              </DialogActions>
+            </Dialog>
+          );
+        })()}
+
+        {/* Edit Marker Modal */}
+        {editingMarker && (() => {
+          const currentDraft = editDrafts[editingMarker.id] || {};
+          const currentPhoto = currentDraft.photo_url !== undefined ? currentDraft.photo_url : editingMarker.photo_url;
+          const currentReporterName = currentDraft.reporter_name !== undefined ? currentDraft.reporter_name : (editingMarker.reporter_name || '');
+          const currentContactNumber = currentDraft.contact_number || editingMarker.contact_number || '';
+          
+          // Extract country code and phone number
+          let countryCode = '+63';
+          let phoneNumber = '';
+          if (currentContactNumber) {
+            if (currentContactNumber.startsWith('+63')) {
+              countryCode = '+63';
+              phoneNumber = currentContactNumber.replace(/^\+63/, '');
+            } else if (currentContactNumber.startsWith('+1')) {
+              countryCode = '+1';
+              phoneNumber = currentContactNumber.replace(/^\+1/, '');
+            } else if (currentContactNumber.startsWith('+44')) {
+              countryCode = '+44';
+              phoneNumber = currentContactNumber.replace(/^\+44/, '');
+            } else if (currentContactNumber.startsWith('+81')) {
+              countryCode = '+81';
+              phoneNumber = currentContactNumber.replace(/^\+81/, '');
+            } else if (currentContactNumber.startsWith('+86')) {
+              countryCode = '+86';
+              phoneNumber = currentContactNumber.replace(/^\+86/, '');
+            } else if (currentContactNumber.startsWith('+82')) {
+              countryCode = '+82';
+              phoneNumber = currentContactNumber.replace(/^\+82/, '');
+            } else if (currentContactNumber.startsWith('+65')) {
+              countryCode = '+65';
+              phoneNumber = currentContactNumber.replace(/^\+65/, '');
+            } else if (currentContactNumber.startsWith('+60')) {
+              countryCode = '+60';
+              phoneNumber = currentContactNumber.replace(/^\+60/, '');
+            } else {
+              phoneNumber = currentContactNumber;
+            }
+          }
+
+          return (
+            <Dialog
+              open={!!editingMarker}
+              onClose={() => {
+                setEditingMarkerId(null);
+                setEditDrafts((prev) => {
+                  const newDrafts = { ...prev };
+                  delete newDrafts[editingMarker.id];
+                  return newDrafts;
+                });
+              }}
+              maxWidth="sm"
+              fullWidth
+              PaperProps={{
+                sx: {
+                  marginRight: 'auto',
+                  marginLeft: environmentalBg ? '35%' : '39%',
+                  marginTop: '10%',
+                  transform: 'translateX(0)',
+                  background: environmentalBg
+                    ? (theme.palette.mode === 'light'
+                        ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+                        : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))')
+                    : undefined,
+                  backgroundRepeat: environmentalBg ? 'no-repeat' : undefined,
+                  backgroundSize: environmentalBg ? '100% 100%' : undefined,
+                  maxHeight: '80vh',
+                }
+              }}
+            >
+              <DialogTitle>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                  <Box
+                    component="img"
+                    src="/images/kinaiyahanlogonobg.png"
+                    alt="Kinaiyahan"
+                    sx={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }}
+                  />
+                  <Typography component="span" variant="h6" sx={{ color: '#2e7d32 !important' }}>
+                    Edit Marker Details
+                  </Typography>
                 </Box>
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Status</Box>
+              </DialogTitle>
+              <DialogContent sx={{ overflowY: 'auto', maxHeight: 'calc(80vh - 140px)' }}>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
                 <TextField
-                  select
+                    placeholder="Species name"
+                    size="small"
                   variant="outlined"
-                  margin="dense"
                   fullWidth
+                    margin="dense"
+                    value={
+                      (currentDraft.scientific_name !== undefined || currentDraft.species_name !== undefined)
+                        ? [currentDraft.scientific_name, currentDraft.species_name].filter(Boolean).join(' / ')
+                        : ([editingMarker.scientific_name, editingMarker.species_name].filter(Boolean).join(' / ') || editingMarker.species_name)
+                    }
+                    onChange={(e) => {
+                      setEditDrafts((prev) => ({
+                        ...prev,
+                        [editingMarker.id]: {
+                          ...(prev[editingMarker.id] || {}),
+                          // Store raw input; will be parsed on save into sci/common
+                          species_name: e.target.value,
+                          status: prev[editingMarker.id]?.status ?? editingMarker.status,
+                          photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                          barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay,
+                          municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality,
+                          reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
+                          contact_number: prev[editingMarker.id]?.contact_number ?? editingMarker.contact_number,
+                        },
+                      }));
+                    }}
+                    onFocus={() => {
+                      if (editSpeciesOptions.length > 0) {
+                        setShowEditSpeciesDropdown(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setShowEditSpeciesDropdown(false), 200);
+                    }}
+                    inputRef={(el) => { editInputRefs.current[editingMarker.id] = el; }}
+                  />
+                  {showEditSpeciesDropdown && (
+                    <Box sx={{ mt: 0.5, border: "1px solid", borderColor: "divider", borderRadius: 1, maxHeight: 128, overflow: "auto" }}>
+                      {editSpeciesLoading && <Box sx={{ fontSize: 12, opacity: 0.7, p: 1, color: '#2e7d32 !important' }}>Searching…</Box>}
+                      {!editSpeciesLoading && editSpeciesOptions.length === 0 && (
+                        <Box sx={{ fontSize: 12, opacity: 0.5, p: 1, color: '#2e7d32 !important' }}>No suggestions</Box>
+                      )}
+                      {!editSpeciesLoading && editSpeciesOptions.length > 0 && (
+                        <Box sx={{ color: '#2e7d32 !important' }}>
+                          {editSpeciesOptions.map((opt) => (
+                            <Box
+                              key={`${opt.label}-${opt.common || ""}`}
+                              sx={{ px: 1, py: 0.5, cursor: "pointer", "&:hover": { backgroundColor: "action.hover" } }}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSpeciesSelectedFromDropdown(true);
+                                setEditDrafts((prev) => ({
+                                  ...prev,
+                                  [editingMarker.id]: {
+                                    ...(prev[editingMarker.id] || {}),
+                                    // Store both names in draft: scientific and common
+                                    species_name: opt.common || opt.label,
+                                    scientific_name: opt.label,
+                                    status: prev[editingMarker.id]?.status ?? editingMarker.status,
+                                    photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                                    barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay,
+                                    municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality,
+                                    reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
+                                    contact_number: prev[editingMarker.id]?.contact_number ?? editingMarker.contact_number,
+                                  },
+                                }));
+                                setTimeout(() => {
+                                  setShowEditSpeciesDropdown(false);
+                                  setSpeciesSelectedFromDropdown(false);
+                                }, 150);
+                              }}
+                            >
+                              {opt.common && <Box sx={{ fontSize: 14, fontWeight: 'bold', color: '#2e7d32 !important' }}>{opt.common}</Box>}
+                              <Box sx={{ fontSize: 12, fontStyle: 'italic', opacity: 0.9, color: '#2e7d32 !important' }}>{opt.label}</Box>
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
+                  )}
+                  <TextField
+                    select
                   size="small"
-                  value={editDrafts[editingMarker.id]?.status || editingMarker.status}
+                    variant="outlined"
+                    fullWidth
+                    margin="dense"
+                    value={currentDraft.status || editingMarker.status}
                   onChange={(e) =>
                     setEditDrafts((prev) => ({
                       ...prev,
-                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), status: String(e.target.value), species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
+                        [editingMarker.id]: {
+                          ...(prev[editingMarker.id] || {}),
+                          status: String(e.target.value),
+                          species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name,
+                          photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                          barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay,
+                          municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality,
+                          reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
+                          contact_number: prev[editingMarker.id]?.contact_number ?? editingMarker.contact_number,
+                        },
                     }))
                   }
                 >
@@ -2328,44 +3067,207 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                   <MenuItem value="turned over">Turned over</MenuItem>
                   <MenuItem value="released">Released</MenuItem>
                 </TextField>
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Barangay</Box>
                 <TextField
+                    placeholder="Barangay"
+                    size="small"
                   variant="outlined"
-                  margin="dense"
                   fullWidth
-                  size="small"
-                  value={editDrafts[editingMarker.id]?.barangay || editingMarker.barangay || ''}
+                    margin="dense"
+                    value={currentDraft.barangay !== undefined ? currentDraft.barangay : (editingMarker.barangay || '')}
                   onChange={(e) =>
                     setEditDrafts((prev) => ({
                       ...prev,
-                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), barangay: e.target.value, species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality },
+                        [editingMarker.id]: {
+                          ...(prev[editingMarker.id] || {}),
+                          barangay: e.target.value,
+                          species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name,
+                          status: prev[editingMarker.id]?.status ?? editingMarker.status,
+                          photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                          municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality,
+                          reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
+                          contact_number: prev[editingMarker.id]?.contact_number ?? editingMarker.contact_number,
+                        },
                     }))
                   }
                 />
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Municipality</Box>
                 <TextField
+                    placeholder="Municipality"
+                    size="small"
                   variant="outlined"
-                  margin="dense"
                   fullWidth
+                    margin="dense"
+                    value={currentDraft.municipality !== undefined ? currentDraft.municipality : (editingMarker.municipality || '')}
+                    onChange={(e) =>
+                      setEditDrafts((prev) => ({
+                        ...prev,
+                        [editingMarker.id]: {
+                          ...(prev[editingMarker.id] || {}),
+                          municipality: e.target.value,
+                          species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name,
+                          status: prev[editingMarker.id]?.status ?? editingMarker.status,
+                          photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                          barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay,
+                          reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
+                          contact_number: prev[editingMarker.id]?.contact_number ?? editingMarker.contact_number,
+                        },
+                      }))
+                    }
+                  />
+                  <TextField
+                    placeholder="Name of who sighted"
                   size="small"
-                  value={editDrafts[editingMarker.id]?.municipality || editingMarker.municipality || ''}
+                    variant="outlined"
+                    fullWidth
+                    margin="dense"
+                    value={currentReporterName}
                   onChange={(e) =>
                     setEditDrafts((prev) => ({
                       ...prev,
-                      [editingMarker.id]: { ...(prev[editingMarker.id] || {}), municipality: e.target.value, species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name, status: prev[editingMarker.id]?.status ?? editingMarker.status, photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url, barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay },
+                        [editingMarker.id]: {
+                          ...(prev[editingMarker.id] || {}),
+                          reporter_name: e.target.value,
+                          species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name,
+                          status: prev[editingMarker.id]?.status ?? editingMarker.status,
+                          photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                          barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay,
+                          municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality,
+                          contact_number: prev[editingMarker.id]?.contact_number ?? editingMarker.contact_number,
+                        },
                     }))
                   }
+                />
+                  <TextField
+                    placeholder="Phone number"
+                    size="small"
+                    variant="outlined"
+                    fullWidth
+                    margin="dense"
+                    value={phoneNumber}
+                    onChange={(e) => {
+                      const phoneNumberValue = e.target.value;
+                      const fullNumber = countryCode + phoneNumberValue;
+                      setEditDrafts((prev) => ({
+                        ...prev,
+                        [editingMarker.id]: {
+                          ...(prev[editingMarker.id] || {}),
+                          contact_number: fullNumber,
+                          species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name,
+                          status: prev[editingMarker.id]?.status ?? editingMarker.status,
+                          photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                          barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay,
+                          municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality,
+                          reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
+                        },
+                      }));
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                          <FormControl size="small" sx={{ minWidth: 80 }}>
+                            <Select
+                              value={countryCode}
+                              onChange={(e) => {
+                                const countryCodeValue = e.target.value;
+                                const phoneNumberValue = phoneNumber;
+                                const fullNumber = countryCodeValue + phoneNumberValue;
+                                setEditDrafts((prev) => ({
+                                  ...prev,
+                                  [editingMarker.id]: {
+                                    ...(prev[editingMarker.id] || {}),
+                                    contact_number: fullNumber,
+                                    species_name: prev[editingMarker.id]?.species_name ?? editingMarker.species_name,
+                                    status: prev[editingMarker.id]?.status ?? editingMarker.status,
+                                    photo_url: prev[editingMarker.id]?.photo_url ?? editingMarker.photo_url,
+                                    barangay: prev[editingMarker.id]?.barangay ?? editingMarker.barangay,
+                                    municipality: prev[editingMarker.id]?.municipality ?? editingMarker.municipality,
+                                    reporter_name: prev[editingMarker.id]?.reporter_name ?? editingMarker.reporter_name,
+                                  },
+                                }));
+                              }}
+                              variant="standard"
+                              sx={{ 
+                                '&:before': { borderBottom: 'none' },
+                                '&:after': { borderBottom: 'none' },
+                                '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
+                                '& .MuiSelect-select': { 
+                                  padding: '0',
+                                  fontSize: '14px',
+                                  fontWeight: 500,
+                                  minHeight: 'auto'
+                                }
+                              }}
+                            >
+                              <MenuItem value="+63">🇵🇭 +63</MenuItem>
+                              <MenuItem value="+1">🇺🇸 +1</MenuItem>
+                              <MenuItem value="+44">🇬🇧 +44</MenuItem>
+                              <MenuItem value="+81">🇯🇵 +81</MenuItem>
+                              <MenuItem value="+86">🇨🇳 +86</MenuItem>
+                              <MenuItem value="+82">🇰🇷 +82</MenuItem>
+                              <MenuItem value="+65">🇸🇬 +65</MenuItem>
+                              <MenuItem value="+60">🇲🇾 +60</MenuItem>
+                            </Select>
+                          </FormControl>
+                        </Box>
+                      )
+                    }}
                 />
                 <Box>
-                  {editingMarker.timestamp_captured ? (<div>DateTime: {new Date(editingMarker.timestamp_captured).toLocaleString()}</div>) : null}
-                  <div>Latitude: {editingMarker.latitude.toFixed(5)}</div>
-                  <div>Longitude: {editingMarker.longitude.toFixed(5)}</div>
+                    <Button variant="outlined" color="primary" size="small" component="label">
+                      Change Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const url = URL.createObjectURL(file);
+                            setEditDrafts((prev) => ({
+                              ...prev,
+                              [editingMarker.id]: {
+                                ...(prev[editingMarker.id] || {}),
+                                photo_url: url,
+                              },
+                            }));
+                          }
+                        }}
+                      />
+                    </Button>
+                    {currentPhoto && (
+                      <Box sx={{ mt: 1 }}>
+                        <img src={currentPhoto} alt="preview" style={{ width: "100%", maxHeight: "280px", objectFit: "contain", borderRadius: 8 }} />
+                        <Button size="small" onClick={() => setEditDrafts((prev) => ({ ...prev, [editingMarker.id]: { ...prev[editingMarker.id], photo_url: null } }))}>Remove</Button>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                    )}
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      <strong style={{ color: '#2e7d32' }}>Date & Time Captured:</strong> <span style={{ color: '#2e7d32' }}>{editingMarker.timestamp_captured ? new Date(editingMarker.timestamp_captured).toLocaleString() : 'N/A'}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Latitude:</strong> <span style={{ color: '#2e7d32' }}>{editingMarker.latitude.toFixed(5)}</span>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong style={{ color: '#2e7d32' }}>Longitude:</strong> <span style={{ color: '#2e7d32' }}>{editingMarker.longitude.toFixed(5)}</span>
+                    </Typography>
+                  </Box>
+                </Box>
+              </DialogContent>
+              <DialogActions>
                       <Button
                         variant="contained"
                         color="primary"
-                        size="small"
+                        className="confirm-btn"
+                        sx={(theme) => ({
+                          bgcolor: theme.palette.primary.main,
+                          color: theme.palette.mode === 'light' ? '#fff' : '#000',
+                          '&:hover': { bgcolor: theme.palette.primary.dark },
+                          '&.Mui-disabled': {
+                            opacity: 1,
+                            bgcolor: theme.palette.action.disabledBackground,
+                            color: theme.palette.mode === 'light' ? '#fff' : '#000',
+                          },
+                        })}
                         onClick={() => {
                           const d = editDrafts[editingMarker.id] || {};
                           if (!d.species_name || !d.status) return;
@@ -2374,15 +3276,37 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                       >
                         Save
                       </Button>
-                      <Button variant="outlined" size="small" onClick={() => setEditingMarkerId(null)}>Cancel</Button>
-                    </Box>
-              </Box>
-            </Popup>
-          </Marker>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={() => {
+                    setEditingMarkerId(null);
+                    setEditDrafts((prev) => {
+                      const newDrafts = { ...prev };
+                      delete newDrafts[editingMarker.id];
+                      return newDrafts;
+                    });
+                  }}
+                >
+                  Cancel
+                </Button>
+              </DialogActions>
+            </Dialog>
+          );
+        })()}
+
+        {/* When editing, render that marker outside the cluster to avoid recluster animations hiding its popup */}
+        {!dispersingMarkerId && !relocatingMarkerId && editingMarker && (
+          <Marker
+            key={`editing-${editingMarker.id}`}
+            position={[editingMarker.latitude, editingMarker.longitude]}
+            icon={createStatusIcon(editingMarker.status)}
+            ref={(ref) => { if (ref) markerRefs.current[editingMarker.id] = ref; }}
+          />
         )}
 
         {/* When relocating, render that marker outside the cluster */}
-        {relocatingMarkerId && (() => {
+        {!dispersingMarkerId && relocatingMarkerId && (() => {
           const relocatingMarker = finalFilteredMarkers.find(m => m.id === relocatingMarkerId);
           return relocatingMarker ? (
             <Marker
@@ -2414,7 +3338,7 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         })()}
 
         {/* Dispersal marker and trace line */}
-        {dispersingMarkerId && (() => {
+        {!relocatingMarkerId && dispersingMarkerId && (() => {
           const dispersingMarker = finalFilteredMarkers.find(m => m.id === dispersingMarkerId);
           return dispersingMarker ? (
             <>
@@ -2484,8 +3408,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
           ) : null;
         })()}
 
-        {/* Dispersal trace lines with multiple curves */}
-        {dispersalTraces.map(trace => {
+        {/* Dispersal trace lines with multiple curves (show only if 'rescued' filter is enabled) */}
+        {enabledStatuses.includes('rescued') && dispersalTraces.map(trace => {
           const startLat = trace.originalLat;
           const startLng = trace.originalLng;
           const endLat = trace.dispersedLat;
@@ -2640,8 +3564,8 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
           );
         })()}
 
-        {/* Dynamic trace line following cursor during dispersal (green) */}
-        {dispersingMarkerId && cursorPosition && originalLocation && (() => {
+        {/* Dynamic trace line following cursor during dispersal (green) - also gated by 'rescued' filter */}
+        {enabledStatuses.includes('rescued') && dispersingMarkerId && cursorPosition && originalLocation && (() => {
           const startLat = originalLocation.lat;
           const startLng = originalLocation.lng;
           const endLat = cursorPosition.lat;
@@ -2723,13 +3647,13 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
         })()}
 
         {/* Saved user markers */}
-        {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId && m.id !== relocatingMarkerId && m.id !== dispersingMarkerId).length > 0 && (
+        {!dispersingMarkerId && !relocatingMarkerId && finalFilteredMarkers.filter((m) => m.id !== editingMarkerId && m.id !== relocatingMarkerId && m.id !== dispersingMarkerId).length > 0 && (
           <MarkerClusterGroup
             chunkedLoading
             iconCreateFunction={(cluster: any) => {
               const count = cluster.getChildCount();
-              const html = `<div style="
-                background:#ff9800; /* orange */
+              const html = `<div class="cluster-icon-animated" style="
+                background:#4caf50; /* green */
                 color:#fff;
                 border-radius:50%;
                 width:32px;height:32px;
@@ -2737,423 +3661,29 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
                 border:2px solid #fff;
                 box-shadow:0 0 0 2px rgba(0,0,0,0.3);
                 font-weight:600;
-              ">${count}</div>`;
+                position:relative;
+              ">
+                <div class="cluster-glow-ring"></div>
+                <span style="position:relative;z-index:1;">${count}</span>
+              </div>`;
               return L.divIcon({ html, className: "cluster-icon", iconSize: [32, 32] });
             }}
           >
             {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId).map((m) => {
-              console.log(`Marker ${m.id} coordinates:`, { lat: m.latitude, lng: m.longitude });
-              console.log(`Marker ${m.id} position array:`, [m.latitude, m.longitude]);
               return (
               <Marker
                 key={m.id}
                 position={[m.latitude, m.longitude]}
                 icon={createStatusIcon(m.status)}
                 ref={(ref) => { markerRefs.current[m.id] = ref; }}
+                eventHandlers={{
+                  click: () => {
+                    if (editingMarkerId !== m.id) {
+                      setViewingMarkerId(m.id);
+                    }
+                  }
+                }}
               >
-              <Popup className="themed-popup" autoPan autoPanPadding={[50, 50]}>
-                {editingMarkerId === m.id ? (
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 240 }}>
-                    <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125 }}>Species name</Box>
-                    <TextField
-                      variant="outlined"
-                      margin="dense"
-                      fullWidth
-                      size="small"
-                      value={editDrafts[m.id]?.species_name ?? m.species_name}
-                      onChange={(e) =>
-                        setEditDrafts((prev) => ({
-                          ...prev,
-                          [m.id]: {
-                            ...prev[m.id],
-                            species_name: e.target.value,
-                            status: prev[m.id]?.status ?? m.status,
-                            photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                      },
-                    }))
-                  }
-                      inputRef={(el) => { editInputRefs.current[m.id] = el; }}
-                />
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Status</Box>
-                <TextField
-                  select
-                  variant="outlined"
-                  margin="dense"
-                  fullWidth
-                  size="small"
-                      value={editDrafts[m.id]?.status ?? m.status}
-                  onChange={(e) =>
-                    setEditDrafts((prev) => ({
-                      ...prev,
-                          [m.id]: {
-                            ...prev[m.id],
-                            species_name: prev[m.id]?.species_name ?? m.species_name,
-                            status: e.target.value,
-                            photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                      },
-                    }))
-                  }
-                >
-                  <MenuItem value="reported">Reported</MenuItem>
-                  <MenuItem value="rescued">Rescued</MenuItem>
-                  <MenuItem value="turned over">Turned over</MenuItem>
-                  <MenuItem value="released">Released</MenuItem>
-                </TextField>
-
-                {/* Reporter details (editable) */}
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Name of who sighted</Box>
-                <TextField
-                  variant="outlined"
-                  margin="dense"
-                  fullWidth
-                  size="small"
-                      value={editDrafts[m.id]?.reporter_name ?? m.reporter_name ?? ""}
-                  onChange={(e) =>
-                    setEditDrafts((prev) => ({
-                      ...prev,
-                          [m.id]: {
-                            ...prev[m.id],
-                            reporter_name: e.target.value,
-                            species_name: prev[m.id]?.species_name ?? m.species_name,
-                            status: prev[m.id]?.status ?? m.status,
-                            photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                            contact_number: prev[m.id]?.contact_number ?? m.contact_number,
-                      },
-                    }))
-                  }
-                />
-                <Box sx={{ fontSize: 12, color: 'text.secondary', mb: 0.125, mt: 0.125 }}>Contact number</Box>
-                <TextField
-                  variant="outlined"
-                  margin="dense"
-                  fullWidth
-                  size="small"
-                  placeholder="Phone number"
-                  value={editDrafts[m.id]?.phone_number ?? ""}
-                  onChange={(e) => {
-                    const phoneNumber = e.target.value;
-                    const countryCode = editDrafts[m.id]?.country_code ?? '+63';
-                    const fullNumber = countryCode + phoneNumber;
-                    setEditDrafts((prev) => ({
-                      ...prev,
-                          [m.id]: {
-                            ...prev[m.id],
-                        phone_number: phoneNumber,
-                        contact_number: fullNumber,
-                            species_name: prev[m.id]?.species_name ?? m.species_name,
-                            status: prev[m.id]?.status ?? m.status,
-                            photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                            reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
-                      },
-                    }));
-                  }}
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
-                        <FormControl size="small" sx={{ minWidth: 80 }}>
-                          <Select
-                            value={editDrafts[m.id]?.country_code ?? '+63'}
-                            onChange={(e) => {
-                              const countryCode = e.target.value;
-                              const phoneNumber = editDrafts[m.id]?.phone_number ?? '';
-                              const fullNumber = countryCode + phoneNumber;
-                              setEditDrafts((prev) => ({
-                                ...prev,
-                                [m.id]: {
-                                  ...prev[m.id],
-                                  country_code: countryCode,
-                                  contact_number: fullNumber,
-                                  species_name: prev[m.id]?.species_name ?? m.species_name,
-                                  status: prev[m.id]?.status ?? m.status,
-                                  photo_url: prev[m.id]?.photo_url ?? m.photo_url,
-                                  reporter_name: prev[m.id]?.reporter_name ?? m.reporter_name,
-                                },
-                              }));
-                            }}
-                            variant="standard"
-                            sx={{ 
-                              '&:before': { borderBottom: 'none' },
-                              '&:after': { borderBottom: 'none' },
-                              '&:hover:not(.Mui-disabled):before': { borderBottom: 'none' },
-                              '& .MuiSelect-select': { 
-                                padding: '0',
-                                fontSize: '14px',
-                                fontWeight: 500,
-                                minHeight: 'auto'
-                              }
-                            }}
-                          >
-                            <MenuItem value="+63">🇵🇭 +63</MenuItem>
-                            <MenuItem value="+1">🇺🇸 +1</MenuItem>
-                            <MenuItem value="+44">🇬🇧 +44</MenuItem>
-                            <MenuItem value="+81">🇯🇵 +81</MenuItem>
-                            <MenuItem value="+86">🇨🇳 +86</MenuItem>
-                            <MenuItem value="+82">🇰🇷 +82</MenuItem>
-                            <MenuItem value="+65">🇸🇬 +65</MenuItem>
-                            <MenuItem value="+60">🇲🇾 +60</MenuItem>
-                          </Select>
-                        </FormControl>
-                      </Box>
-                    )
-                  }}
-                />
-
-                {/* Edit photo */}
-                <Box>
-                  <Button variant="outlined" color="primary" size="small" component="label">
-                    Change Photo
-                    <input
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const url = URL.createObjectURL(file);
-                          setEditDrafts((prev) => ({
-                            ...prev,
-                                [m.id]: {
-                                  ...prev[m.id],
-                                  photo_url: url,
-                            },
-                          }));
-                        }
-                      }}
-                    />
-                  </Button>
-                       {editDrafts[m.id]?.photo_url && (
-                    <Box sx={{ mt: 1 }}>
-                           <img src={editDrafts[m.id]?.photo_url ?? undefined} alt="preview" style={{ width: "100%", borderRadius: 8 }} />
-                          <Button size="small" onClick={() => setEditDrafts((prev) => ({ ...prev, [m.id]: { ...prev[m.id], photo_url: null } }))}>Remove</Button>
-                    </Box>
-                  )}
-                </Box>
-
-                    <Box sx={{ display: "flex", gap: 1, flexWrap: 'wrap' }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    size="small"
-                        sx={(theme) => ({
-                          bgcolor: theme.palette.primary.main,
-                          color: theme.palette.mode === 'light' ? '#fff' : '#000',
-                          '&:hover': { bgcolor: theme.palette.primary.dark },
-                          '&.Mui-disabled': {
-                            opacity: 1,
-                            bgcolor: theme.palette.action.disabledBackground,
-                            color: theme.palette.mode === 'light' ? '#fff' : '#000',
-                          },
-                        })}
-                        className="confirm-btn"
-                        onClick={() => {
-                          handleUpdateMarker(m.id);
-                    }}
-                  >
-                    Save
-                  </Button>
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        size="small"
-                        onClick={() => {
-                          setEditingMarkerId(null);
-                          setEditDrafts((prev) => {
-                            const cp = { ...prev };
-                            delete cp[m.id];
-                            return cp;
-                          });
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </Box>
-                  </Box>
-                ) : (
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 360 }}>
-                    <div><strong>{m.species_name}</strong></div>
-                    <div>Status: {formatStatusLabel(m.status)}</div>
-                    {/* Dispersal information */}
-                    {(() => {
-                      const trace = dispersalTraces.find(t => t.id === m.id);
-                      return trace ? (
-                        <Box sx={{ 
-                          bgcolor: '#e8f5e8', 
-                          color: '#2e7d32', 
-                          p: 1, 
-                          borderRadius: 1, 
-                          fontSize: '0.875rem',
-                          border: '1px solid',
-                          borderColor: '#4caf50'
-                        }}>
-                          <div><strong>📍 Released Location</strong></div>
-                          <div>Original: {trace.originalBarangay || 'Unknown'} ({trace.originalLat.toFixed(5)}, {trace.originalLng.toFixed(5)})</div>
-                          <div>Current: {trace.dispersedBarangay || 'Unknown'} ({trace.dispersedLat.toFixed(5)}, {trace.dispersedLng.toFixed(5)})</div>
-                      <Tooltip title={role !== 'enforcement' ? 'Only enforcement can modify' : ''} disableHoverListener={role === 'enforcement'} arrow>
-                        <span>
-                          <Button
-                              variant="outlined"
-                              size="small"
-                              color="error"
-                              sx={{ 
-                                mt: 1,
-                                minWidth: 'fit-content',
-                                whiteSpace: 'nowrap',
-                                fontSize: '0.75rem',
-                                py: 0.5,
-                                px: 1,
-                                borderColor: '#d32f2f',
-                                color: '#d32f2f',
-                                '&:hover': {
-                                  borderColor: '#b71c1c',
-                                  color: '#b71c1c',
-                                  bgcolor: 'rgba(211, 47, 47, 0.04)'
-                                }
-                              }}
-                              onClick={(e) => {
-                                try { e.preventDefault(); e.stopPropagation(); } catch {}
-                                if (role === 'enforcement') handleUndispersed(m.id);
-                              }}
-                              disabled={role !== 'enforcement'}
-                            >
-                              Unrelease
-                            </Button>
-                        </span>
-                      </Tooltip>
-                        </Box>
-                      ) : null;
-                    })()}
-                    {m.photo_url && <img src={m.photo_url} alt="marker" style={{ width: "100%", borderRadius: 8 }} />}
-                    <div>Date & Time Captured: {new Date(m.timestamp_captured).toLocaleString()}</div>
-                    <div>Latitude: {m.latitude.toFixed(5)}</div>
-                    <div>Longitude: {m.longitude.toFixed(5)}</div>
-                    <div>Barangay: {m.barangay || "N/A"}</div>
-                    <div>Municipality: {m.municipality || "N/A"}</div>
-                    {m.reporter_name ? <div>Reported by: {m.reporter_name}</div> : null}
-                    {m.contact_number ? <div>Contact: {m.contact_number}</div> : null}
-                      <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
-                        {role === 'enforcement' && (
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            sx={{ 
-                              minWidth: 'fit-content', 
-                              whiteSpace: 'nowrap'
-                            }}
-                            onClick={(e) => {
-                              try { e.preventDefault(); e.stopPropagation(); } catch {}
-                              setEditDrafts((prev) => ({
-                                ...prev,
-                                [m.id]: {
-                                  species_name: m.species_name,
-                                  status: m.status,
-                                  photo_url: m.photo_url ?? null,
-                                  barangay: m.barangay ?? null,
-                                  municipality: m.municipality ?? null,
-                                },
-                              }));
-                              setEditingMarkerId(m.id);
-                              setSpeciesSelectedFromDropdown(false);
-                              setTimeout(() => {
-                                try { markerRefs.current[m.id]?.openPopup?.(); } catch {}
-                                try { (document.activeElement as HTMLElement | null)?.blur?.(); } catch {}
-                              }, 0);
-                            }}
-                          >
-                            Edit
-                          </Button>
-                        )}
-                        <Tooltip title={role !== 'enforcement' ? 'Only enforcement can modify' : ''} disableHoverListener={role === 'enforcement'} arrow>
-                        <span>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color="secondary"
-                          sx={{ 
-                            minWidth: 'fit-content', 
-                            whiteSpace: 'nowrap',
-                            '&.Mui-disabled': {
-                              opacity: 1,
-                              borderColor: 'divider',
-                              color: 'text.disabled',
-                              bgcolor: 'action.disabledBackground',
-                            }
-                          }}
-                          onClick={(e) => {
-                            try { e.preventDefault(); e.stopPropagation(); } catch {}
-                            if (role === 'enforcement') {
-                            setRelocationOriginalLocation({ lat: m.latitude, lng: m.longitude });
-                            setRelocatingMarkerId(m.id);
-                            }
-                            // Close the popup to allow clicking on map
-                            try { markerRefs.current[m.id]?.closePopup?.(); } catch {}
-                          }}
-                          disabled={role !== 'enforcement'}
-                        >
-                          Relocate Pin
-                        </Button>
-                        </span>
-                        </Tooltip>
-                        <Tooltip title={role !== 'enforcement' ? 'Only enforcement can modify' : ''} disableHoverListener={role === 'enforcement'} arrow>
-                        <span>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color="warning"
-                          sx={{ 
-                            minWidth: 'fit-content', 
-                            whiteSpace: 'nowrap',
-                            '&.Mui-disabled': {
-                              opacity: 1,
-                              borderColor: 'divider',
-                              color: 'text.disabled',
-                              bgcolor: 'action.disabledBackground',
-                            }
-                          }}
-                          onClick={(e) => {
-                            try { e.preventDefault(); e.stopPropagation(); } catch {}
-                            if (role === 'enforcement') {
-                            setOriginalLocation({ lat: m.latitude, lng: m.longitude });
-                            setDispersingMarkerId(m.id);
-                            }
-                            // Close the popup to allow clicking on map
-                            try { markerRefs.current[m.id]?.closePopup?.(); } catch {}
-                          }}
-                          disabled={role !== 'enforcement'}
-                        >
-                          Release
-                        </Button>
-                        </span>
-                        </Tooltip>
-                        <Tooltip title={role !== 'enforcement' ? 'Only enforcement can modify' : ''} disableHoverListener={role === 'enforcement'} arrow>
-                        <span>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color="error"
-                          sx={{ 
-                            minWidth: 'fit-content', 
-                            whiteSpace: 'nowrap',
-                            '&.Mui-disabled': {
-                              opacity: 1,
-                              borderColor: 'divider',
-                              color: 'text.disabled',
-                              bgcolor: 'action.disabledBackground',
-                            }
-                          }}
-                        onClick={(e) => {
-                            try { e.preventDefault(); e.stopPropagation(); } catch {}
-                            if (role === 'enforcement') handleDeleteMarker(m.id);
-                          }}
-                          disabled={role !== 'enforcement'}
-                        >
-                          Delete
-                        </Button>
-                        </span>
-                        </Tooltip>
-                      </Box>
-                  </Box>
-                )}
-              </Popup>
             </Marker>
             );
             })}
@@ -3185,32 +3715,41 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 1000,
-            bgcolor: 'warning.main',
-            color: 'warning.contrastText',
-            px: 2,
-            py: 1,
-            borderRadius: 1,
-            boxShadow: 2,
+            background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #4caf50 100%)',
+            color: '#1b5e20',
+            px: 3,
+            py: 1.5,
+            borderRadius: 2,
+            boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3), 0 0 0 1px rgba(76, 175, 80, 0.2)',
             display: 'flex',
             alignItems: 'center',
-            gap: 1
+            gap: 2,
+            border: '2px solid rgba(76, 175, 80, 0.4)',
           }}
         >
-          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              component="img"
+              src="/images/kinaiyahanlogonobg.png"
+              alt="Kinaiyahan"
+              sx={{ width: 20, height: 20, objectFit: 'contain' }}
+            />
             Click on the map to relocate the pin (cursor changed to location icon)
           </Typography>
           <Button
             size="small"
             variant="outlined"
-            color="inherit"
             onClick={() => setRelocatingMarkerId(null)}
             sx={{ 
-              color: 'inherit',
-              borderColor: 'currentColor',
+              color: '#1b5e20',
+              borderColor: '#4caf50',
+              fontWeight: 600,
               '&:hover': {
-                borderColor: 'currentColor',
-                bgcolor: 'rgba(255,255,255,0.1)'
-              }
+                borderColor: '#2e7d32',
+                bgcolor: 'rgba(76, 175, 80, 0.1)',
+                transform: 'translateY(-1px)',
+              },
+              transition: 'all 0.2s ease-in-out',
             }}
           >
             Cancel
@@ -3227,35 +3766,44 @@ export default function MapViewWithBackend({ skin }: MapViewWithBackendProps) {
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 1000,
-            bgcolor: 'warning.main',
-            color: 'warning.contrastText',
-            px: 2,
-            py: 1,
-            borderRadius: 1,
-            boxShadow: 2,
+            background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #4caf50 100%)',
+            color: '#1b5e20',
+            px: 3,
+            py: 1.5,
+            borderRadius: 2,
+            boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3), 0 0 0 1px rgba(76, 175, 80, 0.2)',
             display: 'flex',
             alignItems: 'center',
-            gap: 1
+            gap: 2,
+            border: '2px solid rgba(76, 175, 80, 0.4)',
           }}
         >
-          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-            Click on the map to set dispersal location (cursor changed to location icon)
+          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              component="img"
+              src="/images/kinaiyahanlogonobg.png"
+              alt="Kinaiyahan"
+              sx={{ width: 20, height: 20, objectFit: 'contain' }}
+            />
+            Click on the map to set release location (cursor changed to location icon)
           </Typography>
           <Button
             size="small"
             variant="outlined"
-            color="inherit"
             onClick={() => {
               setDispersingMarkerId(null);
               setOriginalLocation(null);
             }}
             sx={{ 
-              color: 'inherit',
-              borderColor: 'currentColor',
+              color: '#1b5e20',
+              borderColor: '#4caf50',
+              fontWeight: 600,
               '&:hover': {
-                borderColor: 'currentColor',
-                bgcolor: 'rgba(255,255,255,0.1)'
-              }
+                borderColor: '#2e7d32',
+                bgcolor: 'rgba(76, 175, 80, 0.1)',
+                transform: 'translateY(-1px)',
+              },
+              transition: 'all 0.2s ease-in-out',
             }}
           >
             Cancel

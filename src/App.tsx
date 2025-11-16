@@ -6,6 +6,8 @@ import Admin from "./pages/Admin";
 import PublicReport from "./pages/PublicReport";
 import SignIn from "./sign-in-side/SignInSide";
 import SignUp from "./sign-in-side/SignUp";
+import ArchivedRecords from "./pages/ArchivedRecords";
+import ResetPassword from "./pages/ResetPassword";
 import { CircularProgress, Box, Paper, Avatar, Button, Typography, Fade, useTheme, useMediaQuery } from "@mui/material";
 import { HourglassEmpty } from "@mui/icons-material";
 import React, { ReactElement, useEffect, useState } from "react";
@@ -202,6 +204,22 @@ function App() {
   const location = useLocation();
   const isRecovery = window.location.hash.includes("type=recovery");
 
+  // Store Supabase config in localStorage for DENR form access
+  useEffect(() => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (supabaseUrl && supabaseKey) {
+        localStorage.setItem('supabaseConfig', JSON.stringify({
+          url: supabaseUrl,
+          key: supabaseKey
+        }));
+      }
+    } catch (e) {
+      console.log('Could not store Supabase config:', e);
+    }
+  }, []);
+
   // Loading-aware auth guard - also checks for role in public.users
   const RequireAuth = ({ children }: { children: ReactElement }) => {
     const { user, loading, session } = useAuth();
@@ -244,8 +262,19 @@ function App() {
 
     if (loading || checkingRole) {
       return (
-        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
-          <CircularProgress />
+        <Box 
+          sx={{ 
+            display: "flex", 
+            justifyContent: "center", 
+            alignItems: "center", 
+            minHeight: "100vh",
+            background: "linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)",
+            backgroundRepeat: "no-repeat",
+            backgroundSize: "100% 100%",
+            backgroundAttachment: "fixed",
+          }}
+        >
+          <CircularProgress sx={{ color: '#4caf50' }} />
         </Box>
       );
     }
@@ -276,7 +305,8 @@ function App() {
       {/** removed legacy /report-sighting route */}
       {/* Public report route (no auth) */}
       <Route path="/public-report" element={<PublicReport />} />
-      <Route path="/reset-password" element={isRecovery ? <SignIn /> : <Navigate to="/login" />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/archived-records" element={<RequireAuth><ArchivedRecords /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/login" />} />
     </Routes>
   );

@@ -14,6 +14,8 @@ import Menu from '@mui/material/Menu';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import SortRoundedIcon from '@mui/icons-material/SortRounded';
 import ClearRoundedIcon from '@mui/icons-material/ClearRounded';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { supabase } from '../services/supabase';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
@@ -34,6 +36,8 @@ interface LoginEntry {
   email: string;
   contactNumber: string;
   role: 'admin' | 'enforcement' | 'cenro' | 'reporter' | 'suspended' | 'pending';
+  gender?: string;
+  avatarUrl?: string;
 }
 
 interface ReportEntry {
@@ -65,11 +69,33 @@ export default function UserManagement() {
   const [error, setError] = React.useState<string | null>(null);
   const [page, setPage] = React.useState(0); // 0-based
   const pageSize = 10;
-  const usersPageSize = 7; // smaller user rows per page to fit viewport
+  const usersPageSize = 8; // show 8 user rows per page
   const [totalCount, setTotalCount] = React.useState(0);
+  const [allRoleCounts, setAllRoleCounts] = React.useState<{ enforcement: number; cenro: number }>({ enforcement: 0, cenro: 0 });
   const [searchQuery, setSearchQuery] = React.useState('');
   const [sortAnchorEl, setSortAnchorEl] = React.useState<null | HTMLElement>(null);
   const [sortOption, setSortOption] = React.useState<'name_asc' | 'name_desc' | 'email_asc' | 'role_asc'>('name_asc');
+
+  // Helper function to format ID consistently (maintains layout width)
+  const formatId = (id: string, show: boolean, lines: number = 2) => {
+    if (!id) return '\u00A0';
+    if (show) {
+      // Split the entire ID across the requested number of lines (complete, no truncation)
+      const perLine = Math.ceil(id.length / Math.max(1, lines));
+      const chunks: string[] = [];
+      for (let i = 0; i < lines; i++) {
+        const start = i * perLine;
+        const end = start + perLine;
+        const part = id.substring(start, end);
+        chunks.push(part);
+      }
+      return chunks.join('\n');
+    }
+    // Mask with the same per-line width as the visible split for consistency
+    const perLine = Math.ceil(id.length / Math.max(1, lines));
+    const lineMask = '•'.repeat(Math.max(1, perLine));
+    return Array(Math.max(1, lines)).fill(lineMask).join('\n');
+  };
 
   // Pending applications state
   const [pending, setPending] = React.useState<LoginEntry[]>([]);
@@ -80,6 +106,9 @@ export default function UserManagement() {
   const [pendingSearchQuery, setPendingSearchQuery] = React.useState('');
   const [pendingSortAnchorEl, setPendingSortAnchorEl] = React.useState<null | HTMLElement>(null);
   const [pendingSortOption, setPendingSortOption] = React.useState<'name_asc' | 'name_desc' | 'email_asc' | 'email_desc' | 'id_asc' | 'id_desc'>('name_asc');
+  // Pending details modal
+  const [pendingDetailsOpen, setPendingDetailsOpen] = React.useState(false);
+  const [selectedPending, setSelectedPending] = React.useState<LoginEntry | null>(null);
 
   // Reports list state
   const [reports, setReports] = React.useState<ReportEntry[]>([]);
@@ -100,6 +129,12 @@ export default function UserManagement() {
   const [loginSearchQuery, setLoginSearchQuery] = React.useState('');
   const [loginSortAnchorEl, setLoginSortAnchorEl] = React.useState<null | HTMLElement>(null);
   const [loginSortOption, setLoginSortOption] = React.useState<'date_desc' | 'date_asc' | 'name_asc' | 'name_desc' | 'role_asc'>('date_desc');
+
+  // Show/Hide ID toggles
+  const [showUserIds, setShowUserIds] = React.useState(false);
+  const [showPendingIds, setShowPendingIds] = React.useState(false);
+  const [showReportIds, setShowReportIds] = React.useState(false);
+  const [showLoginIds, setShowLoginIds] = React.useState(false);
 
   // Role modal state
   const [editUserId, setEditUserId] = React.useState<string | null>(null);
@@ -157,7 +192,7 @@ export default function UserManagement() {
       const to = from + pageSize - 1;
       const { data, error, count } = await supabase
         .from('pending_applications')
-        .select('id,name,email,contact_number', { count: 'exact' })
+        .select('id,name,email,contact_number,gender,avatar_url', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, to);
       if (!error && data) {
@@ -166,7 +201,9 @@ export default function UserManagement() {
           name: app.name ?? '',
           email: app.email ?? '',
           contactNumber: app.contact_number ?? '',
-          role: 'pending' as const
+          role: 'pending' as const,
+          gender: app.gender ?? '',
+          avatarUrl: app.avatar_url ?? '',
         }));
         setPending(mapped);
         setTotalPendingCount(count ?? 0);
@@ -190,11 +227,34 @@ export default function UserManagement() {
         }));
         setEntries(mapped);
         setTotalCount(userCount ?? 0);
+        // Refresh total role counts
+        await refreshRoleCounts();
       }
     } catch (e: any) {
       alert(e?.message || 'Approve failed');
     }
   };
+
+  // Helper: refresh total role counts across all users (excluding admins)
+  const refreshRoleCounts = React.useCallback(async () => {
+    try {
+      const [{ count: enfCount }, { count: cenroCount }] = await Promise.all([
+        supabase
+          .from('users')
+          .select('id', { count: 'exact', head: true })
+          .eq('role', 'enforcement')
+          .neq('role', 'admin'),
+        supabase
+          .from('users')
+          .select('id', { count: 'exact', head: true })
+          .eq('role', 'cenro')
+          .neq('role', 'admin'),
+      ]);
+      setAllRoleCounts({ enforcement: enfCount ?? 0, cenro: cenroCount ?? 0 });
+    } catch {
+      // keep previous values on error
+    }
+  }, []);
 
   // Update role API
   async function updateUserRole(userId: string, newRole: 'enforcement' | 'cenro') {
@@ -247,6 +307,8 @@ export default function UserManagement() {
 
         setEntries(mapped);
         setTotalCount(count ?? 0);
+        // Also refresh total role counts independent of current page
+        await refreshRoleCounts();
       } catch (e: any) {
         if (!mounted) return;
         console.error('Fetch users failed:', e?.message || e);
@@ -257,7 +319,7 @@ export default function UserManagement() {
       }
     })();
     return () => { mounted = false; };
-  }, [page]);
+  }, [page, refreshRoleCounts]);
 
   // Load pending applications (best-effort; adjust table/columns to your schema)
   React.useEffect(() => {
@@ -271,7 +333,7 @@ export default function UserManagement() {
         const to = from + pageSize - 1;
         const { data, error, count } = await supabase
           .from('pending_applications')
-          .select('id,name,email,contact_number,role', { count: 'exact' })
+          .select('id,name,email,contact_number,role,gender,avatar_url', { count: 'exact' })
           .order('name', { ascending: true, nullsFirst: false })
           .range(from, to);
 
@@ -284,6 +346,8 @@ export default function UserManagement() {
           email: u.email ?? '',
           contactNumber: u.contact_number ?? '',
           role: 'pending' as const,
+          gender: u.gender ?? '',
+          avatarUrl: u.avatar_url ?? '',
         }));
         setPending(mapped);
         setTotalPendingCount(count ?? 0);
@@ -309,7 +373,7 @@ export default function UserManagement() {
         const to = from + pageSize - 1;
         const { data, error, count } = await supabase
           .from('wildlife_records')
-          .select('id,species_name,barangay,municipality,reporter_name,contact_number,created_at', { count: 'exact' })
+          .select('speciespf_id,species_name,barangay,municipality,reporter_name,contact_number,created_at', { count: 'exact' })
           .order('created_at', { ascending: false, nullsFirst: false })
           .range(from, to);
 
@@ -317,7 +381,7 @@ export default function UserManagement() {
         if (!mounted) return;
 
         const mapped: ReportEntry[] = (data ?? []).map((r: any) => ({
-          id: r.id ?? '',
+          id: r.speciespf_id ?? '',
           species: r.species_name ?? '',
           barangay: r.barangay ?? '',
           municipality: r.municipality ?? '',
@@ -558,9 +622,18 @@ export default function UserManagement() {
     return arr;
   }, [filteredEntries, sortOption]);
 
+  // Role counts for quick glance
+  const roleCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const e of entries) {
+      counts[e.role] = (counts[e.role] || 0) + 1;
+    }
+    return counts;
+  }, [entries]);
+
   const paddedEntries: LoginEntry[] = [
     ...sortedEntries.slice(0, usersPageSize),
-    ...Array(Math.max(0, usersPageSize - Math.min(usersPageSize, sortedEntries.length))).fill(PLACEHOLDER),
+    ...Array(Math.max(0, Math.min(usersPageSize, usersPageSize - Math.min(usersPageSize, sortedEntries.length)))).fill(PLACEHOLDER),
   ];
 
   const totalPages = Math.max(1, Math.ceil((totalCount || 0) / usersPageSize));
@@ -639,9 +712,9 @@ export default function UserManagement() {
 
   return (
     <Box data-map-container sx={{ mt: 2, mb: 2 }}>
-      <Typography component="h3" variant="h6" sx={{ mb: 1 }}>
+      <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1, color: '#2e7d32 !important', borderColor: '#2e7d32 !important' }}>
         User Management
-      </Typography>
+      </Button>
       {loading && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
           <CircularProgress size={18} />
@@ -664,7 +737,7 @@ export default function UserManagement() {
       }}>
         <TextField
           size="small"
-          fullWidth
+          sx={{ flex: '0 1 45%', minWidth: 260 }}
           placeholder="Search users (name, email, contact, role, id)…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -677,7 +750,7 @@ export default function UserManagement() {
             endAdornment: (
               <InputAdornment position="end">
                 {searchQuery && (
-                  <IconButton aria-label="clear search" size="small" onClick={() => setSearchQuery('')}>
+                  <IconButton aria-label="clear" size="small" onClick={() => setSearchQuery('')}>
                     <ClearRoundedIcon fontSize="small" />
                   </IconButton>
                 )}
@@ -685,27 +758,160 @@ export default function UserManagement() {
             ),
           }}
         />
-        <Box>
+
+        {/* Quick stats and actions */}
+        <Stack direction="row" spacing={1} sx={{ flexShrink: 0, alignItems: 'center' }}>
           <Button
             variant="outlined"
+            size="small"
+            startIcon={showUserIds ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+            onClick={() => setShowUserIds(v => !v)}
+            sx={{ textTransform: 'none' }}
+          >
+            {showUserIds ? 'Hide ID' : 'Show ID'}
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            disableRipple
+            sx={{
+              textTransform: 'none',
+              pointerEvents: 'none',
+            }}
+          >
+            Total Users: {totalCount}
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            disableRipple
+            sx={{
+              textTransform: 'none',
+              pointerEvents: 'none',
+            }}
+          >
+            Enforcement: {allRoleCounts.enforcement}
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            disableRipple
+            sx={{
+              textTransform: 'none',
+              pointerEvents: 'none',
+            }}
+          >
+            Cenro: {allRoleCounts.cenro}
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
             startIcon={<SortRoundedIcon />}
             onClick={(e) => setSortAnchorEl(e.currentTarget)}
-            sx={{ whiteSpace: 'nowrap' }}
+            sx={{ textTransform: 'none' }}
           >
             Sort
           </Button>
-          <Menu
-            anchorEl={sortAnchorEl}
-            open={Boolean(sortAnchorEl)}
-            onClose={() => setSortAnchorEl(null)}
-          >
-            <MuiMenuItem onClick={() => { setSortOption('name_asc'); setSortAnchorEl(null); }}>Name (A → Z)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setSortOption('name_desc'); setSortAnchorEl(null); }}>Name (Z → A)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setSortOption('email_asc'); setSortAnchorEl(null); }}>Email (A → Z)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setSortOption('role_asc'); setSortAnchorEl(null); }}>Role (A → Z)</MuiMenuItem>
-          </Menu>
-        </Box>
+        </Stack>
       </Box>
+      {/* Pending details dialog */}
+      <Dialog 
+        open={pendingDetailsOpen} 
+        onClose={() => setPendingDetailsOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: (theme) => ({
+            background: theme.palette.mode === 'light'
+              ? 'linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)'
+              : 'radial-gradient(ellipse at 50% 50%, hsl(220, 30%, 5%), hsl(220, 30%, 8%))',
+            backgroundRepeat: 'no-repeat',
+            backgroundSize: '100% 100%',
+          })
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+            <Box
+              component="img"
+              src="/images/kinaiyahanlogonobg.png"
+              alt="Kinaiyahan"
+              sx={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }}
+            />
+            <Typography component="span" variant="h6" sx={{ color: '#2e7d32 !important', fontWeight: 700 }}>
+              Kinaiyahan • Pending Applicant Details
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          {selectedPending ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                {selectedPending.avatarUrl ? (
+                  <Box component="img" src={selectedPending.avatarUrl} alt="avatar" sx={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '1px solid', borderColor: 'divider' }} />
+                ) : (
+                  <Typography variant="caption" sx={{ color: '#2e7d32 !important' }}>No Avatar</Typography>
+                )}
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: '#2e7d32 !important' }}>ID</Typography>
+                <Typography variant="body2" sx={{ fontFamily: 'monospace', color: '#2e7d32 !important' }}>{selectedPending.id}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: '#2e7d32 !important' }}>Name</Typography>
+                <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>{selectedPending.name || 'N/A'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: '#2e7d32 !important' }}>Email</Typography>
+                <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>{selectedPending.email || 'N/A'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: '#2e7d32 !important' }}>Contact</Typography>
+                <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>{selectedPending.contactNumber || 'N/A'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: '#2e7d32 !important' }}>Gender</Typography>
+                <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>
+                  {selectedPending.gender ? (selectedPending.gender.charAt(0).toUpperCase() + selectedPending.gender.slice(1)) : 'N/A'}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: '#2e7d32 !important' }}>Role</Typography>
+                <Typography variant="body2" sx={{ textTransform: 'capitalize', color: '#2e7d32 !important' }}>{selectedPending.role || 'pending'}</Typography>
+              </Box>
+            </Box>
+          ) : (
+            <Typography variant="body2" sx={{ color: '#2e7d32 !important' }}>No record selected.</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            variant="outlined"
+            onClick={() => setPendingDetailsOpen(false)}
+            sx={{
+              color: '#2e7d32 !important',
+              borderColor: '#2e7d32 !important',
+              '&:hover': {
+                backgroundColor: 'rgba(46, 125, 50, 0.08)',
+                borderColor: '#2e7d32 !important',
+              }
+            }}
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Users sort menu */}
+      <Menu
+        anchorEl={sortAnchorEl}
+        open={Boolean(sortAnchorEl)}
+        onClose={() => setSortAnchorEl(null)}
+      >
+        <MuiMenuItem onClick={() => { setSortOption('name_asc'); setSortAnchorEl(null); }}>Name (A → Z)</MuiMenuItem>
+        <MuiMenuItem onClick={() => { setSortOption('name_desc'); setSortAnchorEl(null); }}>Name (Z → A)</MuiMenuItem>
+        <MuiMenuItem onClick={() => { setSortOption('email_asc'); setSortAnchorEl(null); }}>Email (A → Z)</MuiMenuItem>
+        <MuiMenuItem onClick={() => { setSortOption('role_asc'); setSortAnchorEl(null); }}>Role (A → Z)</MuiMenuItem>
+      </Menu>
 
       {/* Compact table container (no internal scroll) */}
       <Box sx={{
@@ -755,17 +961,36 @@ export default function UserManagement() {
               </Tooltip>
               <Tooltip title={isAdmin ? 'Cannot delete admin' : ''}>
                 <span>
-                  <Button size="small" variant="outlined" color="error" disabled={isAdmin} onClick={() => openDeleteDialog(entry.id, entry.name)}>Delete User</Button>
+                  <Button 
+                    size="small" 
+                    variant="outlined" 
+                    color="error" 
+                    disabled={isAdmin} 
+                    onClick={() => openDeleteDialog(entry.id, entry.name)}
+                    sx={{
+                      color: isAdmin ? undefined : '#d32f2f !important',
+                      borderColor: isAdmin ? undefined : '#d32f2f',
+                      '&:hover': {
+                        borderColor: isAdmin ? undefined : '#d32f2f',
+                        bgcolor: isAdmin ? undefined : 'rgba(211, 47, 47, 0.04)'
+                      },
+                      '& .MuiButton-root': {
+                        color: '#d32f2f !important'
+                      }
+                    }}
+                  >
+                    Delete User
+                  </Button>
                 </span>
               </Tooltip>
             </Stack>
           ) : null;
           return (
             <React.Fragment key={`row-${entry.id || idx}`}>
-              <ListItem sx={{ py: 1 }}>
+              <ListItem sx={{ py: 1, minHeight: 64 }}>
                 <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 100, textAlign: 'center' }}>
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>{entry.id || '\u00A0'}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.7rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showUserIds, 3)}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
                     <Typography variant="body2" sx={{ lineHeight: 1.3 }}>{entry.name || '\u00A0'}</Typography>
@@ -815,9 +1040,9 @@ export default function UserManagement() {
       {/* Pending Applications */}
       <Box sx={{ height: 320 }} />
       <Box data-record-list>
-      <Typography component="h3" variant="h6" sx={{ mb: 1, mt: 2 }}>
+      <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1, mt: 2, color: '#2e7d32 !important', borderColor: '#2e7d32 !important' }}>
         Pending Applications
-      </Typography>
+      </Button>
       {/* Applications controls: search + sort */}
       <Box sx={{
         display: 'flex',
@@ -828,7 +1053,7 @@ export default function UserManagement() {
       }}>
         <TextField
           size="small"
-          fullWidth
+          sx={{ flex: '0 1 45%', minWidth: 260 }}
           placeholder="Search applications (name, email, contact, id)…"
           value={pendingSearchQuery}
           onChange={(e) => setPendingSearchQuery(e.target.value)}
@@ -849,28 +1074,50 @@ export default function UserManagement() {
             ),
           }}
         />
-        <Box>
-          <Button
-            variant="outlined"
-            startIcon={<SortRoundedIcon />}
-            onClick={(e) => setPendingSortAnchorEl(e.currentTarget)}
-            sx={{ whiteSpace: 'nowrap' }}
-          >
-            Sort
-          </Button>
-          <Menu
-            anchorEl={pendingSortAnchorEl}
-            open={Boolean(pendingSortAnchorEl)}
-            onClose={() => setPendingSortAnchorEl(null)}
-          >
-            <MuiMenuItem onClick={() => { setPendingSortOption('name_asc'); setPendingSortAnchorEl(null); }}>Name (A → Z)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setPendingSortOption('name_desc'); setPendingSortAnchorEl(null); }}>Name (Z → A)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setPendingSortOption('email_asc'); setPendingSortAnchorEl(null); }}>Email (A → Z)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setPendingSortOption('email_desc'); setPendingSortAnchorEl(null); }}>Email (Z → A)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setPendingSortOption('id_asc'); setPendingSortAnchorEl(null); }}>ID (A → Z)</MuiMenuItem>
-            <MuiMenuItem onClick={() => { setPendingSortOption('id_desc'); setPendingSortAnchorEl(null); }}>ID (Z → A)</MuiMenuItem>
-          </Menu>
+         <Box>
+           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+             <Button
+               variant="outlined"
+               size="small"
+               startIcon={showPendingIds ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+               onClick={() => setShowPendingIds(v => !v)}
+               sx={{ textTransform: 'none' }}
+             >
+               {showPendingIds ? 'Hide ID' : 'Show ID'}
+             </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              disableRipple
+              sx={{
+                textTransform: 'none',
+                pointerEvents: 'none',
+              }}
+            >
+              Total Pending: {totalPendingCount}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<SortRoundedIcon />}
+              onClick={(e) => setPendingSortAnchorEl(e.currentTarget)}
+              sx={{ whiteSpace: 'nowrap', textTransform: 'none' }}
+            >
+              Sort
+            </Button>
+          </Stack>
         </Box>
+        <Menu
+          anchorEl={pendingSortAnchorEl}
+          open={Boolean(pendingSortAnchorEl)}
+          onClose={() => setPendingSortAnchorEl(null)}
+        >
+          <MuiMenuItem onClick={() => { setPendingSortOption('name_asc'); setPendingSortAnchorEl(null); }}>Name (A → Z)</MuiMenuItem>
+          <MuiMenuItem onClick={() => { setPendingSortOption('name_desc'); setPendingSortAnchorEl(null); }}>Name (Z → A)</MuiMenuItem>
+          <MuiMenuItem onClick={() => { setPendingSortOption('email_asc'); setPendingSortAnchorEl(null); }}>Email (A → Z)</MuiMenuItem>
+          <MuiMenuItem onClick={() => { setPendingSortOption('email_desc'); setPendingSortAnchorEl(null); }}>Email (Z → A)</MuiMenuItem>
+          <MuiMenuItem onClick={() => { setPendingSortOption('id_asc'); setPendingSortAnchorEl(null); }}>ID (A → Z)</MuiMenuItem>
+          <MuiMenuItem onClick={() => { setPendingSortOption('id_desc'); setPendingSortAnchorEl(null); }}>ID (Z → A)</MuiMenuItem>
+        </Menu>
       </Box>
       {pendingLoading && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
@@ -909,10 +1156,24 @@ export default function UserManagement() {
           const isPlaceholder = !entry.name && !entry.email && !entry.contactNumber;
           return (
             <React.Fragment key={`pending-row-${entry.id || idx}`}>
-              <ListItem sx={{ py: 2 }}>
+              <ListItem
+                sx={{ 
+                  py: 2, 
+                  minHeight: 64, 
+                  cursor: isPlaceholder ? 'default' : 'pointer',
+                  '&:hover': { 
+                    backgroundColor: 'action.hover' 
+                  }
+                }}
+                onClick={() => {
+                  if (isPlaceholder) return;
+                  setSelectedPending(entry);
+                  setPendingDetailsOpen(true);
+                }}
+              >
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 140, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{entry.id || '\u00A0'}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.75rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showPendingIds, 2)}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
                     <Typography variant="body1" sx={{ lineHeight: 1.4 }}>{entry.name || '\u00A0'}</Typography>
@@ -960,9 +1221,9 @@ export default function UserManagement() {
       {/* Reports Logs */}
       <Box sx={{ height: 320 }} />
       <Box data-analytics>
-        <Typography component="h3" variant="h6" sx={{ mb: 1, mt: 2 }}>
+        <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1, mt: 2, color: '#2e7d32 !important', borderColor: '#2e7d32 !important' }}>
           Reports Logs
-        </Typography>
+        </Button>
         {/* Reports controls: search + sort */}
         <Box sx={{
           display: 'flex',
@@ -973,8 +1234,8 @@ export default function UserManagement() {
         }}>
           <TextField
             size="small"
-            fullWidth
-            placeholder="Search reports (species, barangay, municipality, reporter, contact, id)…"
+            sx={{ flex: '0 1 45%', minWidth: 260 }}
+            placeholder="Search reports (species, barangay, municipality, reporter, contact, speciespf_id)…"
             value={reportsSearchQuery}
             onChange={(e) => setReportsSearchQuery(e.target.value)}
             InputProps={{
@@ -995,14 +1256,34 @@ export default function UserManagement() {
             }}
           />
           <Box>
-            <Button
-              variant="outlined"
-              startIcon={<SortRoundedIcon />}
-              onClick={(e) => setReportsSortAnchorEl(e.currentTarget)}
-              sx={{ whiteSpace: 'nowrap' }}
-            >
-              Sort
-            </Button>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={showReportIds ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                onClick={() => setShowReportIds(v => !v)}
+                sx={{ textTransform: 'none' }}
+              >
+                {showReportIds ? 'Hide ID' : 'Show ID'}
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                disableRipple
+                sx={{ textTransform: 'none', pointerEvents: 'none' }}
+              >
+                Total Reports: {totalReportsCount}
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<SortRoundedIcon />}
+                onClick={(e) => setReportsSortAnchorEl(e.currentTarget)}
+                sx={{ whiteSpace: 'nowrap', textTransform: 'none' }}
+              >
+                Sort
+              </Button>
+            </Stack>
             <Menu
               anchorEl={reportsSortAnchorEl}
               open={Boolean(reportsSortAnchorEl)}
@@ -1062,10 +1343,10 @@ export default function UserManagement() {
           const isPlaceholder = !entry.id && !entry.species && !entry.reporterName;
           return (
             <React.Fragment key={`report-row-${entry.id || idx}`}>
-              <ListItem sx={{ py: 2 }}>
+              <ListItem sx={{ py: 2, minHeight: 64 }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 140, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{entry.id || '\u00A0'}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.75rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showReportIds, 2)}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
                     <Typography variant="body1" sx={{ lineHeight: 1.4 }}>{entry.species || '\u00A0'}</Typography>
@@ -1107,9 +1388,9 @@ export default function UserManagement() {
       {/* Login Logs */}
       <Box sx={{ height: 320 }} />
       <Box data-audit>
-        <Typography component="h3" variant="h6" sx={{ mb: 1, mt: 2 }}>
+        <Button variant="outlined" size="small" disableRipple sx={{ textTransform: 'none', pointerEvents: 'none', mb: 1, mt: 2, color: '#2e7d32 !important', borderColor: '#2e7d32 !important' }}>
           Login Logs
-        </Typography>
+        </Button>
         {/* Login logs controls: search + sort */}
         <Box sx={{
           display: 'flex',
@@ -1120,7 +1401,7 @@ export default function UserManagement() {
         }}>
           <TextField
             size="small"
-            fullWidth
+            sx={{ flex: '0 1 45%', minWidth: 260 }}
             placeholder="Search logs (name, role, date, id)…"
             value={loginSearchQuery}
             onChange={(e) => setLoginSearchQuery(e.target.value)}
@@ -1142,14 +1423,34 @@ export default function UserManagement() {
             }}
           />
           <Box>
-            <Button
-              variant="outlined"
-              startIcon={<SortRoundedIcon />}
-              onClick={(e) => setLoginSortAnchorEl(e.currentTarget)}
-              sx={{ whiteSpace: 'nowrap' }}
-            >
-              Sort
-            </Button>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={showLoginIds ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                onClick={() => setShowLoginIds(v => !v)}
+                sx={{ textTransform: 'none' }}
+              >
+                {showLoginIds ? 'Hide ID' : 'Show ID'}
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                disableRipple
+                sx={{ textTransform: 'none', pointerEvents: 'none' }}
+              >
+                Total Logs: {totalAuditCount}
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<SortRoundedIcon />}
+                onClick={(e) => setLoginSortAnchorEl(e.currentTarget)}
+                sx={{ whiteSpace: 'nowrap', textTransform: 'none' }}
+              >
+                Sort
+              </Button>
+            </Stack>
             <Menu
               anchorEl={loginSortAnchorEl}
               open={Boolean(loginSortAnchorEl)}
@@ -1214,10 +1515,10 @@ export default function UserManagement() {
             return padded;
           })().map((entry: any, idx) => (
             <React.Fragment key={`audit-row-${idx}`}>
-              <ListItem sx={{ py: 2 }}>
+              <ListItem sx={{ py: 2, minHeight: 64 }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%' }}>
                   <Box sx={{ width: 140, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{entry.id || '\u00A0'}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.7rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>{formatId(entry.id, showLoginIds, 2)}</Typography>
                   </Box>
                   <Box sx={{ flex: 1.2, textAlign: 'center' }}>
                     <Typography variant="body1" sx={{ lineHeight: 1.4 }}>{entry.name || '\u00A0'}</Typography>
@@ -1343,7 +1644,9 @@ export default function UserManagement() {
 
       {/* Delete User Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onClose={closeDeleteDialog} fullWidth maxWidth="xs">
-        <DialogTitle>Delete User</DialogTitle>
+        <DialogTitle>
+          <Typography sx={{ color: '#d32f2f !important', fontWeight: 600 }}>Delete User</Typography>
+        </DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mt: 1 }}>
             Are you sure you want to delete <strong>{userToDelete?.name}</strong>?

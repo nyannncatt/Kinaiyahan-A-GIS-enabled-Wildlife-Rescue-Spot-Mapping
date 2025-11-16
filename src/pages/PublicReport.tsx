@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Box, 
@@ -37,7 +37,6 @@ import {
   LocationOn,
   Person,
   Phone,
-  Pets,
   CheckCircle,
   Upload,
   Close,
@@ -237,7 +236,23 @@ export default function PublicReport() {
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  const todayIso = useMemo(() => new Date().toISOString(), []);
+  // Auto-hide location permission banner after 2 seconds
+  useEffect(() => {
+    if (locationPermission !== null) {
+      const timer = setTimeout(() => {
+        setLocationPermission(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [locationPermission]);
+
+  // Clear location banner when step changes (e.g., next/prev page)
+  useEffect(() => {
+    if (locationPermission !== null) {
+      setLocationPermission(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStep]);
 
   // Define barangays by municipality
   const manoloFortichBarangays = [
@@ -744,14 +759,17 @@ export default function PublicReport() {
 
   const handleReset = () => {
     setBarangay('');
-    setMunicipality('');
+    setMunicipality('Manolo Fortich');
     setSpeciesName('');
     setReporterName('');
     setContactNumber('');
+    setPhoneNumber('');
+    setCountryCode('+63');
     setPhotoFile(null);
     setPhotoPreview(null);
     setExtractedCoords(null);
     setCurrentLocation(null);
+    setHasExifGps(null);
     setShowCamera(false);
     if (cameraStream) {
       cameraStream.getTracks().forEach(track => track.stop());
@@ -761,6 +779,8 @@ export default function PublicReport() {
     setActiveStep(0);
     setError(null);
     setSuccess(null);
+    setPhoneWarning(null);
+    setNameWarning(null);
   };
 
   const handleExit = () => {
@@ -1031,6 +1051,8 @@ export default function PublicReport() {
         }
       }
       
+      const timestampCaptured = new Date().toISOString();
+
       const created = await createWildlifeRecordPublic({
         species_name: speciesName.trim(),
         latitude: lat,
@@ -1041,12 +1063,14 @@ export default function PublicReport() {
         contact_number: contactNumber || undefined,
         photo_url: photoUrl,
         has_exif_gps: hasExifGps || false,
-        timestamp_captured: todayIso,
+        timestamp_captured: timestampCaptured,
       });
       
       console.log('Created record:', created);
       console.log('Record coordinates:', { lat: created.latitude, lng: created.longitude });
 
+      // Reset form after successful submission
+      handleReset();
       setShowSuccessModal(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit report');
@@ -1075,7 +1099,12 @@ export default function PublicReport() {
                      }}
                      startAdornment={
                        <InputAdornment position="start">
-                         <Pets color="action" />
+                         <Box
+                           component="img"
+                           src="/images/kinaiyahanlogonobg.png"
+                           alt="Kinaiyahan"
+                           sx={{ width: 24, height: 24, objectFit: 'contain' }}
+                         />
                        </InputAdornment>
                      }
                      label="Species Name *"
@@ -1442,9 +1471,6 @@ export default function PublicReport() {
                       }}
                     >
                       <MenuItem value="Manolo Fortich">Manolo Fortich</MenuItem>
-                      <MenuItem value="Malitbog">Malitbog</MenuItem>
-                      <MenuItem value="Sumilao">Sumilao</MenuItem>
-                      <MenuItem value="Impasugong">Impasugong</MenuItem>
                     </Select>
                   </FormControl>
                 </Box>
@@ -1557,6 +1583,17 @@ export default function PublicReport() {
                     <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
                       The detected location will be used for the map marker.
                     </Typography>
+                    <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
+                        Coordinates:
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                        Latitude: <strong>{extractedCoords.lat.toFixed(6)}</strong>
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                        Longitude: <strong>{extractedCoords.lng.toFixed(6)}</strong>
+                      </Typography>
+                    </Box>
                   </Alert>
                 ) : (
                   <Alert 
@@ -2056,18 +2093,19 @@ export default function PublicReport() {
               </Button>
 
               <Box sx={{ textAlign: 'center' }}>
-                <Avatar 
-                  sx={{ 
-                    bgcolor: '#4caf50', 
-                    width: isMobile ? 56 : 80, 
-                    height: isMobile ? 56 : 80, 
-                    mx: 'auto', 
+                <Box
+                  component="img"
+                  src="/images/kinaiyahanlogonobg.png"
+                  alt="Kinaiyahan"
+                  sx={{
+                    width: isMobile ? 72 : 100,
+                    height: isMobile ? 72 : 100,
+                    mx: 'auto',
                     mb: 2,
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
+                    display: 'block',
+                    objectFit: 'contain'
                   }}
-                >
-                  <Pets fontSize="large" />
-                </Avatar>
+                />
               <Typography 
                 variant={isMobile ? 'h4' : 'h3'} 
                 component="h1" 
@@ -2080,7 +2118,7 @@ export default function PublicReport() {
                   WebkitTextFillColor: 'transparent',
                 }}
               >
-                Wildlife Report
+                Kinaiyahan Wildlife Report
               </Typography>
               <Typography 
                 variant={isMobile ? 'body1' : 'h6'} 
@@ -2463,7 +2501,7 @@ export default function PublicReport() {
               <Button
                 onClick={() => {
                   setShowSuccessModal(false);
-                  handleReset();
+                  // Form is already reset after successful submission
                 }}
                 variant="contained"
                 sx={{ 
@@ -2548,8 +2586,10 @@ export default function PublicReport() {
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
-              width: isMobile ? '95%' : 600,
-              height: isMobile ? '70%' : 500,
+              width: isMobile ? '95%' : 800,
+              height: isMobile ? '85%' : 700,
+              maxWidth: '95vw',
+              maxHeight: '90vh',
               bgcolor: 'black',
               borderRadius: 2,
               overflow: 'hidden',

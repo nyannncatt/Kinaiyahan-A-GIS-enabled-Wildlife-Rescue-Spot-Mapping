@@ -4,6 +4,8 @@ export interface WildlifeRecord {
   id: string;
   user_id: string;
   species_name: string;
+  scientific_name?: string;
+  speciespf_id?: string;
   status: 'reported' | 'rescued' | 'turned over' | 'released' | 'dispersed';
   approval_status: 'pending' | 'approved' | 'rejected';
   latitude: number;
@@ -28,6 +30,8 @@ export interface WildlifeRecord {
 
 export interface CreateWildlifeRecord {
   species_name: string;
+  scientific_name?: string;
+  speciespf_id?: string;
   status: 'reported' | 'rescued' | 'turned over' | 'released' | 'dispersed';
   approval_status?: 'pending' | 'approved' | 'rejected';
   latitude: number;
@@ -50,6 +54,8 @@ export interface CreateWildlifeRecord {
 
 export interface UpdateWildlifeRecord {
   species_name?: string;
+  scientific_name?: string;
+  speciespf_id?: string;
   status?: 'reported' | 'rescued' | 'turned over' | 'released';
   approval_status?: 'pending' | 'approved' | 'rejected';
   latitude?: number;
@@ -65,6 +71,52 @@ export interface UpdateWildlifeRecord {
   photo_url?: string;
   has_exif_gps?: boolean;
   timestamp_captured?: string;
+}
+
+// Archive a wildlife record (copy to archive table)
+export async function archiveWildlifeRecord(record: WildlifeRecord): Promise<void> {
+  const archivePayload = {
+    original_id: record.id,
+    user_id: record.user_id,
+    species_name: record.species_name,
+    scientific_name: (record as any).scientific_name || null,
+    speciespf_id: (record as any).speciespf_id || null,
+    status: record.status,
+    approval_status: record.approval_status,
+    latitude: record.latitude,
+    longitude: record.longitude,
+    barangay: record.barangay,
+    municipality: record.municipality,
+    reporter_name: record.reporter_name,
+    contact_number: record.contact_number,
+    reporter_contact: record.reporter_contact,
+    notes: record.notes,
+    photo_url: record.photo_url,
+    has_exif_gps: record.has_exif_gps,
+    timestamp_captured: record.timestamp_captured,
+    created_at: record.created_at,
+    updated_at: record.updated_at,
+    deleted_at: new Date().toISOString(),
+  };
+  const { error } = await supabase
+    .from('wildlife_records_archive')
+    .insert([archivePayload]);
+  if (error) {
+    console.error('Error archiving wildlife record:', error);
+    throw error;
+  }
+}
+
+export async function getArchivedWildlifeRecords(): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('wildlife_records_archive')
+    .select('*')
+    .order('deleted_at', { ascending: false });
+  if (error) {
+    console.error('Error fetching archived records:', error);
+    throw error;
+  }
+  return data || [];
 }
 
 // Get all wildlife records
@@ -107,10 +159,23 @@ export async function createWildlifeRecord(record: CreateWildlifeRecord): Promis
     throw new Error('User must be authenticated to create wildlife records');
   }
 
+  // Generate speciespf_id if not provided: "MFMMDDYYYYHHmm" (no separators)
+  const ensureSpeciesPfId = (ts?: string) => {
+    const d = ts ? new Date(ts) : new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const mm = pad(d.getMonth() + 1);
+    const dd = pad(d.getDate());
+    const yyyy = d.getFullYear();
+    const hh = pad(d.getHours());
+    const mi = pad(d.getMinutes());
+    return `MF${mm}${dd}${yyyy}${hh}${mi}`;
+  };
+
   const { data, error } = await supabase
     .from('wildlife_records')
     .insert([{
       ...record,
+      speciespf_id: record.speciespf_id || ensureSpeciesPfId(record.timestamp_captured),
       user_id: user.id,
       approval_status: 'approved', // Authenticated users are always auto-approved
     }])
@@ -131,8 +196,22 @@ export type PublicWildlifeReport = Omit<CreateWildlifeRecord, 'status'> & { stat
 
 export async function createWildlifeRecordPublic(record: PublicWildlifeReport): Promise<WildlifeRecord> {
   // Set status to 'reported' for public reports (pending enforcement review)
+  const generateSpeciesPfId = () => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const mm = pad(d.getMonth() + 1);
+    const dd = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const mi = pad(d.getMinutes());
+    const ss = pad(d.getSeconds());
+    const rand = Math.floor(Math.random() * 9000) + 1000; // 4-digit random number
+    return `MF${yyyy}${mm}${dd}${hh}${mi}${ss}${rand}`;
+  };
+
   const recordWithStatus = {
     ...record,
+    speciespf_id: (record as any).speciespf_id || generateSpeciesPfId(),
     status: 'reported' as const,
     approval_status: 'pending' as const, // Public reports need approval
     user_id: null

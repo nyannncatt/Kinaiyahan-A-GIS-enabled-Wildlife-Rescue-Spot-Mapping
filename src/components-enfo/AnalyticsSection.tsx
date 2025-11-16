@@ -61,7 +61,7 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
       data-analytics sx={{ mt: 8, mb: 3, maxWidth: { xs: '100%', md: '1577px' }, mx: 'auto' }}
     >
       <Card sx={{ p: 2, boxShadow: 1 }}>
-        <Typography variant="h4" component="h2" gutterBottom sx={{ color: 'primary.main', mb: 2 }}>
+        <Typography variant="h4" component="h2" gutterBottom sx={{ color: '#2e7d32 !important', mb: 2 }}>
           Analytics
         </Typography>
         
@@ -252,11 +252,7 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
           {/* Municipality filter */}
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
             {[
-              { label: 'All', value: null },
               { label: 'Manolo Fortich', value: 'Manolo Fortich' },
-              { label: 'Sumilao', value: 'Sumilao' },
-              { label: 'Malitbog', value: 'Malitbog' },
-              { label: 'Impasugong', value: 'Impasugong' },
             ].map((opt) => {
               const isActive = (opt.value ?? null) === (selectedMunicipality ?? null);
               return (

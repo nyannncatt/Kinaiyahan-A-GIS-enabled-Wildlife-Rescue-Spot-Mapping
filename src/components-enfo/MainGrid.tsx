@@ -8,7 +8,14 @@ import MapSection from './MapSection';
 import { MapNavigationProvider } from '../context/MapNavigationContext';
 import { getWildlifeRecords } from '../services/wildlifeRecords';
 
-export default function MainGrid() {
+interface MainGridProps {
+  onModalOpenChange?: (isOpen: boolean) => void;
+  environmentalBg?: boolean;
+  onDispersalModeChange?: (isActive: boolean) => void;
+  onRelocationModeChange?: (isActive: boolean) => void;
+}
+
+export default function MainGrid({ onModalOpenChange, environmentalBg, onDispersalModeChange, onRelocationModeChange }: MainGridProps) {
   
   // State for wildlife records for analytics
   const [wildlifeRecords, setWildlifeRecords] = useState<any[]>([]);
@@ -115,6 +122,10 @@ export default function MainGrid() {
           pendingCount={pendingCount}
           onScrollToRecordList={scrollToRecordList}
           onScrollToPendingReports={scrollToPendingReports}
+          onModalOpenChange={onModalOpenChange}
+          environmentalBg={environmentalBg}
+          onDispersalModeChange={onDispersalModeChange}
+          onRelocationModeChange={onRelocationModeChange}
         />
       
         {/* Wildlife Rescue Statistics Component */}
@@ -125,7 +136,7 @@ export default function MainGrid() {
           viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           data-record-list sx={{ mt: 3, mb: 8 }}>
-          <WildlifeRescueStatistics {...(showPendingOnly && { showPendingOnly })} />
+          <WildlifeRescueStatistics {...(showPendingOnly && { showPendingOnly })} environmentalBg={environmentalBg} />
         </Box>
 
         {/* Analytics Section */}

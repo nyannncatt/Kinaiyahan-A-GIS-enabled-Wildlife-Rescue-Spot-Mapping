@@ -7,7 +7,6 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Divider,
   useTheme
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
@@ -15,8 +14,6 @@ import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
-import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 
 // Styled components with CSS variables support
 const NavigationContainer = styled(Box)(({ theme }) => ({
@@ -37,14 +34,10 @@ const TabButton = styled(ListItemButton, {
   margin: '4px 0',
   padding: '12px 16px',
   backgroundColor: active 
-    ? (theme.vars 
-        ? `rgba(${theme.vars.palette.primary.mainChannel} / 0.12)`
-        : theme.palette.primary.main + '20')
+    ? 'rgba(46, 125, 50, 0.12)'
     : 'transparent',
   color: active 
-    ? (theme.vars 
-        ? `rgba(${theme.vars.palette.primary.mainChannel} / 1)`
-        : theme.palette.primary.main)
+    ? '#2e7d32'
     : (theme.vars 
         ? `rgba(${theme.vars.palette.text.primaryChannel} / 1)`
         : theme.palette.text.primary),
@@ -52,9 +45,7 @@ const TabButton = styled(ListItemButton, {
   transition: 'all 0.2s ease-in-out',
   '&:hover': {
     backgroundColor: active 
-      ? (theme.vars 
-          ? `rgba(${theme.vars.palette.primary.mainChannel} / 0.12)`
-          : theme.palette.primary.main + '20')
+      ? 'rgba(46, 125, 50, 0.12)'
       : (theme.vars 
           ? `rgba(${theme.vars.palette.action.hoverChannel} / 1)`
           : theme.palette.action.hover),
@@ -80,9 +71,7 @@ const IconWrapper = styled(Box, {
   width: '24px',
   height: '24px',
   color: active 
-    ? (theme.vars 
-        ? `rgba(${theme.vars.palette.primary.mainChannel} / 1)`
-        : theme.palette.primary.main)
+    ? '#2e7d32'
     : (theme.vars 
         ? `rgba(${theme.vars.palette.text.secondaryChannel} / 1)`
         : theme.palette.text.secondary),
@@ -122,26 +111,11 @@ const mainNavigationItems = [
     icon: <AnalyticsRoundedIcon sx={{ fontSize: 20 }} />,
     description: 'Data analysis and reports'
   },
-];
-
-const utilityItems = [
   { 
     id: 'profile', 
     text: 'My Profile', 
     icon: <PersonRoundedIcon sx={{ fontSize: 20 }} />,
     description: 'User profile and account'
-  },
-  { 
-    id: 'settings', 
-    text: 'Settings', 
-    icon: <SettingsRoundedIcon sx={{ fontSize: 20 }} />,
-    description: 'System configuration'
-  },
-  { 
-    id: 'about', 
-    text: 'About', 
-    icon: <InfoRoundedIcon sx={{ fontSize: 20 }} />,
-    description: 'Application information'
   },
 ];
 
@@ -150,6 +124,11 @@ export default function MenuContent() {
   const [activeTab, setActiveTab] = useState('mapping');
   const theme = useTheme();
   const isAdminRoute = typeof window !== 'undefined' && window.location && window.location.pathname.startsWith('/admin');
+  const isEnforcementRoute = typeof window !== 'undefined' && window.location && window.location.pathname.startsWith('/enforcement');
+  const isCenroRoute = typeof window !== 'undefined' && window.location && window.location.pathname.startsWith('/cenro');
+  
+  // Determine menu title based on route
+  const menuTitle = isAdminRoute ? 'Admin Menu' : isEnforcementRoute ? 'Enforcement Menu' : isCenroRoute ? 'Cenro Menu' : 'Kinaiyahan';
 
   // Track scroll position to update active tab
   useEffect(() => {
@@ -366,17 +345,11 @@ export default function MenuContent() {
       <Box sx={{ mb: 2, textAlign: 'center', p: 2 }}>
         <Typography variant="h6" sx={{ 
           fontWeight: 700, 
-          color: 'primary.main',
+          color: '#2e7d32 !important',
           mb: 0.5,
           fontSize: '18px'
         }}>
-          Kinaiyahan
-        </Typography>
-        <Typography variant="body2" sx={{ 
-          color: 'text.secondary',
-          fontSize: '12px'
-        }}>
-          Navigation Menu
+          {menuTitle}
         </Typography>
       </Box>
 
@@ -416,7 +389,8 @@ export default function MenuContent() {
                     <Box>
                       <Typography variant="body2" sx={{ 
                         fontWeight: activeTab === item.id ? 600 : 500,
-                        fontSize: '14px'
+                        fontSize: '14px',
+                        color: activeTab === item.id ? '#2e7d32 !important' : 'inherit'
                       }}>
                         {text}
                       </Typography>
@@ -452,7 +426,8 @@ export default function MenuContent() {
                     <Box>
                       <Typography variant="body2" sx={{ 
                         fontWeight: activeTab === 'audit' ? 600 : 500,
-                        fontSize: '14px'
+                        fontSize: '14px',
+                        color: activeTab === 'audit' ? '#2e7d32 !important' : 'inherit'
                       }}>
                         Login Logs
                       </Typography>
@@ -468,45 +443,6 @@ export default function MenuContent() {
               </TabButton>
             </ListItem>
           )}
-        </List>
-      </Box>
-
-      {/* Utility Navigation */}
-      <Box sx={{ px: 2, pb: 2 }}>
-        <SectionTitle>UTILITY</SectionTitle>
-        <List dense>
-          {(isAdminRoute ? utilityItems.filter((i) => i.id !== 'settings') : utilityItems).map((item) => (
-            <ListItem key={item.id} disablePadding sx={{ display: 'block' }}>
-              <TabButton
-                active={activeTab === item.id}
-                onClick={() => handleTabClick(item.id)}
-              >
-                <ListItemIcon>
-                  <IconWrapper active={activeTab === item.id}>
-                    {item.icon}
-                  </IconWrapper>
-                </ListItemIcon>
-                <ListItemText 
-                  primary={
-                    <Box>
-                      <Typography variant="body2" sx={{ 
-                        fontWeight: activeTab === item.id ? 600 : 500,
-                        fontSize: '14px'
-                      }}>
-                        {item.text}
-                      </Typography>
-                      <Typography variant="caption" sx={{ 
-                        color: 'text.secondary',
-                        fontSize: '11px'
-                      }}>
-                        {item.description}
-                      </Typography>
-                    </Box>
-                  }
-                />
-              </TabButton>
-            </ListItem>
-          ))}
         </List>
       </Box>
     </NavigationContainer>

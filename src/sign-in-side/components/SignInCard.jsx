@@ -1,5 +1,5 @@
 // src/sign-in-side/SignInCard.jsx
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../services/supabase";
 
@@ -12,12 +12,14 @@ import FormLabel from "@mui/material/FormLabel";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { styled } from "@mui/material/styles";
-import { FormControl, InputAdornment, Alert, Divider, SvgIcon, Snackbar, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { FormControl, InputAdornment, Alert, Divider, SvgIcon, Snackbar, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Stack } from "@mui/material";
 import MuiAlert from "@mui/material/Alert";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ForgotPassword from "./ForgotPassword";
+import { useColorScheme } from "@mui/material/styles";
+import ColorModeSelect from "../../shared-theme/ColorModeSelect";
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
@@ -42,14 +44,12 @@ function GoogleColoredIcon(props) {
   );
 }
 
-// Generate random captcha string (mix of letters and numbers)
+// Generate random 4-digit captcha number
 const generateCaptcha = () => {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  let result = '';
-  for (let i = 0; i < 5; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  // Generate a random 4-digit number (1000-9999)
+  const min = 1000;
+  const max = 9999;
+  return String(Math.floor(Math.random() * (max - min + 1)) + min);
 };
 
 export default function SignInCard() {
@@ -70,7 +70,45 @@ export default function SignInCard() {
   const [captchaError, setCaptchaError] = useState(false);
   const [captchaSuccess, setCaptchaSuccess] = useState(false);
   const [pendingCredentials, setPendingCredentials] = useState(null);
+  const [capsLockOn, setCapsLockOn] = useState(false);
+  const [showCardHeader, setShowCardHeader] = useState(false);
+  const passwordInputRef = useRef(null);
   const navigate = useNavigate();
+  const { mode, systemMode } = useColorScheme();
+
+  // Detect mobile/portrait view to show header in card (opposite of main header)
+  useEffect(() => {
+    const checkViewport = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const isPortrait = height > width;
+      const isMobile = width < 900; // md breakpoint - mobile devices
+      // Show header in card on mobile or when in portrait orientation (opposite of main header)
+      // Also show if viewport is very narrow (zoomed in)
+      const shouldShow = isMobile || isPortrait || width < 800;
+      setShowCardHeader(shouldShow);
+    };
+
+    // Check on mount
+    checkViewport();
+
+    // Check on resize and orientation change
+    window.addEventListener('resize', checkViewport);
+    window.addEventListener('orientationchange', checkViewport);
+    
+    // Also check on visual viewport changes (for mobile browsers)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', checkViewport);
+    }
+
+    return () => {
+      window.removeEventListener('resize', checkViewport);
+      window.removeEventListener('orientationchange', checkViewport);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', checkViewport);
+      }
+    };
+  }, []);
 
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -117,8 +155,8 @@ export default function SignInCard() {
   };
 
   const handleCaptchaVerify = async () => {
-    // Validate captcha
-    if (!captchaInput || captchaInput.toLowerCase() !== captchaValue.toLowerCase()) {
+    // Validate captcha (compare as numbers)
+    if (!captchaInput || captchaInput.trim() !== captchaValue) {
       setCaptchaError(true);
       setCaptchaSuccess(false);
       refreshCaptcha(true); // Keep error state when refreshing
@@ -223,10 +261,78 @@ export default function SignInCard() {
 
   const goPublicReport = () => navigate('/public-report');
 
+  // Detect Caps Lock
+  const handleKeyDown = (e) => {
+    // Check Caps Lock state directly
+    const capsLockState = e.getModifierState('CapsLock');
+    setCapsLockOn(capsLockState);
+  };
+
+  const handleKeyUp = (e) => {
+    // Update Caps Lock state on key release
+    if (e.key === 'CapsLock' || e.getModifierState) {
+      const capsLockState = e.getModifierState('CapsLock');
+      setCapsLockOn(capsLockState);
+    }
+  };
+
+  const handlePasswordFocus = () => {
+    // Check Caps Lock when password field is focused
+    // We'll check on first key press instead since focus event doesn't have modifier state
+    // The warning will appear as soon as user starts typing
+  };
+
+  const handlePasswordBlur = () => {
+    // Hide warning when field loses focus
+    setCapsLockOn(false);
+  };
+
+  const isEffectiveLight = mode === 'light' || (mode === 'system' && systemMode === 'light');
+
   return (
     <>
-      <Card variant="outlined">
-        <Typography component="h1" variant="h4" sx={{ width: "100%", fontSize: "clamp(2rem, 10vw, 2.15rem)" }}>
+      <Card variant="outlined" sx={{ backgroundColor: isEffectiveLight ? '#ffffff' : undefined }}>
+        {showCardHeader && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+            <ColorModeSelect
+              size="small"
+              sx={{
+                fontSize: '0.65rem',
+                minWidth: '56px',
+                '& .MuiSelect-select': {
+                  padding: '2px 16px 2px 6px',
+                  fontSize: '0.65rem'
+                },
+                '& .MuiSvgIcon-root': {
+                  fontSize: '0.75rem'
+                }
+              }}
+            />
+          </Box>
+        )}
+
+        {/* Logo and Header - Only visible on mobile/portrait (opposite of main header) */}
+        {showCardHeader && (
+          <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mb: 2 }}>
+            <Box component="img" src="/images/kinaiyahanlogonobg.png" alt="Kinaiyahan" sx={{ width: 48, height: 48, objectFit: 'contain' }} />
+            <Typography
+              variant="h5"
+              sx={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 700,
+                letterSpacing: '0.15em',
+                color: '#2e7d32 !important',
+                userSelect: 'none',
+                lineHeight: 1,
+                textTransform: 'uppercase',
+              }}
+            >
+              Kinaiyahan
+            </Typography>
+          </Stack>
+        )}
+
+        <Typography component="h1" variant="h4" sx={{ width: "100%", fontSize: "clamp(2rem, 10vw, 2.15rem)", textAlign: "center" }}>
           Sign in
         </Typography>
 
@@ -234,7 +340,12 @@ export default function SignInCard() {
 
         <Box component="form" noValidate onSubmit={handleLogin} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <FormControl>
-            <FormLabel htmlFor="email">Email</FormLabel>
+            <FormLabel
+              htmlFor="email"
+              sx={{ color: 'text.primary' }}
+            >
+              Email
+            </FormLabel>
             <TextField
               error={emailError}
               helperText={emailErrorMessage}
@@ -252,7 +363,12 @@ export default function SignInCard() {
 
            <FormControl>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <FormLabel htmlFor="password">Password</FormLabel>
+              <FormLabel
+                htmlFor="password"
+                sx={{ color: 'text.primary' }}
+              >
+                Password
+              </FormLabel>
               <Typography
                 component="span"
                 sx={{
@@ -280,6 +396,11 @@ export default function SignInCard() {
               color={passwordError ? 'error' : 'primary'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onKeyUp={handleKeyUp}
+              onFocus={handlePasswordFocus}
+              onBlur={handlePasswordBlur}
+              inputRef={passwordInputRef}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -293,9 +414,37 @@ export default function SignInCard() {
                 ),
               }}
             />
+            {capsLockOn && (
+              <Alert severity="warning" sx={{ mt: -1, mb: 1 }}>
+                ⚠️ Caps Lock is on
+              </Alert>
+            )}
               </FormControl>
 
           <FormControlLabel control={<Checkbox value="remember" color="primary" />} label="Remember me" />
+
+          {/* <Alert 
+            severity="info" 
+            sx={{ 
+              mt: 1, 
+              mb: 1, 
+              fontSize: '0.75rem',
+              background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 50%, #a5d6a7 100%)',
+              color: '#1b5e20',
+              border: '1px solid rgba(76, 175, 80, 0.3)',
+              '& .MuiAlert-icon': {
+                color: '#2e7d32',
+              },
+            }}
+          >
+            <Typography variant="body2" sx={{ fontSize: '0.75rem', color: '#1b5e20', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
+              <strong>Note:</strong> For best experience, use 
+              <Box component="span" sx={{ fontWeight: 800, color: '#2e7d32' }}>80%</Box>
+              zoom on laptops and 
+              <Box component="span" sx={{ fontWeight: 800, color: '#2e7d32' }}>100%</Box>
+              zoom on PC devices.
+            </Typography>
+          </Alert> */}
 
           <Button type="submit" fullWidth variant="contained">Sign in</Button>
 
@@ -327,7 +476,32 @@ export default function SignInCard() {
         fullWidth
         disableEscapeKeyDown
       >
-        <DialogTitle>Verify Captcha to Sign In</DialogTitle>
+        <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center">
+            <Box
+              component="img"
+              src="/images/kinaiyahanlogonobg.png"
+              alt="Kinaiyahan"
+              sx={{ width: 56, height: 56, objectFit: 'contain' }}
+            />
+            <Typography
+              variant="h5"
+              sx={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 800,
+                letterSpacing: '0.4em',
+                color: '#2e7d32 !important',
+                userSelect: 'none',
+                lineHeight: 1,
+              }}
+            >
+              ＫＩＮＡＩＹＡＨＡＮ
+            </Typography>
+          </Stack>
+          <Typography variant="subtitle1" component="p" sx={{ mt: 2, color: 'text.primary', fontWeight: 600 }}>
+            Verify Captcha to Sign In
+          </Typography>
+        </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
             Please enter the captcha code below to complete your login.
@@ -408,18 +582,25 @@ export default function SignInCard() {
             <TextField
               error={captchaError}
               id="modal-captcha"
-              placeholder="Enter code above"
+              placeholder="Enter 4-digit code"
               required
               fullWidth
               variant="outlined"
               value={captchaInput}
               onChange={(e) => {
-                setCaptchaInput(e.target.value);
+                // Only allow numbers and limit to 4 digits
+                const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                setCaptchaInput(value);
                 // Clear error when user starts typing
                 if (captchaError) {
                   setCaptchaError(false);
                 }
                 setCaptchaSuccess(false);
+              }}
+              inputProps={{
+                maxLength: 4,
+                inputMode: 'numeric',
+                pattern: '[0-9]*'
               }}
               onKeyPress={(e) => {
                 if (e.key === 'Enter') {

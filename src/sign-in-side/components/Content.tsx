@@ -11,9 +11,9 @@ import ThumbUpAltRoundedIcon from '@mui/icons-material/ThumbUpAltRounded';
 const items = [
   {
     icon: <SettingsSuggestRoundedIcon sx={{ color: 'text.secondary' }} />,
-    title: 'Adaptable performance',
+    title: 'Unified Login, Role-Based Access',
     description:
-      'Our product effortlessly adjusts to your needs, boosting efficiency and simplifying your tasks.',
+      'Wildlife Rescue Management • GIS Mapping • Citizen Rescue Requests',
   },
   {
     icon: <ConstructionRoundedIcon sx={{ color: 'text.secondary' }} />,
@@ -47,15 +47,23 @@ export default function Content() {
         <Stack key={index} direction="row" sx={{ gap: 2 }}>
           {item.icon}
           <div>
-            <Typography gutterBottom sx={{ fontWeight: 'medium' }}>
+            <Typography gutterBottom sx={{ fontWeight: 'medium', color: index === 0 ? '#4caf50' : '#000000', transition: 'all 0.5s ease' }}>
               {item.title}
             </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            <Typography variant="body2" sx={{ color: index === 0 ? '#4caf50' : '#000000', transition: 'all 0.5s ease' }}>
               {item.description}
             </Typography>
           </div>
         </Stack>
       ))}
+      <Box sx={{ mt: 2 }}>
+        <Typography variant="body2" sx={{ color: '#000000', textAlign: 'left' }}>
+          Calanawan, Tankulan, Manolo Fortich, Bukidnon
+        </Typography>
+        <Typography variant="body2" sx={{ color: '#000000', textAlign: 'left' }}>
+          E-mail: cenromanolofortich@denr.gov.ph | Tel/Mobile No.: 0917-522-8580
+        </Typography>
+      </Box>
     </Stack>
   );
 }

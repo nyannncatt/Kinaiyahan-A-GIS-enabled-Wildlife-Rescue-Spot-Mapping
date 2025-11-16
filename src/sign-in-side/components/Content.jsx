@@ -11,9 +11,9 @@ import ArrowCircleRightRoundedIcon from '@mui/icons-material/ArrowCircleRightRou
 const items = [
   {
     icon: <ArrowCircleRightRoundedIcon sx={{ color: 'text.secondary' }} />,
-    title: 'Unified Login, Role-Based Access',
+    title: 'Unified Login, Role-Based Access Wildlife Rescue Management  GIS Mapping  Citizen Rescue Requests',
     description:
-      'Sign in once, and you’ll be directed to the correct site based on your role.',
+      '',
   },
   {
     icon: <PetsRoundedIcon sx={{ color: 'text.secondary' }} />,
@@ -54,17 +54,16 @@ export default function Content() {
   }, []);
 
   // Highlight/pulse effect
- useEffect(() => {
-  const timeout = setTimeout(() => {
-    const interval = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % items.length);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, 1500); // <-- delay in ms before highlighting starts
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      const interval = setInterval(() => {
+        setActiveIndex((prev) => (prev + 1) % items.length);
+      }, 1000);
+      return () => clearInterval(interval);
+    }, 1500);
 
-  return () => clearTimeout(timeout);
-}, []);
-
+    return () => clearTimeout(timeout);
+  }, []);
 
   return (
     <Stack
@@ -91,22 +90,24 @@ export default function Content() {
               sx={{
                 fontWeight: 'medium',
                 transition: 'all 0.5s ease',
-                color: index === activeIndex ? 'primary.main' : 'text.primary',
+                color: index === activeIndex ? '#4caf50' : '#000000',
               }}
             >
               {item.title}
             </Typography>
           </Stack>
-          <Typography
-            variant="body2"
-            sx={{
-              color: index === activeIndex ? 'primary.main' : 'text.secondary',
-              pl: 4,
-              transition: 'all 0.5s ease',
-            }}
-          >
-            {item.description}
-          </Typography>
+          {item.description ? (
+            <Typography
+              variant="body2"
+              sx={{
+                color: index === activeIndex ? '#4caf50' : '#000000',
+                pl: 4,
+                transition: 'all 0.5s ease',
+              }}
+            >
+              {item.description}
+            </Typography>
+          ) : null}
         </Stack>
       ))}
     </Stack>

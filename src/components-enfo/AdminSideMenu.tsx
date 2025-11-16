@@ -47,8 +47,26 @@ export default function AdminSideMenu() {
           display: 'flex',
           mt: 'calc(var(--template-frame-height, 0px) + 4px)',
           p: 1.5,
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
+        <Box
+          component="img"
+          src="/images/kinaiyahanlogonobg.png"
+          alt="Kinaiyahan Logo"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          sx={{ 
+            width: 150, 
+            height: 150, 
+            objectFit: 'contain',
+            cursor: 'pointer',
+            transition: 'opacity 0.2s',
+            '&:hover': {
+              opacity: 0.8,
+            },
+          }}
+        />
       </Box>
 
       <AdminMenuContent />

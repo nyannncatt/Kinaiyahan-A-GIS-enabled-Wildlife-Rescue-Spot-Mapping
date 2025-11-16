@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Box, CssBaseline, Stack } from "@mui/material";
+import { Box, CssBaseline, Stack, Typography } from "@mui/material";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";   // ✅ add navigate
 import { useAuth } from "../context/AuthContext"; // ✅ hook into auth
@@ -12,6 +12,43 @@ import Content from "./components/Content";
 export default function SignInSide(props) {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const [showHeader, setShowHeader] = React.useState(true);
+  const [isPortraitMode, setIsPortraitMode] = React.useState(false);
+
+  // Detect mobile/portrait/zoomed view to hide header and make animals smaller
+  React.useEffect(() => {
+    const checkViewport = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const isPortrait = height > width;
+      const isMobile = width < 900; // md breakpoint - mobile devices
+      // Hide header on mobile or when in portrait orientation (typical for mobile)
+      // Also hide if viewport is very narrow (zoomed in)
+      const shouldHide = isMobile || isPortrait || width < 800;
+      setShowHeader(!shouldHide);
+      setIsPortraitMode(isPortrait || isMobile || width < 800);
+    };
+
+    // Check on mount
+    checkViewport();
+
+    // Check on resize and orientation change
+    window.addEventListener('resize', checkViewport);
+    window.addEventListener('orientationchange', checkViewport);
+    
+    // Also check on visual viewport changes (for mobile browsers)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', checkViewport);
+    }
+
+    return () => {
+      window.removeEventListener('resize', checkViewport);
+      window.removeEventListener('orientationchange', checkViewport);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', checkViewport);
+      }
+    };
+  }, []);
 
   // ✅ if user is logged in, redirect away from login page
   React.useEffect(() => {
@@ -50,32 +87,218 @@ export default function SignInSide(props) {
       <CssBaseline enableColorScheme />
 
       {/* Fixed top-right color mode toggle */}
-      <ColorModeSelect sx={{ position: "fixed", top: "1rem", right: "1rem" }} />
+      {!isPortraitMode && (
+        <ColorModeSelect 
+          size="small"
+          sx={{ 
+            position: "fixed", 
+            top: "1rem", 
+            right: "1rem", 
+            zIndex: (theme) => (theme.zIndex?.modal ?? 1300) + 1,
+            fontSize: '0.75rem',
+            minWidth: '64px',
+            '& .MuiSelect-select': {
+              padding: '3px 18px 3px 8px',
+              fontSize: '0.75rem'
+            },
+            '& .MuiSvgIcon-root': {
+              fontSize: '0.875rem'
+            }
+          }} 
+        />
+      )}
+
+      {/* Centered Header - Hidden on mobile/portrait/zoomed */}
+      {showHeader && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 50,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: (theme) => (theme.zIndex?.modal ?? 1300) + 1,
+            textAlign: 'center',
+            display: { xs: 'none', md: 'block' },
+          }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Box component="img" src="/images/kinaiyahanlogonobg.png" alt="Kinaiyahan" sx={{ width: 56, height: 56, objectFit: 'contain' }} />
+            <Typography
+              variant="h2"
+              sx={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 800,
+                letterSpacing: '0.45em',
+                color: '#2e7d32 !important',
+                userSelect: 'none',
+                lineHeight: 1,
+              }}
+            >
+              ＫＩＮＡＩＹＡＨＡＮ
+            </Typography>
+          </Stack>
+        </Box>
+      )}
 
       <Box
         sx={(theme) => ({
           minHeight: "100vh",
           width: "100vw",
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           px: 2,
-          background: "radial-gradient(ellipse at 95% 50%, hsl(210, 100%, 97%), hsl(0, 0%, 100%))",
+          background: theme.palette.mode === 'dark' 
+            ? 'transparent'
+            : "linear-gradient(135deg, #ffffff 0%, #e8f5e8 50%, #4caf50 100%)",
           backgroundRepeat: "no-repeat",
           backgroundSize: "100% 100%",
           backgroundAttachment: "fixed",
-          ...(theme.applyStyles("dark", {
-            background:
-              "radial-gradient(at 95% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))",
-            backgroundSize: "100% 100%",
-          })),
+          position: 'relative',
         })}
       >
+        {/* Animated background species */}
+        <Box className="bg-animals" sx={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+          {/* Right -> Left */}
+          <span 
+            className="animal rtl" 
+            title="Philippine Eagle" 
+            style={{ 
+              top: '10%', 
+              animationDuration: '22s', 
+              animationDelay: '0s', 
+              animationName: 'popFloatA',
+              fontSize: isPortraitMode ? '10px' : '22px'
+            }}
+          >
+            🦅
+          </span>
+          <span 
+            className="animal rtl" 
+            title="Philippine Crocodile" 
+            style={{ 
+              top: '22%', 
+              animationDuration: '27s', 
+              animationDelay: '0s', 
+              animationName: 'zigZagA',
+              fontSize: isPortraitMode ? '10px' : '22px'
+            }}
+          >
+            🐊
+          </span>
+          <span 
+            className="animal rtl" 
+            title="Whale Shark" 
+            style={{ 
+              top: '34%', 
+              animationDuration: '24s', 
+              animationDelay: '0s', 
+              animationName: 'popFloatA',
+              fontSize: isPortraitMode ? '10px' : '22px'
+            }}
+          >
+            🦈
+          </span>
+          <span 
+            className="animal rtl" 
+            title="Philippine Eagle-Owl" 
+            style={{ 
+              top: '46%', 
+              animationDuration: '29s', 
+              animationDelay: '0s', 
+              animationName: 'zigZagA',
+              fontSize: isPortraitMode ? '10px' : '22px'
+            }}
+          >
+            🦉
+          </span>
+          <span 
+            className="animal rtl" 
+            title="Philippine Deer" 
+            style={{ 
+              top: '58%', 
+              animationDuration: '26s', 
+              animationDelay: '0s', 
+              animationName: 'popFloatA',
+              fontSize: isPortraitMode ? '10px' : '22px'
+            }}
+          >
+            🦌
+          </span>
+
+          {/* Left -> Right */}
+          <span 
+            className="animal ltr" 
+            title="Hawksbill Turtle" 
+            style={{ 
+              top: '16%', 
+              animationDuration: '24s', 
+              animationDelay: '0s', 
+              animationName: 'popFloatB',
+              fontSize: isPortraitMode ? '10px' : '22px'
+            }}
+          >
+            🐢
+          </span>
+          <span 
+            className="animal ltr" 
+            title="Tamaraw" 
+            style={{ 
+              top: '28%', 
+              animationDuration: '26s', 
+              animationDelay: '0s', 
+              animationName: 'zigZagB',
+              fontSize: isPortraitMode ? '10px' : '22px'
+            }}
+          >
+            🐃
+          </span>
+          <span 
+            className="animal ltr" 
+            title="Visayan Warty Pig" 
+            style={{ 
+              top: '40%', 
+              animationDuration: '23s', 
+              animationDelay: '0s', 
+              animationName: 'popFloatB',
+              fontSize: isPortraitMode ? '10px' : '22px'
+            }}
+          >
+            🐗
+          </span>
+          <span 
+            className="animal ltr" 
+            title="Philippine Tarsier" 
+            style={{ 
+              top: '52%', 
+              animationDuration: '29s', 
+              animationDelay: '0s', 
+              animationName: 'zigZagB',
+              fontSize: isPortraitMode ? '10px' : '22px'
+            }}
+          >
+            🐵
+          </span>
+          <span 
+            className="animal ltr" 
+            title="Philippine Hornbill" 
+            style={{ 
+              top: '64%', 
+              animationDuration: '27s', 
+              animationDelay: '0s', 
+              animationName: 'popFloatB',
+              fontSize: isPortraitMode ? '10px' : '22px'
+            }}
+          >
+            🦅
+          </span>
+        </Box>
         <motion.div
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.2 }}
-          style={{ width: "100%" }}
+          style={{ width: "100%", flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
         >
           <Stack
             direction={{ xs: "column-reverse", md: "row" }}
@@ -93,7 +316,29 @@ export default function SignInSide(props) {
             <SignInCard />
           </Stack>
         </motion.div>
+
+        {/* Footer */}
+        <Box
+          sx={{
+            width: "100%",
+            py: 2,
+            px: 2,
+            textAlign: "center",
+            mt: "auto",
+          }}
+        >
+          <Typography variant="body2" sx={(theme) => ({ color: theme.palette.mode === 'light' ? '#000000' : '#ffffff', mb: 0.5 })}>
+            Calanawan, Tankulan, Manolo Fortich, Bukidnon
+          </Typography>
+          <Typography variant="body2" sx={(theme) => ({ color: theme.palette.mode === 'light' ? '#000000' : '#ffffff' })}>
+            E-mail: <a href="mailto:cenromanolofortich@denr.gov.ph" style={{ color: "inherit", textDecoration: "none" }}>cenromanolofortich@denr.gov.ph</a> | Tel/Mobile No.: <a href="tel:09175228580" style={{ color: "inherit", textDecoration: "none" }}>0917-522-8580</a>
+          </Typography>
+        </Box>
       </Box>
+
+      {/* Corner animals images */}
+      <Box component="img" src="/images/animals.png" alt="animals-left" sx={{ position: 'fixed', bottom: 8, left: 8, height: isPortraitMode ? 32 : 64, objectFit: 'contain', pointerEvents: 'none', opacity: 0.95 }} />
+      <Box component="img" src="/images/animals.png" alt="animals-right" sx={{ position: 'fixed', bottom: 8, right: 8, height: isPortraitMode ? 32 : 64, objectFit: 'contain', pointerEvents: 'none', opacity: 0.95, transform: 'scaleX(-1)' }} />
     </AppTheme>
   );
 }
