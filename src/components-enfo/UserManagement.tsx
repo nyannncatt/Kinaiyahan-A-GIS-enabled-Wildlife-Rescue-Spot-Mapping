@@ -1328,11 +1328,11 @@ export default function UserManagement() {
 
       <List dense sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
         {(() => {
-          const start = reportsPage * pageSize;
-          const current = sortedReports.slice(start, start + pageSize);
+          // Data is already paginated from server, ensure we only show exactly pageSize items
+          const displayItems = sortedReports.slice(0, pageSize);
           const padded = [
-            ...current,
-            ...Array(Math.max(0, pageSize - current.length)).fill(REPORT_PLACEHOLDER)
+            ...displayItems,
+            ...Array(Math.max(0, pageSize - displayItems.length)).fill(REPORT_PLACEHOLDER)
           ];
           return padded;
         })().map((entry, idx) => {
@@ -1372,11 +1372,38 @@ export default function UserManagement() {
       {/* Reports pagination */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Page {reportsPage + 1} of {Math.max(1, Math.ceil((Math.max(0, sortedReports.length) || 0) / pageSize))}
+          Page {reportsPage + 1} of {Math.max(1, Math.ceil((totalReportsCount || 0) / pageSize))}
         </Typography>
         <Stack direction="row" sx={{ gap: 1 }}>
-          <Button size="small" variant="outlined" disabled={reportsPage === 0 || reportsLoading} onClick={() => setReportsPage(p => Math.max(0, p - 1))}>Previous</Button>
-          <Button size="small" variant="outlined" disabled={(reportsPage + 1) >= Math.ceil((Math.max(0, sortedReports.length) || 0) / pageSize) || reportsLoading} onClick={() => setReportsPage(p => p + 1)}>Next</Button>
+          <Button 
+            size="small" 
+            variant="outlined" 
+            disabled={reportsPage === 0 || reportsLoading} 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!reportsLoading && reportsPage > 0) {
+                setReportsPage(p => Math.max(0, p - 1));
+              }
+            }}
+          >
+            Previous
+          </Button>
+          <Button 
+            size="small" 
+            variant="outlined" 
+            disabled={(reportsPage + 1) >= Math.ceil((totalReportsCount || 0) / pageSize) || reportsLoading} 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const totalPages = Math.ceil((totalReportsCount || 0) / pageSize);
+              if (!reportsLoading && (reportsPage + 1) < totalPages) {
+                setReportsPage(p => p + 1);
+              }
+            }}
+          >
+            Next
+          </Button>
         </Stack>
       </Box>
       </Box>
