@@ -38,7 +38,7 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
   const mainContainerRef = React.useRef<HTMLElement | null>(null);
   const fullText = 'ＫＩＮＡＩＹＡＨＡＮ';
 
-  // Typing animation effect
+  // Typing animation effect //testing
   React.useEffect(() => {
     let typingInterval: NodeJS.Timeout | null = null;
     
