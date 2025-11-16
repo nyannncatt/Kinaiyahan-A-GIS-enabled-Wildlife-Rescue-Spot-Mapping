@@ -136,10 +136,10 @@ function MapBoundsController() {
     const specificLocation: [number, number] = [8.371964645263802, 124.85604137091526];
     try {
       if ((map as any)?._loaded) {
-        map.setView(specificLocation, 10, { animate: false });
+        map.setView(specificLocation, 11, { animate: false });
       } else {
         map.whenReady(() => {
-          try { map.setView(specificLocation, 10, { animate: false }); } catch {}
+          try { map.setView(specificLocation, 11, { animate: false }); } catch {}
         });
       }
     } catch {}
@@ -2337,7 +2337,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
 
       <MapContainer
         center={[8.371964645263802, 124.85604137091526]}
-        zoom={10}
+        zoom={11}
         style={{
           height: "100%",
           width: "100%",
