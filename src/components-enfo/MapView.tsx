@@ -1,6 +1,6 @@
 import { MapContainer, TileLayer, useMap, GeoJSON, Marker, Popup, useMapEvents } from "react-leaflet";
 import { useEffect, useRef, useState } from "react";
-import { Box, Tooltip, IconButton, Button, TextField, MenuItem, ToggleButtonGroup, ToggleButton, Stack, FormControl, Select } from "@mui/material";
+import { Box, IconButton, Button, TextField, MenuItem, ToggleButtonGroup, ToggleButton, Stack, FormControl, Select } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import AddLocationAltOutlinedIcon from "@mui/icons-material/AddLocationAltOutlined";
 import ZoomInIcon from "@mui/icons-material/ZoomIn";
@@ -831,108 +831,105 @@ export default function MapView({ skin = "streets" }: MapViewProps) {
         }
       `}</style>
       <Box sx={{ position: "absolute", top: 10, left: 10, zIndex: 1000, display: "flex", flexDirection: "column", gap: 1 }}>
-        <Tooltip title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"} enterDelay={500}>
-          <Button
-            variant={isAddingMarker ? "contained" : "outlined"}
-            color={isAddingMarker ? "primary" : "inherit"}
-            size="small"
-            onClick={() => setIsAddingMarker((v) => !v)}
-            sx={{ 
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 'auto',
-              px: 2,
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'flex-start',
-              gap: 1,
-              border: '1px solid black',
-              transition: 'all 0.2s ease-in-out',
-              '&:hover': {
-                backgroundColor: isAddingMarker ? 'primary.dark' : 'action.hover',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                borderColor: isAddingMarker ? 'primary.dark' : 'primary.main',
-                color: 'primary.main'
-              }
-            }}
-          >
-            <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
-            {isAddingMarker ? "Adding Marker" : "Add Marker"}
-          </Button>
-        </Tooltip>
+        <Button
+          variant={isAddingMarker ? "contained" : "outlined"}
+          color={isAddingMarker ? "primary" : "inherit"}
+          size="small"
+          title={isAddingMarker ? "Click map to add a marker" : "Enable add-marker mode"}
+          onClick={() => setIsAddingMarker((v) => !v)}
+          sx={{ 
+            textTransform: 'none',
+            fontWeight: 600,
+            minWidth: 'auto',
+            px: 2,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'flex-start',
+            gap: 1,
+            border: '1px solid black',
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              backgroundColor: isAddingMarker ? 'primary.dark' : 'action.hover',
+              transform: 'translateY(-2px)',
+              boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+              borderColor: isAddingMarker ? 'primary.dark' : 'primary.main',
+              color: 'primary.main'
+            }
+          }}
+        >
+          <AddLocationAltOutlinedIcon sx={{ fontSize: 18 }} />
+          {isAddingMarker ? "Adding Marker" : "Add Marker"}
+        </Button>
         
-        <Tooltip title="Zoom in" enterDelay={500}>
-          <Button
-            variant="outlined"
-            color="inherit"
-            size="small"
-            onClick={() => {
-              if (mapInstance) {
-                const currentZoom = mapInstance.getZoom();
-                mapInstance.setZoom(currentZoom + 1);
-              }
-            }}
-            sx={{ 
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 'auto',
-              px: 2,
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'flex-start',
-              gap: 1,
-              border: '1px solid black',
-              transition: 'all 0.2s ease-in-out',
-              '&:hover': {
-                backgroundColor: 'action.hover',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                borderColor: 'primary.main',
-                color: 'primary.main'
-              }
-            }}
-          >
-            <ZoomInIcon sx={{ fontSize: 18 }} />
-            Zoom In
-          </Button>
-        </Tooltip>
+        <Button
+          variant="outlined"
+          color="inherit"
+          size="small"
+          title="Zoom in"
+          onClick={() => {
+            if (mapInstance) {
+              const currentZoom = mapInstance.getZoom();
+              mapInstance.setZoom(currentZoom + 1);
+            }
+          }}
+          sx={{ 
+            textTransform: 'none',
+            fontWeight: 600,
+            minWidth: 'auto',
+            px: 2,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'flex-start',
+            gap: 1,
+            border: '1px solid black',
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              backgroundColor: 'action.hover',
+              transform: 'translateY(-2px)',
+              boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+              borderColor: 'primary.main',
+              color: 'primary.main'
+            }
+          }}
+        >
+          <ZoomInIcon sx={{ fontSize: 18 }} />
+          Zoom In
+        </Button>
         
-        <Tooltip title="Zoom out" enterDelay={500}>
-          <Button
-            variant="outlined"
-            color="inherit"
-            size="small"
-            onClick={() => {
-              if (mapInstance) {
-                const currentZoom = mapInstance.getZoom();
-                mapInstance.setZoom(currentZoom - 1);
-              }
-            }}
-            sx={{ 
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 'auto',
-              px: 2,
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'flex-start',
-              gap: 1,
-              border: '1px solid black',
-              transition: 'all 0.2s ease-in-out',
-              '&:hover': {
-                backgroundColor: 'action.hover',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                borderColor: 'primary.main',
-                color: 'primary.main'
-              }
-            }}
-          >
-            <ZoomOutIcon sx={{ fontSize: 18 }} />
-            Zoom Out
-          </Button>
-        </Tooltip>
+        <Button
+          variant="outlined"
+          color="inherit"
+          size="small"
+          title="Zoom out"
+          onClick={() => {
+            if (mapInstance) {
+              const currentZoom = mapInstance.getZoom();
+              mapInstance.setZoom(currentZoom - 1);
+            }
+          }}
+          sx={{ 
+            textTransform: 'none',
+            fontWeight: 600,
+            minWidth: 'auto',
+            px: 2,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'flex-start',
+            gap: 1,
+            border: '1px solid black',
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              backgroundColor: 'action.hover',
+              transform: 'translateY(-2px)',
+              boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+              borderColor: 'primary.main',
+              color: 'primary.main'
+            }
+          }}
+        >
+          <ZoomOutIcon sx={{ fontSize: 18 }} />
+          Zoom Out
+        </Button>
       </Box>
     <MapContainer
         center={[8.371964645263802, 124.85604137091526]}

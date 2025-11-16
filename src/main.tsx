@@ -18,6 +18,33 @@ import "leaflet/dist/leaflet.css";
 //   // 4. getBoundingClientRect() calculations off
 // })();
 
+// Suppress native browser tooltips and use custom CSS tooltips instead
+(function suppressNativeTooltips() {
+  // Store original title attributes in data attribute
+  document.addEventListener('mouseover', (e) => {
+    const target = e.target as HTMLElement;
+    if (target && (target.tagName === 'BUTTON' || target.tagName === 'A' || target.hasAttribute('role') && target.getAttribute('role') === 'button' || target.classList.contains('MuiButton-root') || target.classList.contains('MuiIconButton-root'))) {
+      const title = target.getAttribute('title');
+      if (title) {
+        target.setAttribute('data-tooltip', title);
+        target.removeAttribute('title');
+      }
+    }
+  }, true);
+  
+  // Restore title on mouseout for accessibility
+  document.addEventListener('mouseout', (e) => {
+    const target = e.target as HTMLElement;
+    if (target && target.hasAttribute('data-tooltip')) {
+      const tooltip = target.getAttribute('data-tooltip');
+      if (tooltip) {
+        target.setAttribute('title', tooltip);
+        target.removeAttribute('data-tooltip');
+      }
+    }
+  }, true);
+})();
+
 // Prevent zooming and ensure 100% zoom level (with messaging for other values)
 (function preventZoom() {
   // Create or get banner element

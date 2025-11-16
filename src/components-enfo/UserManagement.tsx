@@ -6,7 +6,6 @@ import ListItem from '@mui/material/ListItem';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
-import Tooltip from '@mui/material/Tooltip';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
@@ -954,35 +953,32 @@ export default function UserManagement() {
           const isAdmin = entry.role === 'admin';
           const actionButtons = !isPlaceholder ? (
             <Stack direction="row" sx={{ gap: 1, alignItems: 'center' }}>
-              <Tooltip title={isAdmin ? 'Cannot edit admin role' : ''}>
-                <span>
-                  <Button size="small" variant="outlined" disabled={isAdmin} onClick={() => openEdit(entry.id, entry.role)}>Edit Role</Button>
-                </span>
-              </Tooltip>
-              <Tooltip title={isAdmin ? 'Cannot delete admin' : ''}>
-                <span>
-                  <Button 
-                    size="small" 
-                    variant="outlined" 
-                    color="error" 
-                    disabled={isAdmin} 
-                    onClick={() => openDeleteDialog(entry.id, entry.name)}
-                    sx={{
-                      color: isAdmin ? undefined : '#d32f2f !important',
+              <span>
+                <Button size="small" variant="outlined" title={isAdmin ? 'Cannot edit admin role' : ''} disabled={isAdmin} onClick={() => openEdit(entry.id, entry.role)}>Edit Role</Button>
+              </span>
+              <span>
+                <Button 
+                  size="small" 
+                  variant="outlined" 
+                  color="error" 
+                  title={isAdmin ? 'Cannot delete admin' : ''}
+                  disabled={isAdmin} 
+                  onClick={() => openDeleteDialog(entry.id, entry.name)}
+                  sx={{
+                    color: isAdmin ? undefined : '#d32f2f !important',
+                    borderColor: isAdmin ? undefined : '#d32f2f',
+                    '&:hover': {
                       borderColor: isAdmin ? undefined : '#d32f2f',
-                      '&:hover': {
-                        borderColor: isAdmin ? undefined : '#d32f2f',
-                        bgcolor: isAdmin ? undefined : 'rgba(211, 47, 47, 0.04)'
-                      },
-                      '& .MuiButton-root': {
-                        color: '#d32f2f !important'
-                      }
-                    }}
-                  >
-                    Delete User
-                  </Button>
-                </span>
-              </Tooltip>
+                      bgcolor: isAdmin ? undefined : 'rgba(211, 47, 47, 0.04)'
+                    },
+                    '& .MuiButton-root': {
+                      color: '#d32f2f !important'
+                    }
+                  }}
+                >
+                  Delete User
+                </Button>
+              </span>
             </Stack>
           ) : null;
           return (
