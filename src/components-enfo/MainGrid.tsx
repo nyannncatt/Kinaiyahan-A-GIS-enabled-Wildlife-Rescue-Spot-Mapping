@@ -13,7 +13,7 @@ import WildlifeRescueStatistics from './WildlifeRescueStatistics';
 import ProfileSection from './ProfileSection';
 import AnalyticsSection from './AnalyticsSection';
 import MapSection from './MapSection';
-import { MapNavigationProvider } from '../context/MapNavigationContext';
+import { MapNavigationProvider, useMapNavigation } from '../context/MapNavigationContext';
 import { getWildlifeRecords } from '../services/wildlifeRecords';
 import { supabase } from '../services/supabase';
 
@@ -24,7 +24,9 @@ interface MainGridProps {
   onRelocationModeChange?: (isActive: boolean) => void;
 }
 
-export default function MainGrid({ onModalOpenChange, environmentalBg, onDispersalModeChange, onRelocationModeChange }: MainGridProps) {
+// Inner component that can access MapNavigationContext
+function MainGridContent({ onModalOpenChange, environmentalBg, onDispersalModeChange, onRelocationModeChange }: MainGridProps) {
+  const { triggerRecordsRefresh } = useMapNavigation();
   
   // State for wildlife records for analytics
   const [wildlifeRecords, setWildlifeRecords] = useState<any[]>([]);
@@ -362,8 +364,7 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
   };
 
   return (
-    <MapNavigationProvider>
-      <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
+    <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
         {/* Map Section */}
         <MapSection 
           pendingCount={pendingCount}
@@ -391,7 +392,6 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
 
         {/* Profile Section */}
         <ProfileSection />
-      </Box>
 
       {/* New Report Notification Modal */}
       <Dialog
@@ -494,6 +494,9 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
             onClick={() => {
               stopSirenSound(); // Stop the siren sound
               setNewReportModalOpen(false);
+              // Trigger refresh of wildlife records list
+              triggerRecordsRefresh();
+              // Scroll to pending reports section
               scrollToPendingReports();
             }} 
             variant="outlined"
@@ -530,6 +533,19 @@ export default function MainGrid({ onModalOpenChange, environmentalBg, onDispers
           </Button>
         </DialogActions>
       </Dialog>
+    </Box>
+  );
+}
+
+export default function MainGrid({ onModalOpenChange, environmentalBg, onDispersalModeChange, onRelocationModeChange }: MainGridProps) {
+  return (
+    <MapNavigationProvider>
+      <MainGridContent 
+        onModalOpenChange={onModalOpenChange}
+        environmentalBg={environmentalBg}
+        onDispersalModeChange={onDispersalModeChange}
+        onRelocationModeChange={onRelocationModeChange}
+      />
     </MapNavigationProvider>
   );
 }
