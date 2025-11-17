@@ -227,8 +227,6 @@ export default function SignUp() {
               border: '1px solid',
               borderColor: 'divider',
               overflow: 'hidden',
-              maxHeight: { xs: '90vh', sm: '85vh' },
-              overflowY: 'auto',
               position: 'relative',
               zIndex: 1,
             }}
