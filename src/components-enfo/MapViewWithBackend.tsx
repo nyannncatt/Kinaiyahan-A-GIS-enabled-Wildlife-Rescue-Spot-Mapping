@@ -415,7 +415,8 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
     const hasSpecies = Boolean(pm.speciesName && pm.speciesName.trim());
     const hasReporter = Boolean(pm.reporterName && pm.reporterName.trim());
     const hasContact = Boolean(pm.phoneNumber && pm.phoneNumber.trim());
-    return hasSpecies && hasReporter && hasContact;
+    const hasStatus = Boolean(pm.status && pm.status.trim());
+    return hasSpecies && hasReporter && hasContact && hasStatus;
   };
 
   // Modal states
@@ -984,8 +985,9 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
       const speciesOk = Boolean(pendingMarker.speciesName && pendingMarker.speciesName.trim());
       const reporterOk = Boolean(pendingMarker.reporterName && pendingMarker.reporterName.trim());
       const contactOk = Boolean(pendingMarker.contactNumber && pendingMarker.contactNumber.trim());
-      if (!speciesOk || !reporterOk || !contactOk) {
-        setPendingWarning('Please provide Species, Reporter Name, and Contact number before confirming.');
+      const statusOk = Boolean(pendingMarker.status && pendingMarker.status.trim());
+      if (!speciesOk || !reporterOk || !contactOk || !statusOk) {
+        setPendingWarning('Please provide Species, Status, Reporter Name, and Contact number before confirming.');
         return;
       }
 
@@ -1010,7 +1012,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
       const newRecord: CreateWildlifeRecord = {
         species_name: common,
         scientific_name: sci,
-        status: pendingMarker.status as any,
+        status: (pendingMarker.status || 'reported') as any,
         latitude: pendingMarker.pos[0],
         longitude: pendingMarker.pos[1],
         barangay: pendingMarker.address?.barangay || undefined,
@@ -1571,7 +1573,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
           setPendingMarker({
             pos: [lat, lng],
             speciesName: "",
-            status: "reported",
+            status: "",
             timestampIso: new Date().toISOString(),
             addressLoading: true,
             photo: null,
@@ -2495,19 +2497,30 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                 )}
                 <TextField
                   select
+                  placeholder="Status"
                   size="small"
                   variant="outlined"
                   fullWidth
                   margin="dense"
-                  value={pendingMarker?.status || 'reported'}
-                  onChange={(e) =>
-                    setPendingMarker((p) => (p ? { ...p, status: e.target.value } : p))
-                  }
+                  value={pendingMarker?.status || ''}
+                  onChange={(e) => {
+                    setPendingMarker((p) => {
+                      const next = p ? { ...p, status: e.target.value } : p;
+                      if (next && isPendingComplete(next)) setPendingWarning(null);
+                      return next;
+                    });
+                  }}
+                  error={Boolean(pendingWarning) && !(pendingMarker?.status || '').trim()}
+                  helperText={Boolean(pendingWarning) && !(pendingMarker?.status || '').trim() ? 'Status is required' : undefined}
                   SelectProps={{
                     displayEmpty: true,
                     renderValue: (value: unknown) => {
                       const v = String(value || "");
-                      return v !== "" ? v : "Status";
+                      // Show "Status" as placeholder text only when value is empty
+                      if (v === "") {
+                        return <span style={{ color: theme.palette.text.secondary }}>Status</span>;
+                      }
+                      return v;
                     },
                   }}
                 >
@@ -2656,10 +2669,11 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                     color="primary"
                       onClick={() => {
                 if (!pendingMarker || !isPendingComplete(pendingMarker)) {
-                          setPendingWarning('Please provide Species, Reporter Name, and Contact number before confirming.');
+                          setPendingWarning('Please provide Species, Status, Reporter Name, and Contact number before confirming.');
                           // Focus the first missing field for convenience
                           const missing = [
                             { ok: Boolean((pendingMarker?.speciesName || '').trim()), ref: pendingSpeciesRef },
+                            { ok: Boolean((pendingMarker?.status || '').trim()), ref: null },
                             { ok: Boolean((pendingMarker?.reporterName || '').trim()), ref: pendingReporterRef },
                             { ok: Boolean((pendingMarker?.phoneNumber || '').trim()), ref: pendingContactRef },
                           ];
@@ -2992,7 +3006,11 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
               </DialogTitle>
               <DialogContent sx={{ overflowY: 'auto', maxHeight: 'calc(80vh - 140px)' }}>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
-                <TextField
+                <Box>
+                  <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 500, color: '#2e7d32' }}>
+                    Species Name:
+                  </Typography>
+                  <TextField
                     placeholder="Species name"
                     size="small"
                   variant="outlined"
@@ -3076,6 +3094,11 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                       )}
                     </Box>
                   )}
+                  </Box>
+                  <Box>
+                  <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 500, color: '#2e7d32' }}>
+                    Status:
+                  </Typography>
                   <TextField
                     select
                   size="small"
@@ -3104,7 +3127,12 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                   <MenuItem value="turned over">Turned over</MenuItem>
                   <MenuItem value="released">Released</MenuItem>
                 </TextField>
-                <TextField
+                </Box>
+                <Box>
+                  <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 500, color: '#2e7d32' }}>
+                    Barangay:
+                  </Typography>
+                  <TextField
                     placeholder="Barangay"
                     size="small"
                   variant="outlined"
@@ -3129,7 +3157,12 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                     }));
                   }}
                 />
-                <TextField
+                </Box>
+                <Box>
+                  <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 500, color: '#2e7d32' }}>
+                    Municipality:
+                  </Typography>
+                  <TextField
                     placeholder="Municipality"
                     size="small"
                   variant="outlined"
@@ -3154,6 +3187,11 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                       }));
                     }}
                   />
+                  </Box>
+                  <Box>
+                  <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 500, color: '#2e7d32' }}>
+                    Reporter Name:
+                  </Typography>
                   <TextField
                     placeholder="Name of who sighted"
                   size="small"
@@ -3179,6 +3217,11 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                     }));
                   }}
                 />
+                  </Box>
+                  <Box>
+                  <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 500, color: '#2e7d32' }}>
+                    Phone Number:
+                  </Typography>
                   <TextField
                     placeholder="Phone number"
                     size="small"
@@ -3255,6 +3298,7 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
                       )
                     }}
                 />
+                </Box>
                 <Box>
                     <Button variant="outlined" color="primary" size="small" component="label">
                       Change Photo
