@@ -3,6 +3,15 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import IconButton from '@mui/material/IconButton';
+import InfoIcon from '@mui/icons-material/Info';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { motion } from 'framer-motion';
 
@@ -18,6 +27,8 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
   const [selectedMunicipality, setSelectedMunicipality] = useState<string | null>(null);
   // State for species report view toggle (species name vs species type)
   const [speciesViewMode, setSpeciesViewMode] = useState<'name' | 'type'>('name');
+  // State for showing "Other" species dialog
+  const [showOtherSpeciesDialog, setShowOtherSpeciesDialog] = useState(false);
   
   // Filter records based on selected status
   const filteredRecords = selectedStatusFilter 
@@ -89,6 +100,7 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
         combined.includes('cat') || combined.includes('dog') || combined.includes('bat') || combined.includes('rat') ||
         combined.includes('mouse') || combined.includes('squirrel') || combined.includes('civet') || combined.includes('bear') ||
         combined.includes('pig') || combined.includes('cow') || combined.includes('buffalo') || combined.includes('carabao') ||
+        combined.includes('goat') || combined.includes('sheep') || combined.includes('ram') ||
         combined.includes('macaque') || combined.includes('tarsier') || combined.includes('flying lemur') || combined.includes('pangolin') ||
         combined.includes('porcupine') || combined.includes('otter') || combined.includes('mongoose') || combined.includes('wildcat') ||
         combined.includes('leopard') || combined.includes('tiger') || combined.includes('civet') || combined.includes('binturong') ||
@@ -96,7 +108,8 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
         combined.includes('artiodactyla') || combined.includes('rodentia') || combined.includes('chiroptera') || combined.includes('cervidae') ||
         combined.includes('suidae') || combined.includes('bovidae') || combined.includes('felidae') || combined.includes('canidae') ||
         combined.includes('viverridae') || combined.includes('muridae') || combined.includes('sciuridae') || combined.includes('pteropodidae') ||
-        combined.includes('vespertilionidae') || combined.includes('rhinolophidae') || combined.includes('hipposideridae')) {
+        combined.includes('vespertilionidae') || combined.includes('rhinolophidae') || combined.includes('hipposideridae') ||
+        combined.includes('capra') || combined.includes('ovis')) {
       return 'Mammal';
     }
     
@@ -114,8 +127,10 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
     return 'Other';
   };
   
-  // Top species by name
-  const speciesSource = (selectedStatusFilter ? filteredRecords : approvedRecords).filter((r: any) => {
+  // Top species by name - use only approved records (exclude pending and rejected)
+  const speciesSource = (selectedStatusFilter 
+    ? approvedRecords.filter(r => r.status === selectedStatusFilter.toLowerCase())
+    : approvedRecords).filter((r: any) => {
     if (!selectedMunicipality) return true;
     const m = (r.municipality || '').toLowerCase();
     return m === selectedMunicipality.toLowerCase();
@@ -138,24 +153,27 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
   
   // Species type breakdown across all top barangays (aggregated, not per barangay)
   const topBarangayNames = topBarangays.map(b => b.barangay);
-  const otherSpecies: string[] = []; // Track species categorized as "Other"
+  const otherSpeciesMap: { [key: string]: number } = {}; // Track species categorized as "Other" with counts
   const speciesTypeData = speciesSource
     .filter((r: any) => topBarangayNames.includes(r.barangay || 'Unknown'))
     .reduce((acc: any, record: any) => {
       const type = getSpeciesType(record.species_name || '', record.scientific_name || '');
       if (type === 'Other') {
         const speciesKey = `${record.species_name || 'Unknown'}${record.scientific_name ? ` (${record.scientific_name})` : ''}`;
-        if (!otherSpecies.includes(speciesKey)) {
-          otherSpecies.push(speciesKey);
-        }
+        otherSpeciesMap[speciesKey] = (otherSpeciesMap[speciesKey] || 0) + 1;
       }
       acc[type] = (acc[type] || 0) + 1;
       return acc;
     }, {});
   
+  // Convert to sorted array for display
+  const otherSpeciesList = Object.entries(otherSpeciesMap)
+    .map(([species, count]) => ({ species, count }))
+    .sort((a, b) => b.count - a.count);
+  
   // Log species categorized as "Other" for debugging
-  if (otherSpecies.length > 0) {
-    console.log('Species categorized as "Other":', otherSpecies);
+  if (otherSpeciesList.length > 0) {
+    console.log('Species categorized as "Other":', otherSpeciesList);
   }
   const topSpeciesTypePieData = Object.entries(speciesTypeData)
     .map(([type, count]) => ({ id: type, value: Number(count), label: type }))
@@ -411,7 +429,7 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, justifyContent: 'center', alignItems: 'flex-start' }}>
             {/* Top Barangays Pie Chart */}
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 240 }}>
-              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1, fontWeight: 500 }}>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1, fontWeight: 500, ml: -15 }}>
                 Top 5 Barangays
               </Typography>
               {topBarangays.length > 0 ? (
@@ -440,7 +458,7 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
             
             {/* Top Species Report Pie Chart */}
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 240 }}>
-              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1, fontWeight: 500 }}>
+            <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1, fontWeight: 500, ml: -10 }}>
                 Top Species Report
               </Typography>
               {speciesViewMode === 'name' ? (
@@ -467,32 +485,78 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
                   </Typography>
                 )
               ) : (
-                topSpeciesTypePieData.length > 0 ? (
-                  <PieChart
-                    series={[{
-                      data: topSpeciesTypePieData,
-                      innerRadius: 26,
-                      outerRadius: 92,
-                      paddingAngle: 2,
-                      cornerRadius: 5,
-                      arcLabel: (item) => {
-                        const pct = topSpeciesTypeTotal > 0 ? ((item.value / topSpeciesTypeTotal) * 100).toFixed(1) + '%' : '0%';
-                        return pct;
-                      },
-                      arcLabelMinAngle: 10,
-                    }]}
-                    width={360}
-                    height={220}
-                  />
-                ) : (
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    No species type data available yet
-                  </Typography>
-                )
+                <>
+                  {topSpeciesTypePieData.length > 0 ? (
+                    <>
+                      <PieChart
+                        series={[{
+                          data: topSpeciesTypePieData,
+                          innerRadius: 26,
+                          outerRadius: 92,
+                          paddingAngle: 2,
+                          cornerRadius: 5,
+                          arcLabel: (item) => {
+                            const pct = topSpeciesTypeTotal > 0 ? ((item.value / topSpeciesTypeTotal) * 100).toFixed(1) + '%' : '0%';
+                            return pct;
+                          },
+                          arcLabelMinAngle: 10,
+                        }]}
+                        width={360}
+                        height={220}
+                      />
+                      {otherSpeciesList.length > 0 && (
+                        <Button
+                          size="small"
+                          startIcon={<InfoIcon />}
+                          onClick={() => setShowOtherSpeciesDialog(true)}
+                          sx={{ mt: 1, textTransform: 'none' }}
+                        >
+                          View {otherSpeciesList.length} "Other" Species
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      No species type data available yet
+                    </Typography>
+                  )}
+                </>
               )}
             </Box>
           </Box>
         </Box>
+
+        {/* Dialog to show "Other" species list */}
+        <Dialog
+          open={showOtherSpeciesDialog}
+          onClose={() => setShowOtherSpeciesDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>
+            Species Categorized as "Other"
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+              These species could not be automatically categorized. You may want to add patterns for them in the categorization function.
+            </Typography>
+            <List>
+              {otherSpeciesList.map((item, index) => (
+                <ListItem key={index}>
+                  <ListItemText
+                    primary={item.species}
+                    secondary={`${item.count} ${item.count === 1 ? 'record' : 'records'}`}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowOtherSpeciesDialog(false)}>
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {/* Records Summary */}
         <Box sx={{ mt: 3 }}>
