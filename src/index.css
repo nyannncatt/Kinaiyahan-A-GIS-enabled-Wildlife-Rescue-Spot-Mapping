@@ -555,6 +555,17 @@ span[title][style*="inline-block"] {
 }
 
 /* Remove tooltips from pagination buttons */
+
+/* Glowing animation for profile avatar circle in edit mode */
+@keyframes profileGlow {
+  0% {
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.6), 0 0 30px rgba(76, 175, 80, 0.4), 0 8px 24px rgba(76, 175, 80, 0.25);
+  }
+  100% {
+    box-shadow: 0 0 25px rgba(76, 175, 80, 0.8), 0 0 50px rgba(76, 175, 80, 0.6), 0 8px 24px rgba(76, 175, 80, 0.25);
+  }
+}
+
 .MuiTablePagination-root button[title],
 .MuiTablePagination-root button[data-tooltip],
 .MuiTablePagination-root .MuiIconButton-root[title],
