@@ -2272,7 +2272,7 @@ export default function PublicReport() {
                   <Button
                     type="button"
                     variant="contained"
-                    disabled={submitting || !isStepValid(activeStep)}
+                    disabled={submitting}
                     onClick={handleSubmit}
                     startIcon={submitting ? null : <CheckCircle />}
                      sx={{ 
@@ -2324,7 +2324,6 @@ export default function PublicReport() {
                   <Button
                     variant="contained"
                     onClick={handleNext}
-                    disabled={!isStepValid(activeStep)}
                     startIcon={<ArrowForward />}
                      sx={{ 
                        minWidth: isSmallMobile ? '100%' : 120,
