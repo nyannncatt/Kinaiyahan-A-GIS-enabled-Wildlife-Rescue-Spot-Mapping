@@ -29,6 +29,8 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
   const [speciesViewMode, setSpeciesViewMode] = useState<'name' | 'type'>('name');
   // State for showing "Other" species dialog
   const [showOtherSpeciesDialog, setShowOtherSpeciesDialog] = useState(false);
+  // State for barangay view toggle (percentage vs total)
+  const [barangayViewMode, setBarangayViewMode] = useState<'percentage' | 'total'>('percentage');
   
   // Filter records based on selected status
   const filteredRecords = selectedStatusFilter 
@@ -429,9 +431,30 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, justifyContent: 'center', alignItems: 'flex-start' }}>
             {/* Top Barangays Pie Chart */}
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 240 }}>
-              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1, fontWeight: 500, ml: -15 }}>
-                Top 5 Barangays
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 500, ml: -15 }}>
+                  Top 5 Barangays
+                </Typography>
+                {/* Toggle buttons for barangay view mode */}
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  <Button
+                    size="small"
+                    variant={barangayViewMode === 'percentage' ? 'contained' : 'outlined'}
+                    onClick={() => setBarangayViewMode('percentage')}
+                    sx={{ textTransform: 'none', minWidth: 'auto', px: 1, fontSize: '0.7rem' }}
+                  >
+                    %
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={barangayViewMode === 'total' ? 'contained' : 'outlined'}
+                    onClick={() => setBarangayViewMode('total')}
+                    sx={{ textTransform: 'none', minWidth: 'auto', px: 1, fontSize: '0.7rem' }}
+                  >
+                    Total
+                  </Button>
+                </Box>
+              </Box>
               {topBarangays.length > 0 ? (
                 <PieChart
                   series={[{
@@ -441,8 +464,12 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
                     paddingAngle: 2,
                     cornerRadius: 5,
                     arcLabel: (item) => {
-                      const pct = topBarangaysTotal > 0 ? ((item.value / topBarangaysTotal) * 100).toFixed(1) + '%' : '0%';
-                      return pct;
+                      if (barangayViewMode === 'total') {
+                        return String(item.value);
+                      } else {
+                        const pct = topBarangaysTotal > 0 ? ((item.value / topBarangaysTotal) * 100).toFixed(1) + '%' : '0%';
+                        return pct;
+                      }
                     },
                     arcLabelMinAngle: 10,
                   }]}
