@@ -24,7 +24,7 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
   // State for filtering analytics by status
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
   // State for municipality filter in analytics (Top Barangays)
-  const [selectedMunicipality, setSelectedMunicipality] = useState<string | null>(null);
+  const [selectedMunicipality, setSelectedMunicipality] = useState<string | null>('Manolo Fortich');
   // State for species report view toggle (species name vs species type)
   const [speciesViewMode, setSpeciesViewMode] = useState<'name' | 'type'>('name');
   // State for showing "Other" species dialog
@@ -485,7 +485,7 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
             
             {/* Top Species Report Pie Chart */}
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 240 }}>
-            <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1, fontWeight: 500, ml: -10 }}>
+            <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1, fontWeight: 500, ml: -25 }}>
                 Top Species Report
               </Typography>
               {speciesViewMode === 'name' ? (
