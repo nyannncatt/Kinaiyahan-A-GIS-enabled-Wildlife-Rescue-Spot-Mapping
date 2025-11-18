@@ -502,9 +502,17 @@ export default function ProfileSection({ fullWidth = false, showTitle = true }: 
                     borderColor: '#4caf50',
                     bgcolor: 'primary.light',
                     fontSize: { xs: '3.5rem', md: '4.5rem' },
-                    boxShadow: (theme) => theme.palette.mode === 'dark' 
-                      ? '0 8px 24px rgba(76, 175, 80, 0.4)'
-                      : '0 8px 24px rgba(76, 175, 80, 0.25)',
+                    boxShadow: (theme) => {
+                      if (isEditMode) {
+                        return '0 0 15px rgba(76, 175, 80, 0.6), 0 0 30px rgba(76, 175, 80, 0.4), 0 8px 24px rgba(76, 175, 80, 0.25)';
+                      }
+                      return theme.palette.mode === 'dark' 
+                        ? '0 8px 24px rgba(76, 175, 80, 0.4)'
+                        : '0 8px 24px rgba(76, 175, 80, 0.25)';
+                    },
+                    ...(isEditMode && {
+                      animation: 'profileGlow 2s ease-in-out infinite alternate',
+                    }),
                   }}
                 >
                   {!avatarPreview && !userProfile.avatarPhoto && (userProfile.firstName?.[0] || userProfile.lastName?.[0] || 'U')}
