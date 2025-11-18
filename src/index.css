@@ -585,6 +585,28 @@ span[title][style*="inline-block"] {
   content: none !important;
 }
 
+/* Glow for pending (gray) map markers when viewing location
+   Use drop-shadow so the glow hugs the actual marker outline */
+.leaflet-marker-icon.pending-marker-glow {
+  animation: pendingMarkerGlow 1.4s ease-in-out infinite alternate;
+  filter:
+    drop-shadow(0 0 8px rgba(56, 142, 60, 1))
+    drop-shadow(0 0 18px rgba(0, 255, 140, 1));
+}
+
+@keyframes pendingMarkerGlow {
+  0% {
+    filter:
+      drop-shadow(0 0 8px rgba(56, 142, 60, 1))
+      drop-shadow(0 0 14px rgba(0, 255, 140, 0.95));
+  }
+  100% {
+    filter:
+      drop-shadow(0 0 12px rgba(56, 142, 60, 1))
+      drop-shadow(0 0 32px rgba(0, 255, 140, 1));
+  }
+}
+
 /* Tooltip with data-tooltip (set by JavaScript on hover) */
 button[data-tooltip]:hover::before,
 a[data-tooltip]:hover::before,
