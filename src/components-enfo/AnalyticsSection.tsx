@@ -16,6 +16,8 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
   // State for municipality filter in analytics (Top Barangays)
   const [selectedMunicipality, setSelectedMunicipality] = useState<string | null>(null);
+  // State for species report view toggle (species name vs species type)
+  const [speciesViewMode, setSpeciesViewMode] = useState<'name' | 'type'>('name');
   
   // Filter records based on selected status
   const filteredRecords = selectedStatusFilter 
@@ -43,6 +45,122 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
     value: Number(item.count),
     label: item.barangay,
   }));
+  
+  // Helper function to categorize species into types
+  const getSpeciesType = (speciesName: string, scientificName?: string): string => {
+    const name = (speciesName || '').toLowerCase().trim();
+    const scientific = (scientificName || '').toLowerCase().trim();
+    const combined = `${name} ${scientific}`.trim();
+    
+    // If empty, return Other
+    if (!combined || combined === 'unknown') {
+      return 'Other';
+    }
+    
+    // Bird patterns
+    if (combined.includes('bird') || combined.includes('eagle') || combined.includes('owl') || combined.includes('hawk') || 
+        combined.includes('crow') || combined.includes('dove') || combined.includes('parrot') || combined.includes('chicken') ||
+        combined.includes('duck') || combined.includes('goose') || combined.includes('pigeon') || combined.includes('sparrow') ||
+        combined.includes('hornbill') || combined.includes('kingfisher') || combined.includes('myna') || combined.includes('bulbul') ||
+        combined.includes('oriole') || combined.includes('sunbird') || combined.includes('tailorbird') || combined.includes('woodpecker') ||
+        combined.includes('egret') || combined.includes('heron') || combined.includes('stork') || combined.includes('ibis') ||
+        combined.includes('warbler') || combined.includes('flycatcher') || combined.includes('shrike') || combined.includes('starling') ||
+        combined.includes('swift') || combined.includes('swallow') || combined.includes('martin') || combined.includes('swiftlet') ||
+        combined.includes('aves') || combined.includes('accipitridae') || combined.includes('strigidae') || combined.includes('columbidae') ||
+        combined.includes('bucerotidae') || combined.includes('alcedinidae') || combined.includes('sturnidae') || combined.includes('pycnonotidae') ||
+        combined.includes('phylloscopidae') || combined.includes('muscicapidae') || combined.includes('passeridae') || combined.includes('hirundinidae')) {
+      return 'Bird';
+    }
+    
+    // Reptile patterns
+    if (combined.includes('snake') || combined.includes('lizard') || combined.includes('gecko') || combined.includes('crocodile') ||
+        combined.includes('turtle') || combined.includes('tortoise') || combined.includes('iguana') || combined.includes('python') ||
+        combined.includes('cobra') || combined.includes('viper') || combined.includes('skink') || combined.includes('monitor') ||
+        combined.includes('varanus') || combined.includes('agama') || combined.includes('chameleon') || combined.includes('anole') ||
+        combined.includes('reptile') || combined.includes('reptilia') || combined.includes('serpentes') || combined.includes('squamata') ||
+        combined.includes('testudines') || combined.includes('chelonia') || combined.includes('crocodylidae') || combined.includes('crocodyliformes') ||
+        combined.includes('varanidae') || combined.includes('gekkonidae') || combined.includes('scincidae') || combined.includes('elapidae') ||
+        combined.includes('viperidae') || combined.includes('pythonidae') || combined.includes('boidae') || combined.includes('colubridae')) {
+      return 'Reptile';
+    }
+    
+    // Mammal patterns
+    if (combined.includes('monkey') || combined.includes('deer') || combined.includes('wild boar') || combined.includes('boar') ||
+        combined.includes('cat') || combined.includes('dog') || combined.includes('bat') || combined.includes('rat') ||
+        combined.includes('mouse') || combined.includes('squirrel') || combined.includes('civet') || combined.includes('bear') ||
+        combined.includes('pig') || combined.includes('cow') || combined.includes('buffalo') || combined.includes('carabao') ||
+        combined.includes('macaque') || combined.includes('tarsier') || combined.includes('flying lemur') || combined.includes('pangolin') ||
+        combined.includes('porcupine') || combined.includes('otter') || combined.includes('mongoose') || combined.includes('wildcat') ||
+        combined.includes('leopard') || combined.includes('tiger') || combined.includes('civet') || combined.includes('binturong') ||
+        combined.includes('mammal') || combined.includes('mammalia') || combined.includes('primates') || combined.includes('carnivora') ||
+        combined.includes('artiodactyla') || combined.includes('rodentia') || combined.includes('chiroptera') || combined.includes('cervidae') ||
+        combined.includes('suidae') || combined.includes('bovidae') || combined.includes('felidae') || combined.includes('canidae') ||
+        combined.includes('viverridae') || combined.includes('muridae') || combined.includes('sciuridae') || combined.includes('pteropodidae') ||
+        combined.includes('vespertilionidae') || combined.includes('rhinolophidae') || combined.includes('hipposideridae')) {
+      return 'Mammal';
+    }
+    
+    // Aquatic patterns
+    if (combined.includes('fish') || combined.includes('shark') || combined.includes('eel') || combined.includes('crab') ||
+        combined.includes('lobster') || combined.includes('shrimp') || combined.includes('sea turtle') ||
+        combined.includes('ray') || combined.includes('stingray') || combined.includes('octopus') || combined.includes('squid') ||
+        combined.includes('jellyfish') || combined.includes('starfish') || combined.includes('sea urchin') || combined.includes('sea cucumber') ||
+        combined.includes('aquatic') || combined.includes('marine') || combined.includes('pisces') || combined.includes('actinopterygii') ||
+        combined.includes('chondrichthyes') || combined.includes('elasmobranchii') || combined.includes('teleostei') || combined.includes('osteichthyes')) {
+      return 'Aquatic';
+    }
+    
+    // Default to "Other" if no match
+    return 'Other';
+  };
+  
+  // Top species by name
+  const speciesSource = (selectedStatusFilter ? filteredRecords : approvedRecords).filter((r: any) => {
+    if (!selectedMunicipality) return true;
+    const m = (r.municipality || '').toLowerCase();
+    return m === selectedMunicipality.toLowerCase();
+  });
+  const speciesFrequency = speciesSource.reduce((acc: any, record: any) => {
+    const species = record.species_name || 'Unknown';
+    acc[species] = (acc[species] || 0) + 1;
+    return acc;
+  }, {});
+  const topSpecies = Object.entries(speciesFrequency)
+    .map(([species, count]) => ({ species, count }))
+    .sort((a, b) => (b.count as number) - (a.count as number))
+    .slice(0, 5);
+  const topSpeciesTotal = topSpecies.reduce((sum, item) => sum + Number(item.count), 0);
+  const topSpeciesPieData = topSpecies.map((item) => ({
+    id: item.species,
+    value: Number(item.count),
+    label: item.species,
+  }));
+  
+  // Species type breakdown across all top barangays (aggregated, not per barangay)
+  const topBarangayNames = topBarangays.map(b => b.barangay);
+  const otherSpecies: string[] = []; // Track species categorized as "Other"
+  const speciesTypeData = speciesSource
+    .filter((r: any) => topBarangayNames.includes(r.barangay || 'Unknown'))
+    .reduce((acc: any, record: any) => {
+      const type = getSpeciesType(record.species_name || '', record.scientific_name || '');
+      if (type === 'Other') {
+        const speciesKey = `${record.species_name || 'Unknown'}${record.scientific_name ? ` (${record.scientific_name})` : ''}`;
+        if (!otherSpecies.includes(speciesKey)) {
+          otherSpecies.push(speciesKey);
+        }
+      }
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {});
+  
+  // Log species categorized as "Other" for debugging
+  if (otherSpecies.length > 0) {
+    console.log('Species categorized as "Other":', otherSpecies);
+  }
+  const topSpeciesTypePieData = Object.entries(speciesTypeData)
+    .map(([type, count]) => ({ id: type, value: Number(count), label: type }))
+    .sort((a, b) => b.value - a.value);
+  const topSpeciesTypeTotal = topSpeciesTypePieData.reduce((sum, item) => sum + item.value, 0);
   
   // Records summary counts (based on filtered records)
   const displayRecords = selectedStatusFilter ? filteredRecords : approvedRecords;
@@ -244,13 +362,34 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
           })}
         </Box>
 
-        {/* Top Barangays Section */}
+        {/* Top Barangays and Species Report Section */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" gutterBottom sx={{ color: 'text.primary', fontWeight: 600, mt: 1 }}>
-            Top 5 Barangays with Wildlife Activity
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" gutterBottom sx={{ color: 'text.primary', fontWeight: 600, mt: 1, mb: 0 }}>
+              Top 5 Barangays with Wildlife Activity
+            </Typography>
+            {/* Toggle buttons for species view mode */}
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                size="small"
+                variant={speciesViewMode === 'name' ? 'contained' : 'outlined'}
+                onClick={() => setSpeciesViewMode('name')}
+                sx={{ textTransform: 'none' }}
+              >
+                Species Name
+              </Button>
+              <Button
+                size="small"
+                variant={speciesViewMode === 'type' ? 'contained' : 'outlined'}
+                onClick={() => setSpeciesViewMode('type')}
+                sx={{ textTransform: 'none' }}
+              >
+                Species Type
+              </Button>
+            </Box>
+          </Box>
           {/* Municipality filter */}
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
             {[
               { label: 'Manolo Fortich', value: 'Manolo Fortich' },
             ].map((opt) => {
@@ -268,29 +407,90 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
               );
             })}
           </Box>
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 240 }}>
-            {topBarangays.length > 0 ? (
-              <PieChart
-                series={[{
-                  data: topBarangaysPieData,
-                  innerRadius: 26,
-                  outerRadius: 92,
-                  paddingAngle: 2,
-                  cornerRadius: 5,
-                  arcLabel: (item) => {
-                    const pct = topBarangaysTotal > 0 ? ((item.value / topBarangaysTotal) * 100).toFixed(1) + '%' : '0%';
-                    return pct;
-                  },
-                  arcLabelMinAngle: 10,
-                }]}
-                width={360}
-                height={220}
-              />
-            ) : (
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                No barangay data available yet
+          {/* Two pie charts side by side */}
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, justifyContent: 'center', alignItems: 'flex-start' }}>
+            {/* Top Barangays Pie Chart */}
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 240 }}>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1, fontWeight: 500 }}>
+                Top 5 Barangays
               </Typography>
-            )}
+              {topBarangays.length > 0 ? (
+                <PieChart
+                  series={[{
+                    data: topBarangaysPieData,
+                    innerRadius: 26,
+                    outerRadius: 92,
+                    paddingAngle: 2,
+                    cornerRadius: 5,
+                    arcLabel: (item) => {
+                      const pct = topBarangaysTotal > 0 ? ((item.value / topBarangaysTotal) * 100).toFixed(1) + '%' : '0%';
+                      return pct;
+                    },
+                    arcLabelMinAngle: 10,
+                  }]}
+                  width={360}
+                  height={220}
+                />
+              ) : (
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  No barangay data available yet
+                </Typography>
+              )}
+            </Box>
+            
+            {/* Top Species Report Pie Chart */}
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 240 }}>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1, fontWeight: 500 }}>
+                Top Species Report
+              </Typography>
+              {speciesViewMode === 'name' ? (
+                topSpeciesPieData.length > 0 ? (
+                  <PieChart
+                    series={[{
+                      data: topSpeciesPieData,
+                      innerRadius: 26,
+                      outerRadius: 92,
+                      paddingAngle: 2,
+                      cornerRadius: 5,
+                      arcLabel: (item) => {
+                        const pct = topSpeciesTotal > 0 ? ((item.value / topSpeciesTotal) * 100).toFixed(1) + '%' : '0%';
+                        return pct;
+                      },
+                      arcLabelMinAngle: 10,
+                    }]}
+                    width={360}
+                    height={220}
+                  />
+                ) : (
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    No species data available yet
+                  </Typography>
+                )
+              ) : (
+                topSpeciesTypePieData.length > 0 ? (
+                  <PieChart
+                    series={[{
+                      data: topSpeciesTypePieData,
+                      innerRadius: 26,
+                      outerRadius: 92,
+                      paddingAngle: 2,
+                      cornerRadius: 5,
+                      arcLabel: (item) => {
+                        const pct = topSpeciesTypeTotal > 0 ? ((item.value / topSpeciesTypeTotal) * 100).toFixed(1) + '%' : '0%';
+                        return pct;
+                      },
+                      arcLabelMinAngle: 10,
+                    }]}
+                    width={360}
+                    height={220}
+                  />
+                ) : (
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    No species type data available yet
+                  </Typography>
+                )
+              )}
+            </Box>
           </Box>
         </Box>
 
