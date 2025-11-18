@@ -1014,24 +1014,12 @@ export default function PublicReport() {
         console.log('Using extracted GPS coordinates:', { lat, lng });
         console.log('Coordinate validation - lat:', typeof lat, 'lng:', typeof lng);
         console.log('Coordinate values - lat:', lat, 'lng:', lng);
-      } else if (barangay.trim()) {
-        // Use barangay-specific coordinates if no GPS data but barangay is selected
-        const barangayCoords = getBarangayCoordinates(barangay);
-        if (barangayCoords) {
-          lat = barangayCoords.lat;
-          lng = barangayCoords.lng;
-          console.log('Using barangay-specific coordinates for', barangay, ':', { lat, lng });
-        } else {
-          // Fallback to default location if barangay not found
-          lat = 8.371964645263802; // Manolo Fortich center
-          lng = 124.85604137091526;
-          console.log('Barangay not found, using default coordinates (Manolo Fortich center):', { lat, lng });
-        }
       } else {
-        // Fallback to default location if no GPS data and no barangay selected
-        lat = 8.371964645263802; // Manolo Fortich center
-        lng = 124.85604137091526;
-        console.log('No GPS data and no barangay selected, using default coordinates (Manolo Fortich center):', { lat, lng });
+        // No EXIF GPS data: use CENRO - Manolo Fortich coordinates for pending marker
+        // 8.3719625, 124.8560156 (rounded)
+        lat = 8.3719625;
+        lng = 124.8560156;
+        console.log('No EXIF GPS data, using default CENRO Manolo Fortich coordinates for pending marker:', { lat, lng });
       }
 
       console.log('Submitting record with coordinates:', { lat, lng });
@@ -1161,15 +1149,15 @@ export default function PublicReport() {
                     }
                   }}
                 >
-                  {/* Temporarily disabled upload photo feature */}
-                  {/* <input
+                  {/* Upload photo input - allows EXIF GPS data extraction for location */}
+                  <input
                     accept="image/*"
                     style={{ display: 'none' }}
                     id="photo-upload"
                     type="file"
                     onChange={handlePhotoChange}
-                  /> */}
-                  
+                  />
+                
                   <Box sx={{ position: 'relative', zIndex: 1 }}>
                     {/* Single Camera Icon - More Clear */}
                     <Box sx={{ mb: 3 }}>
@@ -1201,8 +1189,7 @@ export default function PublicReport() {
                     
                     {/* Action Buttons */}
                     <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-                      {/* Temporarily disabled upload photo button */}
-                      {/* <Button
+                      <Button
                         variant="contained"
                         component="label"
                         htmlFor="photo-upload"
@@ -1215,15 +1202,16 @@ export default function PublicReport() {
                           borderRadius: 2,
                           textTransform: 'none',
                           fontWeight: 600,
+                          mr: 1.5,
                           '&:hover': {
                             bgcolor: '#2e7d32',
                             transform: 'translateY(-1px)'
                           }
                         }}
                       >
-                        Choose File
-                      </Button> */}
-                      
+                        Upload Photo
+                      </Button>
+
                       <Button
                         variant="outlined"
                         startIcon={<CameraAlt />}
@@ -1247,6 +1235,20 @@ export default function PublicReport() {
                         Take Photo
                       </Button>
                     </Box>
+
+                    {/* Note about EXIF GPS extraction */}
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontSize: '0.8rem',
+                        color: 'text.secondary',
+                        maxWidth: 380,
+                        mx: 'auto',
+                        mt: -1,
+                      }}
+                    >
+                      Note: If your uploaded photo contains GPS/EXIF data, the system will automatically extract it to detect the location.
+                    </Typography>
                     
                     {/* Status Text */}
                     <Typography 
@@ -1538,11 +1540,11 @@ export default function PublicReport() {
                 </Box>
               )}
               
-              {/* Barangay Location Preview */}
+              {/* Barangay info when there is NO EXIF GPS data */}
               {hasExifGps === false && barangay && (
                 <Box sx={{ mt: 2 }}>
                   <Alert 
-                    severity="success" 
+                    severity="info" 
                     sx={{ 
                       borderRadius: 2,
                       '& .MuiAlert-message': {
@@ -1551,16 +1553,11 @@ export default function PublicReport() {
                     }}
                   >
                     <Typography variant="body2">
-                      <strong>Selected Location:</strong> {barangay}, {municipality}
+                      <strong>Barangay recorded:</strong> {barangay}, {municipality}
                     </Typography>
-                    {(() => {
-                      const coords = getBarangayCoordinates(barangay);
-                      return coords ? (
-                        <Typography variant="body2" sx={{ mt: 1, fontFamily: 'monospace', bgcolor: 'rgba(0,0,0,0.05)', p: 1, borderRadius: 1 }}>
-                          <strong>Map Coordinates:</strong> {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
-                        </Typography>
-                      ) : null;
-                    })()}
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      Since your photo has no GPS/EXIF data, the pending map marker will be placed at CENRO – Manolo Fortich and can be updated later by the officer.
+                    </Typography>
                   </Alert>
                 </Box>
               )}
