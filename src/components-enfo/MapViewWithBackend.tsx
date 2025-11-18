@@ -76,13 +76,21 @@ function MapRefSetter({ onReady }: { onReady: (map: L.Map) => void }) {
 }
 
 // Utility: status -> color and marker icon
-function createStatusIcon(status: string | undefined, approval_status?: string): L.Icon {
+function createStatusIcon(
+  status: string | undefined,
+  approval_status?: string,
+  highlightPending?: boolean
+): L.Icon {
   const base = "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img";
   let iconColor = "blue"; // default style
+  let className: string | undefined;
   
   // If pending, always use gray
   if (approval_status === 'pending') {
     iconColor = "grey";
+    if (highlightPending) {
+      className = "pending-marker-glow";
+    }
   } else {
     const v = String(status || "").toLowerCase();
     if (v === "reported") iconColor = "red";
@@ -97,6 +105,7 @@ function createStatusIcon(status: string | undefined, approval_status?: string):
   return L.icon({
     iconUrl,
     shadowUrl,
+    className,
     iconSize: [25, 41],
     iconAnchor: [12, 41],
     popupAnchor: [1, -34],
@@ -3758,22 +3767,26 @@ export default function MapViewWithBackend({ skin, onModalOpenChange, environmen
             }}
           >
             {finalFilteredMarkers.filter((m) => m.id !== editingMarkerId).map((m) => {
+              const isTargetRecord = targetRecordId && m.id === targetRecordId;
+              const highlightPending = Boolean(isTargetRecord && m.approval_status === 'pending');
+
               return (
-              <Marker
-                key={m.id}
-                position={[m.latitude, m.longitude]}
-                icon={createStatusIcon(m.status, m.approval_status)}
-                ref={(ref) => { markerRefs.current[m.id] = ref; }}
-                eventHandlers={{
-                  click: () => {
-                    if (editingMarkerId !== m.id) {
-                      setViewingMarkerId(m.id);
-                    }
-                  }
-                }}
-              >
-            </Marker>
-            );
+                <Marker
+                  key={m.id}
+                  position={[m.latitude, m.longitude]}
+                  icon={createStatusIcon(m.status, m.approval_status, highlightPending)}
+                  ref={(ref) => {
+                    markerRefs.current[m.id] = ref;
+                  }}
+                  eventHandlers={{
+                    click: () => {
+                      if (editingMarkerId !== m.id) {
+                        setViewingMarkerId(m.id);
+                      }
+                    },
+                  }}
+                />
+              );
             })}
         </MarkerClusterGroup>
         )}
