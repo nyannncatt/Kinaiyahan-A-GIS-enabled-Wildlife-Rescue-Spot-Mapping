@@ -175,7 +175,7 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
   
   // Log species categorized as "Other" for debugging
   if (otherSpeciesList.length > 0) {
-    console.log('Species categorized as "Other":', otherSpeciesList);
+    // Debug log removed: we now surface "Other" species via the dialog UI
   }
   const topSpeciesTypePieData = Object.entries(speciesTypeData)
     .map(([type, count]) => ({ id: type, value: Number(count), label: type }))
