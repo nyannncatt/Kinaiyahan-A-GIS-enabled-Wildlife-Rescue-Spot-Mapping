@@ -44,12 +44,15 @@ function GoogleColoredIcon(props) {
   );
 }
 
-// Generate random 4-digit captcha number
+// Generate random CAPTCHA with mixed letters (case-sensitive) and numbers
 const generateCaptcha = () => {
-  // Generate a random 4-digit number (1000-9999)
-  const min = 1000;
-  const max = 9999;
-  return String(Math.floor(Math.random() * (max - min + 1)) + min);
+  const length = 6; // 6 characters for better security
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
 };
 
 export default function SignInCard() {
@@ -171,7 +174,7 @@ export default function SignInCard() {
       console.warn('Could not unlock audio:', error);
     }
     
-    // Validate captcha (compare as numbers)
+    // Validate captcha (case-sensitive string comparison)
     if (!captchaInput || captchaInput.trim() !== captchaValue) {
       setCaptchaError(true);
       setCaptchaSuccess(false);
@@ -520,7 +523,7 @@ export default function SignInCard() {
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-            Please enter the captcha code below to complete your login.
+            Please enter the captcha code below to complete your login. Letters are case-sensitive.
           </Typography>
           
           {captchaError && (
@@ -573,10 +576,11 @@ export default function SignInCard() {
                   fontFamily: 'monospace',
                   fontSize: '1.5rem',
                   fontWeight: 'bold',
-                  letterSpacing: '0.3rem',
+                  letterSpacing: '0.2rem',
                   color: 'text.primary',
                   userSelect: 'none',
                   px: 2,
+                  textTransform: 'none', // Preserve case
                 }}
               >
                 {captchaValue}
@@ -598,14 +602,14 @@ export default function SignInCard() {
             <TextField
               error={captchaError}
               id="modal-captcha"
-              placeholder="Enter 4-digit code"
+              placeholder="Enter code (case-sensitive)"
               required
               fullWidth
               variant="outlined"
               value={captchaInput}
               onChange={(e) => {
-                // Only allow numbers and limit to 4 digits
-                const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                // Allow letters (case-sensitive) and numbers, limit to 6 characters
+                const value = e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 6);
                 setCaptchaInput(value);
                 // Clear error when user starts typing
                 if (captchaError) {
@@ -614,9 +618,8 @@ export default function SignInCard() {
                 setCaptchaSuccess(false);
               }}
               inputProps={{
-                maxLength: 4,
-                inputMode: 'numeric',
-                pattern: '[0-9]*'
+                maxLength: 6,
+                style: { textTransform: 'none' } // Preserve case
               }}
               onKeyPress={(e) => {
                 if (e.key === 'Enter') {
