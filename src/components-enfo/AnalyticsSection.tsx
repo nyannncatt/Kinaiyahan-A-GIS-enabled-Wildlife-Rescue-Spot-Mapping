@@ -431,7 +431,7 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, justifyContent: 'center', alignItems: 'flex-start' }}>
             {/* Top Barangays Pie Chart */}
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 240 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, width: '100%', justifyContent: 'center', minHeight: '32px' }}>
                 <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 500, ml: -15 }}>
                   Top 5 Barangays
                 </Typography>
@@ -485,9 +485,13 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
             
             {/* Top Species Report Pie Chart */}
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 240 }}>
-            <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1, fontWeight: 500, ml: -25 }}>
-                Top Species Report
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, width: '100%', justifyContent: 'center', minHeight: '32px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 500, ml: speciesViewMode === 'type' ? -5 : -15 }}>
+                  Top Species Report
+                </Typography>
+                {/* Spacer to match the toggle buttons width in Top 5 Barangays */}
+                <Box sx={{ width: '60px' }} />
+              </Box>
               {speciesViewMode === 'name' ? (
                 topSpeciesPieData.length > 0 ? (
                   <PieChart
