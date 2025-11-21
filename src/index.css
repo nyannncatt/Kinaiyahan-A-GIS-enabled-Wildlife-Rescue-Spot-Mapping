@@ -555,6 +555,17 @@ span[title][style*="inline-block"] {
 }
 
 /* Remove tooltips from pagination buttons */
+
+/* Glowing animation for profile avatar circle in edit mode */
+@keyframes profileGlow {
+  0% {
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.6), 0 0 30px rgba(76, 175, 80, 0.4), 0 8px 24px rgba(76, 175, 80, 0.25);
+  }
+  100% {
+    box-shadow: 0 0 25px rgba(76, 175, 80, 0.8), 0 0 50px rgba(76, 175, 80, 0.6), 0 8px 24px rgba(76, 175, 80, 0.25);
+  }
+}
+
 .MuiTablePagination-root button[title],
 .MuiTablePagination-root button[data-tooltip],
 .MuiTablePagination-root .MuiIconButton-root[title],
@@ -572,6 +583,28 @@ span[title][style*="inline-block"] {
 .MuiTablePagination-root .MuiIconButton-root[data-tooltip]:hover::after {
   display: none !important;
   content: none !important;
+}
+
+/* Glow for pending (gray) map markers when viewing location
+   Use drop-shadow so the glow hugs the actual marker outline */
+.leaflet-marker-icon.pending-marker-glow {
+  animation: pendingMarkerGlow 1.4s ease-in-out infinite alternate;
+  filter:
+    drop-shadow(0 0 8px rgba(56, 142, 60, 1))
+    drop-shadow(0 0 18px rgba(0, 255, 140, 1));
+}
+
+@keyframes pendingMarkerGlow {
+  0% {
+    filter:
+      drop-shadow(0 0 8px rgba(56, 142, 60, 1))
+      drop-shadow(0 0 14px rgba(0, 255, 140, 0.95));
+  }
+  100% {
+    filter:
+      drop-shadow(0 0 12px rgba(56, 142, 60, 1))
+      drop-shadow(0 0 32px rgba(0, 255, 140, 1));
+  }
 }
 
 /* Tooltip with data-tooltip (set by JavaScript on hover) */

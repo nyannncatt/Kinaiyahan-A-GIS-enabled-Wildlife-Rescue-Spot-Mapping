@@ -3,6 +3,15 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import IconButton from '@mui/material/IconButton';
+import InfoIcon from '@mui/icons-material/Info';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { motion } from 'framer-motion';
 
@@ -15,7 +24,13 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
   // State for filtering analytics by status
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
   // State for municipality filter in analytics (Top Barangays)
-  const [selectedMunicipality, setSelectedMunicipality] = useState<string | null>(null);
+  const [selectedMunicipality, setSelectedMunicipality] = useState<string | null>('Manolo Fortich');
+  // State for species report view toggle (species name vs species type)
+  const [speciesViewMode, setSpeciesViewMode] = useState<'name' | 'type'>('name');
+  // State for showing "Other" species dialog
+  const [showOtherSpeciesDialog, setShowOtherSpeciesDialog] = useState(false);
+  // State for barangay view toggle (percentage vs total)
+  const [barangayViewMode, setBarangayViewMode] = useState<'percentage' | 'total'>('percentage');
   
   // Filter records based on selected status
   const filteredRecords = selectedStatusFilter 
@@ -43,6 +58,129 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
     value: Number(item.count),
     label: item.barangay,
   }));
+  
+  // Helper function to categorize species into types
+  const getSpeciesType = (speciesName: string, scientificName?: string): string => {
+    const name = (speciesName || '').toLowerCase().trim();
+    const scientific = (scientificName || '').toLowerCase().trim();
+    const combined = `${name} ${scientific}`.trim();
+    
+    // If empty, return Other
+    if (!combined || combined === 'unknown') {
+      return 'Other';
+    }
+    
+    // Bird patterns
+    if (combined.includes('bird') || combined.includes('eagle') || combined.includes('owl') || combined.includes('hawk') || 
+        combined.includes('crow') || combined.includes('dove') || combined.includes('parrot') || combined.includes('chicken') ||
+        combined.includes('duck') || combined.includes('goose') || combined.includes('pigeon') || combined.includes('sparrow') ||
+        combined.includes('hornbill') || combined.includes('kingfisher') || combined.includes('myna') || combined.includes('bulbul') ||
+        combined.includes('oriole') || combined.includes('sunbird') || combined.includes('tailorbird') || combined.includes('woodpecker') ||
+        combined.includes('egret') || combined.includes('heron') || combined.includes('stork') || combined.includes('ibis') ||
+        combined.includes('warbler') || combined.includes('flycatcher') || combined.includes('shrike') || combined.includes('starling') ||
+        combined.includes('swift') || combined.includes('swallow') || combined.includes('martin') || combined.includes('swiftlet') ||
+        combined.includes('aves') || combined.includes('accipitridae') || combined.includes('strigidae') || combined.includes('columbidae') ||
+        combined.includes('bucerotidae') || combined.includes('alcedinidae') || combined.includes('sturnidae') || combined.includes('pycnonotidae') ||
+        combined.includes('phylloscopidae') || combined.includes('muscicapidae') || combined.includes('passeridae') || combined.includes('hirundinidae')) {
+      return 'Bird';
+    }
+    
+    // Reptile patterns
+    if (combined.includes('snake') || combined.includes('lizard') || combined.includes('gecko') || combined.includes('crocodile') ||
+        combined.includes('turtle') || combined.includes('tortoise') || combined.includes('iguana') || combined.includes('python') ||
+        combined.includes('cobra') || combined.includes('viper') || combined.includes('skink') || combined.includes('monitor') ||
+        combined.includes('varanus') || combined.includes('agama') || combined.includes('chameleon') || combined.includes('anole') ||
+        combined.includes('reptile') || combined.includes('reptilia') || combined.includes('serpentes') || combined.includes('squamata') ||
+        combined.includes('testudines') || combined.includes('chelonia') || combined.includes('crocodylidae') || combined.includes('crocodyliformes') ||
+        combined.includes('varanidae') || combined.includes('gekkonidae') || combined.includes('scincidae') || combined.includes('elapidae') ||
+        combined.includes('viperidae') || combined.includes('pythonidae') || combined.includes('boidae') || combined.includes('colubridae')) {
+      return 'Reptile';
+    }
+    
+    // Mammal patterns
+    if (combined.includes('monkey') || combined.includes('deer') || combined.includes('wild boar') || combined.includes('boar') ||
+        combined.includes('cat') || combined.includes('dog') || combined.includes('bat') || combined.includes('rat') ||
+        combined.includes('mouse') || combined.includes('squirrel') || combined.includes('civet') || combined.includes('bear') ||
+        combined.includes('pig') || combined.includes('cow') || combined.includes('buffalo') || combined.includes('carabao') ||
+        combined.includes('goat') || combined.includes('sheep') || combined.includes('ram') ||
+        combined.includes('macaque') || combined.includes('tarsier') || combined.includes('flying lemur') || combined.includes('pangolin') ||
+        combined.includes('porcupine') || combined.includes('otter') || combined.includes('mongoose') || combined.includes('wildcat') ||
+        combined.includes('leopard') || combined.includes('tiger') || combined.includes('civet') || combined.includes('binturong') ||
+        combined.includes('mammal') || combined.includes('mammalia') || combined.includes('primates') || combined.includes('carnivora') ||
+        combined.includes('artiodactyla') || combined.includes('rodentia') || combined.includes('chiroptera') || combined.includes('cervidae') ||
+        combined.includes('suidae') || combined.includes('bovidae') || combined.includes('felidae') || combined.includes('canidae') ||
+        combined.includes('viverridae') || combined.includes('muridae') || combined.includes('sciuridae') || combined.includes('pteropodidae') ||
+        combined.includes('vespertilionidae') || combined.includes('rhinolophidae') || combined.includes('hipposideridae') ||
+        combined.includes('capra') || combined.includes('ovis')) {
+      return 'Mammal';
+    }
+    
+    // Aquatic patterns
+    if (combined.includes('fish') || combined.includes('shark') || combined.includes('eel') || combined.includes('crab') ||
+        combined.includes('lobster') || combined.includes('shrimp') || combined.includes('sea turtle') ||
+        combined.includes('ray') || combined.includes('stingray') || combined.includes('octopus') || combined.includes('squid') ||
+        combined.includes('jellyfish') || combined.includes('starfish') || combined.includes('sea urchin') || combined.includes('sea cucumber') ||
+        combined.includes('aquatic') || combined.includes('marine') || combined.includes('pisces') || combined.includes('actinopterygii') ||
+        combined.includes('chondrichthyes') || combined.includes('elasmobranchii') || combined.includes('teleostei') || combined.includes('osteichthyes')) {
+      return 'Aquatic';
+    }
+    
+    // Default to "Other" if no match
+    return 'Other';
+  };
+  
+  // Top species by name - use only approved records (exclude pending and rejected)
+  const speciesSource = (selectedStatusFilter 
+    ? approvedRecords.filter(r => r.status === selectedStatusFilter.toLowerCase())
+    : approvedRecords).filter((r: any) => {
+    if (!selectedMunicipality) return true;
+    const m = (r.municipality || '').toLowerCase();
+    return m === selectedMunicipality.toLowerCase();
+  });
+  const speciesFrequency = speciesSource.reduce((acc: any, record: any) => {
+    const species = record.species_name || 'Unknown';
+    acc[species] = (acc[species] || 0) + 1;
+    return acc;
+  }, {});
+  const topSpecies = Object.entries(speciesFrequency)
+    .map(([species, count]) => ({ species, count }))
+    .sort((a, b) => (b.count as number) - (a.count as number))
+    .slice(0, 5);
+  const topSpeciesTotal = topSpecies.reduce((sum, item) => sum + Number(item.count), 0);
+  const topSpeciesPieData = topSpecies.map((item) => ({
+    id: item.species,
+    value: Number(item.count),
+    label: item.species,
+  }));
+  
+  // Species type breakdown across all top barangays (aggregated, not per barangay)
+  const topBarangayNames = topBarangays.map(b => b.barangay);
+  const otherSpeciesMap: { [key: string]: number } = {}; // Track species categorized as "Other" with counts
+  const speciesTypeData = speciesSource
+    .filter((r: any) => topBarangayNames.includes(r.barangay || 'Unknown'))
+    .reduce((acc: any, record: any) => {
+      const type = getSpeciesType(record.species_name || '', record.scientific_name || '');
+      if (type === 'Other') {
+        const speciesKey = `${record.species_name || 'Unknown'}${record.scientific_name ? ` (${record.scientific_name})` : ''}`;
+        otherSpeciesMap[speciesKey] = (otherSpeciesMap[speciesKey] || 0) + 1;
+      }
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {});
+  
+  // Convert to sorted array for display
+  const otherSpeciesList = Object.entries(otherSpeciesMap)
+    .map(([species, count]) => ({ species, count }))
+    .sort((a, b) => b.count - a.count);
+  
+  // Log species categorized as "Other" for debugging
+  if (otherSpeciesList.length > 0) {
+    // Debug log removed: we now surface "Other" species via the dialog UI
+  }
+  const topSpeciesTypePieData = Object.entries(speciesTypeData)
+    .map(([type, count]) => ({ id: type, value: Number(count), label: type }))
+    .sort((a, b) => b.value - a.value);
+  const topSpeciesTypeTotal = topSpeciesTypePieData.reduce((sum, item) => sum + item.value, 0);
   
   // Records summary counts (based on filtered records)
   const displayRecords = selectedStatusFilter ? filteredRecords : approvedRecords;
@@ -244,13 +382,34 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
           })}
         </Box>
 
-        {/* Top Barangays Section */}
+        {/* Top Barangays and Species Report Section */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" gutterBottom sx={{ color: 'text.primary', fontWeight: 600, mt: 1 }}>
-            Top 5 Barangays with Wildlife Activity
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" gutterBottom sx={{ color: 'text.primary', fontWeight: 600, mt: 1, mb: 0 }}>
+              Top 5 Barangays with Wildlife Activity
+            </Typography>
+            {/* Toggle buttons for species view mode */}
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                size="small"
+                variant={speciesViewMode === 'name' ? 'contained' : 'outlined'}
+                onClick={() => setSpeciesViewMode('name')}
+                sx={{ textTransform: 'none' }}
+              >
+                Species Name
+              </Button>
+              <Button
+                size="small"
+                variant={speciesViewMode === 'type' ? 'contained' : 'outlined'}
+                onClick={() => setSpeciesViewMode('type')}
+                sx={{ textTransform: 'none' }}
+              >
+                Species Type
+              </Button>
+            </Box>
+          </Box>
           {/* Municipality filter */}
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
             {[
               { label: 'Manolo Fortich', value: 'Manolo Fortich' },
             ].map((opt) => {
@@ -268,31 +427,167 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
               );
             })}
           </Box>
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 240 }}>
-            {topBarangays.length > 0 ? (
-              <PieChart
-                series={[{
-                  data: topBarangaysPieData,
-                  innerRadius: 26,
-                  outerRadius: 92,
-                  paddingAngle: 2,
-                  cornerRadius: 5,
-                  arcLabel: (item) => {
-                    const pct = topBarangaysTotal > 0 ? ((item.value / topBarangaysTotal) * 100).toFixed(1) + '%' : '0%';
-                    return pct;
-                  },
-                  arcLabelMinAngle: 10,
-                }]}
-                width={360}
-                height={220}
-              />
-            ) : (
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                No barangay data available yet
-              </Typography>
-            )}
+          {/* Two pie charts side by side */}
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, justifyContent: 'center', alignItems: 'flex-start' }}>
+            {/* Top Barangays Pie Chart */}
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 240 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, width: '100%', justifyContent: 'center', minHeight: '32px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 500, ml: -15 }}>
+                  Top 5 Barangays
+                </Typography>
+                {/* Toggle buttons for barangay view mode */}
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  <Button
+                    size="small"
+                    variant={barangayViewMode === 'percentage' ? 'contained' : 'outlined'}
+                    onClick={() => setBarangayViewMode('percentage')}
+                    sx={{ textTransform: 'none', minWidth: 'auto', px: 1, fontSize: '0.7rem' }}
+                  >
+                    %
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={barangayViewMode === 'total' ? 'contained' : 'outlined'}
+                    onClick={() => setBarangayViewMode('total')}
+                    sx={{ textTransform: 'none', minWidth: 'auto', px: 1, fontSize: '0.7rem' }}
+                  >
+                    Total
+                  </Button>
+                </Box>
+              </Box>
+              {topBarangays.length > 0 ? (
+                <PieChart
+                  series={[{
+                    data: topBarangaysPieData,
+                    innerRadius: 26,
+                    outerRadius: 92,
+                    paddingAngle: 2,
+                    cornerRadius: 5,
+                    arcLabel: (item) => {
+                      if (barangayViewMode === 'total') {
+                        return String(item.value);
+                      } else {
+                        const pct = topBarangaysTotal > 0 ? ((item.value / topBarangaysTotal) * 100).toFixed(1) + '%' : '0%';
+                        return pct;
+                      }
+                    },
+                    arcLabelMinAngle: 10,
+                  }]}
+                  width={360}
+                  height={220}
+                />
+              ) : (
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  No barangay data available yet
+                </Typography>
+              )}
+            </Box>
+            
+            {/* Top Species Report Pie Chart */}
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 240 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, width: '100%', justifyContent: 'center', minHeight: '32px' }}>
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 500, ml: speciesViewMode === 'type' ? -5 : -15 }}>
+                  Top Species Report
+                </Typography>
+                {/* Spacer to match the toggle buttons width in Top 5 Barangays */}
+                <Box sx={{ width: '60px' }} />
+              </Box>
+              {speciesViewMode === 'name' ? (
+                topSpeciesPieData.length > 0 ? (
+                  <PieChart
+                    series={[{
+                      data: topSpeciesPieData,
+                      innerRadius: 26,
+                      outerRadius: 92,
+                      paddingAngle: 2,
+                      cornerRadius: 5,
+                      arcLabel: (item) => {
+                        const pct = topSpeciesTotal > 0 ? ((item.value / topSpeciesTotal) * 100).toFixed(1) + '%' : '0%';
+                        return pct;
+                      },
+                      arcLabelMinAngle: 10,
+                    }]}
+                    width={360}
+                    height={220}
+                  />
+                ) : (
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    No species data available yet
+                  </Typography>
+                )
+              ) : (
+                <>
+                  {topSpeciesTypePieData.length > 0 ? (
+                    <>
+                      <PieChart
+                        series={[{
+                          data: topSpeciesTypePieData,
+                          innerRadius: 26,
+                          outerRadius: 92,
+                          paddingAngle: 2,
+                          cornerRadius: 5,
+                          arcLabel: (item) => {
+                            const pct = topSpeciesTypeTotal > 0 ? ((item.value / topSpeciesTypeTotal) * 100).toFixed(1) + '%' : '0%';
+                            return pct;
+                          },
+                          arcLabelMinAngle: 10,
+                        }]}
+                        width={360}
+                        height={220}
+                      />
+                      {otherSpeciesList.length > 0 && (
+                        <Button
+                          size="small"
+                          startIcon={<InfoIcon />}
+                          onClick={() => setShowOtherSpeciesDialog(true)}
+                          sx={{ mt: 1, textTransform: 'none' }}
+                        >
+                          View {otherSpeciesList.length} "Other" Species
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      No species type data available yet
+                    </Typography>
+                  )}
+                </>
+              )}
+            </Box>
           </Box>
         </Box>
+
+        {/* Dialog to show "Other" species list */}
+        <Dialog
+          open={showOtherSpeciesDialog}
+          onClose={() => setShowOtherSpeciesDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>
+            Species Categorized as "Other"
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+              These species could not be automatically categorized. You may want to add patterns for them in the categorization function.
+            </Typography>
+            <List>
+              {otherSpeciesList.map((item, index) => (
+                <ListItem key={index}>
+                  <ListItemText
+                    primary={item.species}
+                    secondary={`${item.count} ${item.count === 1 ? 'record' : 'records'}`}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowOtherSpeciesDialog(false)}>
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {/* Records Summary */}
         <Box sx={{ mt: 3 }}>
