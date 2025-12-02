@@ -52,20 +52,27 @@ function extractLatLngFromExif(file: File): Promise<{ lat?: number; lng?: number
   return new Promise(async (resolve) => {
     try {
       console.log('Starting EXIF extraction for file:', file.name, file.size, 'bytes');
-      
-      // Parse EXIF data with GPS focus - get all GPS-related fields
-      const exifData = await exifr.parse(file, { 
-        gps: true,
-        pick: [
-          'GPSLatitude', 'GPSLongitude', 
-          'GPSLatitudeRef', 'GPSLongitudeRef',
-          'latitude', 'longitude',
-          'Latitude', 'Longitude',
-          'GPS', 'IFD0', 'Exif'
-        ]
-      });
-      
-      console.log('Raw EXIF data:', exifData);
+
+      // First, try the dedicated GPS helper from exifr (most reliable for lat/lng)
+      let gpsData: any = null;
+      try {
+        // Cast to any to access helper functions without TS type issues
+        gpsData = await (exifr as any).gps(file);
+        console.log('exifr.gps() result:', gpsData);
+      } catch (gpsError) {
+        console.warn('exifr.gps() failed, falling back to generic parse:', gpsError);
+      }
+
+      // If gpsData already has latitude/longitude, use that directly
+      let exifData: any = null;
+      if (gpsData && (gpsData.latitude || gpsData.longitude)) {
+        exifData = gpsData;
+      } else {
+        // Parse full EXIF data with GPS focus - more expensive but more exhaustive
+        exifData = await (exifr as any).parse(file, { gps: true });
+      }
+
+      console.log('Raw EXIF data (combined GPS/parse):', exifData);
       
       let latitude: number | undefined;
       let longitude: number | undefined;
