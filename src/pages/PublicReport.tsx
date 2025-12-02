@@ -234,6 +234,28 @@ export default function PublicReport() {
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
 
+  // Auto-hide global error and field warnings after 3 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (phoneWarning) {
+      const timer = setTimeout(() => setPhoneWarning(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [phoneWarning]);
+
+  useEffect(() => {
+    if (nameWarning) {
+      const timer = setTimeout(() => setNameWarning(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [nameWarning]);
+
   // Auto-hide location permission banner after 2 seconds
   useEffect(() => {
     if (locationPermission !== null) {
@@ -739,7 +761,10 @@ export default function PublicReport() {
         return;
       }
     }
-    
+
+    // All validations passed for the current step; clear any previous error
+    setError(null);
+
     setStepTransition(true);
     setTimeout(() => {
       setActiveStep((prevActiveStep) => prevActiveStep + 1);
