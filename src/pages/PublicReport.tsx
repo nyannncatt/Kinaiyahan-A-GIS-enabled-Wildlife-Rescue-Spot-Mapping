@@ -166,17 +166,16 @@ function extractLatLngFromExif(file: File): Promise<{ lat?: number; lng?: number
         // Ensure coordinates are valid numbers and not 0,0
         const lat = Number(latitude);
         const lng = Number(longitude);
-        
-        // More precise validation for Manolo Fortich area: ~8.2-8.6N, ~124.8-125.1E
-        if (!isNaN(lat) && !isNaN(lng) && 
-            lat !== 0 && lng !== 0 &&
-            lat >= 8.15 && lat <= 8.60 && 
-            lng >= 124.75 && lng <= 125.15) {
+
+        // Accept any non-zero, finite coordinate pair from EXIF
+        if (!isNaN(lat) && !isNaN(lng) &&
+            isFinite(lat) && isFinite(lng) &&
+            lat !== 0 && lng !== 0) {
           // Round to 6 decimal places for accuracy
           const roundedLat = Math.round(lat * 1000000) / 1000000;
           const roundedLng = Math.round(lng * 1000000) / 1000000;
-          
-          console.log('GPS coordinates validated and found:', { 
+
+          console.log('GPS coordinates validated and found (no area restriction):', { 
             latitude: roundedLat, 
             longitude: roundedLng,
             precision: '6 decimals',
@@ -187,10 +186,9 @@ function extractLatLngFromExif(file: File): Promise<{ lat?: number; lng?: number
             lng: roundedLng
           });
         } else {
-          console.log('GPS coordinates found but outside valid range or invalid:', { 
+          console.log('GPS coordinates found but invalid (NaN, infinite, or 0,0):', { 
             lat, 
-            lng, 
-            validRange: 'lat: 8.15-8.60, lng: 124.75-125.15' 
+            lng
           });
           resolve(null);
         }
