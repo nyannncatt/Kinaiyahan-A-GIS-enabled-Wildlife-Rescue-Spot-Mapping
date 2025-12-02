@@ -716,7 +716,11 @@ export default function PublicReport() {
       // Extract EXIF GPS data
       try {
         const coords = await extractLatLngFromExif(file);
-        if (coords && coords.lat && coords.lng) {
+        if (
+          coords &&
+          typeof coords.lat === 'number' &&
+          typeof coords.lng === 'number'
+        ) {
           setExtractedCoords({ lat: coords.lat, lng: coords.lng });
           setHasExifGps(true);
           console.log('GPS coordinates extracted:', coords);
@@ -1145,6 +1149,19 @@ export default function PublicReport() {
                      }}
                    />
                 </FormControl>
+                {/* Inline species name validation message (mobile-friendly) */}
+                {activeStep === 0 && error && error.includes('species name') && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      mt: 0.5,
+                      color: 'error.main',
+                      display: 'block'
+                    }}
+                  >
+                    {error}
+                  </Typography>
+                )}
               </Box>
               <Box>
                 <Paper 
