@@ -716,12 +716,12 @@ export default function PublicReport() {
       // Extract EXIF GPS data
       try {
         const coords = await extractLatLngFromExif(file);
-        if (
-          coords &&
-          typeof coords.lat === 'number' &&
-          typeof coords.lng === 'number'
-        ) {
-          setExtractedCoords({ lat: coords.lat, lng: coords.lng });
+         if (
+           coords &&
+           typeof coords.lat === 'number' &&
+           typeof coords.lng === 'number'
+         ) {
+           setExtractedCoords({ lat: coords.lat, lng: coords.lng });
           setHasExifGps(true);
           console.log('GPS coordinates extracted:', coords);
           
