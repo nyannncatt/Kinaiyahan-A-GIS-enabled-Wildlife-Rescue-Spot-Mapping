@@ -52,20 +52,27 @@ function extractLatLngFromExif(file: File): Promise<{ lat?: number; lng?: number
   return new Promise(async (resolve) => {
     try {
       console.log('Starting EXIF extraction for file:', file.name, file.size, 'bytes');
-      
-      // Parse EXIF data with GPS focus - get all GPS-related fields
-      const exifData = await exifr.parse(file, { 
-        gps: true,
-        pick: [
-          'GPSLatitude', 'GPSLongitude', 
-          'GPSLatitudeRef', 'GPSLongitudeRef',
-          'latitude', 'longitude',
-          'Latitude', 'Longitude',
-          'GPS', 'IFD0', 'Exif'
-        ]
-      });
-      
-      console.log('Raw EXIF data:', exifData);
+
+      // First, try the dedicated GPS helper from exifr (most reliable for lat/lng)
+      let gpsData: any = null;
+      try {
+        // Cast to any to access helper functions without TS type issues
+        gpsData = await (exifr as any).gps(file);
+        console.log('exifr.gps() result:', gpsData);
+      } catch (gpsError) {
+        console.warn('exifr.gps() failed, falling back to generic parse:', gpsError);
+      }
+
+      // If gpsData already has latitude/longitude, use that directly
+      let exifData: any = null;
+      if (gpsData && (gpsData.latitude || gpsData.longitude)) {
+        exifData = gpsData;
+      } else {
+        // Parse full EXIF data with GPS focus - more expensive but more exhaustive
+        exifData = await (exifr as any).parse(file, { gps: true });
+      }
+
+      console.log('Raw EXIF data (combined GPS/parse):', exifData);
       
       let latitude: number | undefined;
       let longitude: number | undefined;
@@ -166,17 +173,16 @@ function extractLatLngFromExif(file: File): Promise<{ lat?: number; lng?: number
         // Ensure coordinates are valid numbers and not 0,0
         const lat = Number(latitude);
         const lng = Number(longitude);
-        
-        // More precise validation for Manolo Fortich area: ~8.2-8.6N, ~124.8-125.1E
-        if (!isNaN(lat) && !isNaN(lng) && 
-            lat !== 0 && lng !== 0 &&
-            lat >= 8.15 && lat <= 8.60 && 
-            lng >= 124.75 && lng <= 125.15) {
+
+        // Accept any non-zero, finite coordinate pair from EXIF
+        if (!isNaN(lat) && !isNaN(lng) &&
+            isFinite(lat) && isFinite(lng) &&
+            lat !== 0 && lng !== 0) {
           // Round to 6 decimal places for accuracy
           const roundedLat = Math.round(lat * 1000000) / 1000000;
           const roundedLng = Math.round(lng * 1000000) / 1000000;
-          
-          console.log('GPS coordinates validated and found:', { 
+
+          console.log('GPS coordinates validated and found (no area restriction):', { 
             latitude: roundedLat, 
             longitude: roundedLng,
             precision: '6 decimals',
@@ -187,10 +193,9 @@ function extractLatLngFromExif(file: File): Promise<{ lat?: number; lng?: number
             lng: roundedLng
           });
         } else {
-          console.log('GPS coordinates found but outside valid range or invalid:', { 
+          console.log('GPS coordinates found but invalid (NaN, infinite, or 0,0):', { 
             lat, 
-            lng, 
-            validRange: 'lat: 8.15-8.60, lng: 124.75-125.15' 
+            lng
           });
           resolve(null);
         }
@@ -235,6 +240,28 @@ export default function PublicReport() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Auto-hide global error and field warnings after 3 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (phoneWarning) {
+      const timer = setTimeout(() => setPhoneWarning(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [phoneWarning]);
+
+  useEffect(() => {
+    if (nameWarning) {
+      const timer = setTimeout(() => setNameWarning(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [nameWarning]);
 
   // Auto-hide location permission banner after 2 seconds
   useEffect(() => {
@@ -689,8 +716,12 @@ export default function PublicReport() {
       // Extract EXIF GPS data
       try {
         const coords = await extractLatLngFromExif(file);
-        if (coords && coords.lat && coords.lng) {
-          setExtractedCoords({ lat: coords.lat, lng: coords.lng });
+         if (
+           coords &&
+           typeof coords.lat === 'number' &&
+           typeof coords.lng === 'number'
+         ) {
+           setExtractedCoords({ lat: coords.lat, lng: coords.lng });
           setHasExifGps(true);
           console.log('GPS coordinates extracted:', coords);
           
@@ -741,7 +772,10 @@ export default function PublicReport() {
         return;
       }
     }
-    
+
+    // All validations passed for the current step; clear any previous error
+    setError(null);
+
     setStepTransition(true);
     setTimeout(() => {
       setActiveStep((prevActiveStep) => prevActiveStep + 1);
@@ -1115,6 +1149,19 @@ export default function PublicReport() {
                      }}
                    />
                 </FormControl>
+                {/* Inline species name validation message (mobile-friendly) */}
+                {activeStep === 0 && error && error.includes('species name') && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      mt: 0.5,
+                      color: 'error.main',
+                      display: 'block'
+                    }}
+                  >
+                    {error}
+                  </Typography>
+                )}
               </Box>
               <Box>
                 <Paper 
