@@ -411,7 +411,11 @@ export default function AnalyticsSection({ wildlifeRecords, approvedRecords }: A
           {/* Municipality filter */}
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
             {[
+              { label: 'All Municipalities', value: null },
               { label: 'Manolo Fortich', value: 'Manolo Fortich' },
+              { label: 'Malitbog', value: 'Malitbog' },
+              { label: 'Sumilao', value: 'Sumilao' },
+              { label: 'Impasugong', value: 'Impasugong' },
             ].map((opt) => {
               const isActive = (opt.value ?? null) === (selectedMunicipality ?? null);
               return (
