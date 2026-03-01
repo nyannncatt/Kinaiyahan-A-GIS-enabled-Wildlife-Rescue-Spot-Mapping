@@ -14,6 +14,7 @@ import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
+import MenuBookRoundedIcon from '@mui/icons-material/MenuBookRounded';
 
 // Styled components with CSS variables support
 const NavigationContainer = styled(Box)(({ theme }) => ({
@@ -112,6 +113,12 @@ const mainNavigationItems = [
     description: 'Data analysis and reports'
   },
   { 
+    id: 'enforcement-manual', 
+    text: 'Enforcement User Manual', 
+    icon: <MenuBookRoundedIcon sx={{ fontSize: 20 }} />,
+    description: 'View enforcement user manual'
+  },
+  { 
     id: 'profile', 
     text: 'My Profile', 
     icon: <PersonRoundedIcon sx={{ fontSize: 20 }} />,
@@ -136,6 +143,7 @@ export default function MenuContent() {
       const mapContainer = document.querySelector('[data-map-container]');
       const recordListElement = document.querySelector('[data-record-list]');
       const analyticsElement = document.querySelector('[data-analytics]');
+      const enforcementManualElement = document.querySelector('[data-enforcement-user-manual]');
       const auditElement = document.querySelector('[data-audit]');
       const profileElement = document.querySelector('[data-profile]');
       
@@ -162,6 +170,13 @@ export default function MenuContent() {
         const analyticsRect = analyticsElement.getBoundingClientRect();
         const analyticsDistance = Math.abs(analyticsRect.top + analyticsRect.height / 2 - viewportCenter);
         distances.push({ tab: 'analytics', distance: analyticsDistance, rect: analyticsRect });
+      }
+
+      // Enforcement User Manual section
+      if (enforcementManualElement) {
+        const manualRect = enforcementManualElement.getBoundingClientRect();
+        const manualDistance = Math.abs(manualRect.top + manualRect.height / 2 - viewportCenter);
+        distances.push({ tab: 'enforcement-manual', distance: manualDistance, rect: manualRect });
       }
 
       // Recent Logins section (admin only)
@@ -241,6 +256,14 @@ export default function MenuContent() {
     // Handle Analytics tab - scroll to analytics section
     if (tabId === 'analytics') {
       scrollToAnalytics();
+    }
+
+    // Handle Enforcement User Manual tab - scroll to manual section
+    if (tabId === 'enforcement-manual') {
+      const manualEl = document.querySelector('[data-enforcement-user-manual]');
+      if (manualEl) {
+        manualEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      }
     }
 
     // Handle Audit tab - scroll to audit logs section

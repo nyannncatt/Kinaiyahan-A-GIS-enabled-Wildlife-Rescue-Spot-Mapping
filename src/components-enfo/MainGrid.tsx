@@ -12,6 +12,7 @@ import { motion } from 'framer-motion';
 import WildlifeRescueStatistics from './WildlifeRescueStatistics';
 import ProfileSection from './ProfileSection';
 import AnalyticsSection from './AnalyticsSection';
+import EnforcementUserManual from './EnforcementUserManual';
 import MapSection from './MapSection';
 import { MapNavigationProvider, useMapNavigation } from '../context/MapNavigationContext';
 import { getWildlifeRecords } from '../services/wildlifeRecords';
@@ -389,6 +390,9 @@ function MainGridContent({ onModalOpenChange, environmentalBg, onDispersalModeCh
 
         {/* Analytics Section */}
         <AnalyticsSection wildlifeRecords={wildlifeRecords} approvedRecords={approvedRecords} />
+
+        {/* Enforcement User Manual Section */}
+        <EnforcementUserManual />
 
         {/* Profile Section */}
         <ProfileSection />
