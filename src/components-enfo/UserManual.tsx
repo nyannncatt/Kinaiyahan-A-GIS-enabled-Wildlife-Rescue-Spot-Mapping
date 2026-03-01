@@ -33,25 +33,26 @@ export default function UserManual() {
           }}
         >
           <iframe
-            src="/KINAIYAHAN USER MANUAL.pdf#toolbar=1&navpanes=1&scrollbar=1"
+            src="https://www.canva.com/design/DAG4mLsKSmE/view?embed"
             title="Kinaiyahan User Manual"
             style={{
               width: '100%',
               height: '100%',
               border: 'none'
             }}
+            allowFullScreen
           />
         </Box>
         
         <Typography variant="body2" sx={{ color: 'text.secondary', mt: 2, textAlign: 'center' }}>
-          If the PDF does not load, you can{' '}
+          If the manual does not load, you can{' '}
           <a 
-            href="/KINAIYAHAN USER MANUAL.pdf" 
+            href="https://www.canva.com/design/DAG4mLsKSmE/Yef-fNcgOlUnJ_2jW2tDVA/view?utm_content=DAG4mLsKSmE&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=had3ac90a71" 
             target="_blank" 
             rel="noopener noreferrer"
             style={{ color: '#2e7d32', textDecoration: 'none' }}
           >
-            download it here
+            open it in a new tab
           </a>
         </Typography>
       </Card>
