@@ -172,8 +172,8 @@ export default function MenuContent() {
         distances.push({ tab: 'analytics', distance: analyticsDistance, rect: analyticsRect });
       }
 
-      // Enforcement User Manual section
-      if (enforcementManualElement) {
+      // Enforcement User Manual section - Only track on enforcement route
+      if (enforcementManualElement && isEnforcementRoute) {
         const manualRect = enforcementManualElement.getBoundingClientRect();
         const manualDistance = Math.abs(manualRect.top + manualRect.height / 2 - viewportCenter);
         distances.push({ tab: 'enforcement-manual', distance: manualDistance, rect: manualRect });
@@ -427,7 +427,15 @@ export default function MenuContent() {
       <Box sx={{ flex: 1, px: 2, mt: 5 }}>
         <SectionTitle>MAIN</SectionTitle>
         <List dense>
-          {mainNavigationItems.map((item) => {
+          {mainNavigationItems
+            .filter((item) => {
+              // Hide Enforcement User Manual from CENRO route
+              if (item.id === 'enforcement-manual' && isCenroRoute) {
+                return false;
+              }
+              return true;
+            })
+            .map((item) => {
             const isMapping = item.id === 'mapping';
             const isRecords = item.id === 'records';
             const isAnalytics = item.id === 'analytics';

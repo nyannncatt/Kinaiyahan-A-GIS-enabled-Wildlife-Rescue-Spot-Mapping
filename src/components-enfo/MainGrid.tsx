@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -28,6 +29,8 @@ interface MainGridProps {
 // Inner component that can access MapNavigationContext
 function MainGridContent({ onModalOpenChange, environmentalBg, onDispersalModeChange, onRelocationModeChange }: MainGridProps) {
   const { triggerRecordsRefresh } = useMapNavigation();
+  const location = useLocation();
+  const isEnforcementRoute = location.pathname.startsWith('/enforcement');
   
   // State for wildlife records for analytics
   const [wildlifeRecords, setWildlifeRecords] = useState<any[]>([]);
@@ -391,8 +394,8 @@ function MainGridContent({ onModalOpenChange, environmentalBg, onDispersalModeCh
         {/* Analytics Section */}
         <AnalyticsSection wildlifeRecords={wildlifeRecords} approvedRecords={approvedRecords} />
 
-        {/* Enforcement User Manual Section */}
-        <EnforcementUserManual />
+        {/* Enforcement User Manual Section - Only show on enforcement route */}
+        {isEnforcementRoute && <EnforcementUserManual />}
 
         {/* Profile Section */}
         <ProfileSection />
