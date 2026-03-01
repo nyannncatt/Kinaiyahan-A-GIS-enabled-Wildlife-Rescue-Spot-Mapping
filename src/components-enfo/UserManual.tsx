@@ -17,7 +17,7 @@ export default function UserManual() {
     >
       <Card sx={{ p: 2, boxShadow: 1 }}>
         <Typography variant="h4" component="h2" gutterBottom sx={{ color: '#2e7d32 !important', mb: 2 }}>
-          User Manual
+          All Users Manual
         </Typography>
         
         <Box

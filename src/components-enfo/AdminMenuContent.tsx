@@ -124,9 +124,9 @@ const mainNavigationItems = [
   },
   { 
     id: 'manual', 
-    text: 'User Manual', 
+    text: 'All Users Manual', 
     icon: <MenuBookRoundedIcon sx={{ fontSize: 20 }} />,
-    description: 'View user manual and documentation',
+    description: 'Manual for all users, roles, and public reports',
     dataAttribute: 'data-user-manual'
   },
   { 
