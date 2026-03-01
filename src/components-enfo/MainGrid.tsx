@@ -14,6 +14,7 @@ import WildlifeRescueStatistics from './WildlifeRescueStatistics';
 import ProfileSection from './ProfileSection';
 import AnalyticsSection from './AnalyticsSection';
 import EnforcementUserManual from './EnforcementUserManual';
+import CenroUserManual from './CenroUserManual';
 import MapSection from './MapSection';
 import { MapNavigationProvider, useMapNavigation } from '../context/MapNavigationContext';
 import { getWildlifeRecords } from '../services/wildlifeRecords';
@@ -31,6 +32,7 @@ function MainGridContent({ onModalOpenChange, environmentalBg, onDispersalModeCh
   const { triggerRecordsRefresh } = useMapNavigation();
   const location = useLocation();
   const isEnforcementRoute = location.pathname.startsWith('/enforcement');
+  const isCenroRoute = location.pathname.startsWith('/cenro');
   
   // State for wildlife records for analytics
   const [wildlifeRecords, setWildlifeRecords] = useState<any[]>([]);
@@ -396,6 +398,9 @@ function MainGridContent({ onModalOpenChange, environmentalBg, onDispersalModeCh
 
         {/* Enforcement User Manual Section - Only show on enforcement route */}
         {isEnforcementRoute && <EnforcementUserManual />}
+
+        {/* CENRO User Manual Section - Only show on CENRO route */}
+        {isCenroRoute && <CenroUserManual />}
 
         {/* Profile Section */}
         <ProfileSection />

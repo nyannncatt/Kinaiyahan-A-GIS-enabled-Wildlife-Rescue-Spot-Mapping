@@ -119,6 +119,12 @@ const mainNavigationItems = [
     description: 'View enforcement user manual'
   },
   { 
+    id: 'cenro-manual', 
+    text: 'CENRO Officer User Manual', 
+    icon: <MenuBookRoundedIcon sx={{ fontSize: 20 }} />,
+    description: 'View CENRO officer user manual'
+  },
+  { 
     id: 'profile', 
     text: 'My Profile', 
     icon: <PersonRoundedIcon sx={{ fontSize: 20 }} />,
@@ -144,6 +150,7 @@ export default function MenuContent() {
       const recordListElement = document.querySelector('[data-record-list]');
       const analyticsElement = document.querySelector('[data-analytics]');
       const enforcementManualElement = document.querySelector('[data-enforcement-user-manual]');
+      const cenroManualElement = document.querySelector('[data-cenro-user-manual]');
       const auditElement = document.querySelector('[data-audit]');
       const profileElement = document.querySelector('[data-profile]');
       
@@ -177,6 +184,13 @@ export default function MenuContent() {
         const manualRect = enforcementManualElement.getBoundingClientRect();
         const manualDistance = Math.abs(manualRect.top + manualRect.height / 2 - viewportCenter);
         distances.push({ tab: 'enforcement-manual', distance: manualDistance, rect: manualRect });
+      }
+
+      // CENRO User Manual section - Only track on CENRO route
+      if (cenroManualElement && isCenroRoute) {
+        const manualRect = cenroManualElement.getBoundingClientRect();
+        const manualDistance = Math.abs(manualRect.top + manualRect.height / 2 - viewportCenter);
+        distances.push({ tab: 'cenro-manual', distance: manualDistance, rect: manualRect });
       }
 
       // Recent Logins section (admin only)
@@ -261,6 +275,14 @@ export default function MenuContent() {
     // Handle Enforcement User Manual tab - scroll to manual section
     if (tabId === 'enforcement-manual') {
       const manualEl = document.querySelector('[data-enforcement-user-manual]');
+      if (manualEl) {
+        manualEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      }
+    }
+
+    // Handle CENRO User Manual tab - scroll to manual section
+    if (tabId === 'cenro-manual') {
+      const manualEl = document.querySelector('[data-cenro-user-manual]');
       if (manualEl) {
         manualEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
       }
@@ -431,6 +453,10 @@ export default function MenuContent() {
             .filter((item) => {
               // Hide Enforcement User Manual from CENRO route
               if (item.id === 'enforcement-manual' && isCenroRoute) {
+                return false;
+              }
+              // Hide CENRO User Manual from enforcement route
+              if (item.id === 'cenro-manual' && isEnforcementRoute) {
                 return false;
               }
               return true;
