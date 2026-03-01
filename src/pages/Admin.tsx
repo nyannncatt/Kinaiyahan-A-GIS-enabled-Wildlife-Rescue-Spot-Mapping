@@ -12,7 +12,6 @@ import AdminSideMenu from '../components-enfo/AdminSideMenu';
 import AppTheme from '../shared-theme/AppTheme';
 import UserManagement from '../components-enfo/UserManagement';
 import UserManual from '../components-enfo/UserManual';
-import AdminUserManual from '../components-enfo/AdminUserManual';
 import ProfileSection from '../components-enfo/ProfileSection';
 import {
   chartsCustomizations,
@@ -254,9 +253,6 @@ function AdminComponent(props: { disableCustomTheme?: boolean }) {
               
               {/* User Manual section */}
               <UserManual />
-              
-              {/* Admin User Manual section */}
-              <AdminUserManual />
               
               {/* My Profile section */}
               <Box sx={{ height: 320 }} />

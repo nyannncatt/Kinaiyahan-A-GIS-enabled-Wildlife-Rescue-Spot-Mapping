@@ -5,6 +5,8 @@ import Card from '@mui/material/Card';
 import { motion } from 'framer-motion';
 
 export default function AdminUserManual() {
+  const pdfUrl = encodeURI('/KINAIYAHAN ADMIN MANUAL.pdf');
+  
   return (
     <Box 
       component={motion.div}
@@ -29,29 +31,32 @@ export default function AdminUserManual() {
             borderColor: 'divider',
             borderRadius: 2,
             overflow: 'hidden',
-            backgroundColor: '#f5f5f5'
+            backgroundColor: '#f5f5f5',
+            position: 'relative'
           }}
         >
           <iframe
-            src="/KINAIYAHAN ADMIN USER MANUAL.pdf#toolbar=1&navpanes=1&scrollbar=1"
+            src={`${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1`}
             title="Kinaiyahan Admin User Manual"
             style={{
               width: '100%',
               height: '100%',
               border: 'none'
             }}
+            onLoad={() => console.log('PDF iframe loaded')}
+            onError={() => console.error('PDF iframe failed to load')}
           />
         </Box>
         
         <Typography variant="body2" sx={{ color: 'text.secondary', mt: 2, textAlign: 'center' }}>
           If the PDF does not load, you can{' '}
           <a 
-            href="/KINAIYAHAN ADMIN USER MANUAL.pdf" 
+            href={pdfUrl} 
             target="_blank" 
             rel="noopener noreferrer"
             style={{ color: '#2e7d32', textDecoration: 'none' }}
           >
-            download it here
+            open it in a new tab
           </a>
         </Typography>
       </Card>
