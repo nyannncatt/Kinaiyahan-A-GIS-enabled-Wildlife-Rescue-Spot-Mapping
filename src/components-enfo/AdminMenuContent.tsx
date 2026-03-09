@@ -15,7 +15,6 @@ import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
-import MenuBookRoundedIcon from '@mui/icons-material/MenuBookRounded';
 
 // Styled components with CSS variables support
 const NavigationContainer = styled(Box)(({ theme }) => ({
@@ -123,13 +122,6 @@ const mainNavigationItems = [
     dataAttribute: 'data-audit'
   },
   { 
-    id: 'manual', 
-    text: 'All Users Manual', 
-    icon: <MenuBookRoundedIcon sx={{ fontSize: 20 }} />,
-    description: 'Manual for all users, roles, and public reports',
-    dataAttribute: 'data-user-manual'
-  },
-  { 
     id: 'profile', 
     text: 'My Profile', 
     icon: <PersonRoundedIcon sx={{ fontSize: 20 }} />,
@@ -152,7 +144,6 @@ export default function AdminMenuContent() {
       if (isScrollingRef.current) return;
       
       const mapContainer = document.querySelector('[data-map-container]');
-      const userManualElement = document.querySelector('[data-user-manual]');
       const recordListElement = document.querySelector('[data-record-list]');
       const analyticsElement = document.querySelector('[data-analytics]');
       const auditElement = document.querySelector('[data-audit]');
@@ -200,13 +191,6 @@ export default function AdminMenuContent() {
           const topDistance = Math.abs(250 - viewportCenter);
           distances.push({ tab: 'mapping', distance: topDistance, rect: topRect });
         }
-      }
-      
-      // User Manual section
-      if (userManualElement) {
-        const manualRect = userManualElement.getBoundingClientRect();
-        const manualDistance = Math.abs(manualRect.top + manualRect.height / 2 - viewportCenter);
-        distances.push({ tab: 'manual', distance: manualDistance, rect: manualRect });
       }
       
       // Records section (Applications)

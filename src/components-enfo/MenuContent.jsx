@@ -14,7 +14,6 @@ import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
-import MenuBookRoundedIcon from '@mui/icons-material/MenuBookRounded';
 
 // Styled components with CSS variables support
 const NavigationContainer = styled(Box)(({ theme }) => ({
@@ -113,18 +112,6 @@ const mainNavigationItems = [
     description: 'Data analysis and reports'
   },
   { 
-    id: 'enforcement-manual', 
-    text: 'Enforcement User Manual', 
-    icon: <MenuBookRoundedIcon sx={{ fontSize: 20 }} />,
-    description: 'View enforcement user manual'
-  },
-  { 
-    id: 'cenro-manual', 
-    text: 'CENRO Officer User Manual', 
-    icon: <MenuBookRoundedIcon sx={{ fontSize: 20 }} />,
-    description: 'View CENRO officer user manual'
-  },
-  { 
     id: 'profile', 
     text: 'My Profile', 
     icon: <PersonRoundedIcon sx={{ fontSize: 20 }} />,
@@ -149,8 +136,6 @@ export default function MenuContent() {
       const mapContainer = document.querySelector('[data-map-container]');
       const recordListElement = document.querySelector('[data-record-list]');
       const analyticsElement = document.querySelector('[data-analytics]');
-      const enforcementManualElement = document.querySelector('[data-enforcement-user-manual]');
-      const cenroManualElement = document.querySelector('[data-cenro-user-manual]');
       const auditElement = document.querySelector('[data-audit]');
       const profileElement = document.querySelector('[data-profile]');
       
@@ -177,20 +162,6 @@ export default function MenuContent() {
         const analyticsRect = analyticsElement.getBoundingClientRect();
         const analyticsDistance = Math.abs(analyticsRect.top + analyticsRect.height / 2 - viewportCenter);
         distances.push({ tab: 'analytics', distance: analyticsDistance, rect: analyticsRect });
-      }
-
-      // Enforcement User Manual section - Only track on enforcement route
-      if (enforcementManualElement && isEnforcementRoute) {
-        const manualRect = enforcementManualElement.getBoundingClientRect();
-        const manualDistance = Math.abs(manualRect.top + manualRect.height / 2 - viewportCenter);
-        distances.push({ tab: 'enforcement-manual', distance: manualDistance, rect: manualRect });
-      }
-
-      // CENRO User Manual section - Only track on CENRO route
-      if (cenroManualElement && isCenroRoute) {
-        const manualRect = cenroManualElement.getBoundingClientRect();
-        const manualDistance = Math.abs(manualRect.top + manualRect.height / 2 - viewportCenter);
-        distances.push({ tab: 'cenro-manual', distance: manualDistance, rect: manualRect });
       }
 
       // Recent Logins section (admin only)
@@ -270,22 +241,6 @@ export default function MenuContent() {
     // Handle Analytics tab - scroll to analytics section
     if (tabId === 'analytics') {
       scrollToAnalytics();
-    }
-
-    // Handle Enforcement User Manual tab - scroll to manual section
-    if (tabId === 'enforcement-manual') {
-      const manualEl = document.querySelector('[data-enforcement-user-manual]');
-      if (manualEl) {
-        manualEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-      }
-    }
-
-    // Handle CENRO User Manual tab - scroll to manual section
-    if (tabId === 'cenro-manual') {
-      const manualEl = document.querySelector('[data-cenro-user-manual]');
-      if (manualEl) {
-        manualEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-      }
     }
 
     // Handle Audit tab - scroll to audit logs section
@@ -449,19 +404,7 @@ export default function MenuContent() {
       <Box sx={{ flex: 1, px: 2, mt: 5 }}>
         <SectionTitle>MAIN</SectionTitle>
         <List dense>
-          {mainNavigationItems
-            .filter((item) => {
-              // Hide Enforcement User Manual from CENRO route
-              if (item.id === 'enforcement-manual' && isCenroRoute) {
-                return false;
-              }
-              // Hide CENRO User Manual from enforcement route
-              if (item.id === 'cenro-manual' && isEnforcementRoute) {
-                return false;
-              }
-              return true;
-            })
-            .map((item) => {
+          {mainNavigationItems.map((item) => {
             const isMapping = item.id === 'mapping';
             const isRecords = item.id === 'records';
             const isAnalytics = item.id === 'analytics';
